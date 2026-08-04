@@ -1,11 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { 
+  CheckCircle, XCircle, AlertCircle, Loader2, 
+  Mail, Lock, ArrowLeft, KeyRound, Shield, 
+  Sparkles, Code2, Eye, EyeOff
+} from "lucide-react";
 
 export default function Forgot() {
   const navigate = useNavigate();
 
   const API_BASE =
-    import.meta?.env?.VITE_API_BASE || "https://express-projectrandom.onrender.com";
+    import.meta?.env?.VITE_API_BASE || "http://localhost:5000";
 
   const [step, setStep] = useState("email"); // email -> otp -> reset
   const [emailLocked, setEmailLocked] = useState(false);
@@ -16,13 +21,19 @@ export default function Forgot() {
   const [verifyToken, setVerifyToken] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState({ send: false, verify: false, reset: false });
   const [errors, setErrors] = useState({});
-  const [modal, setModal] = useState({ open: false, type: "info", title: "", message: "" });
+  const [toast, setToast] = useState(null);
 
-  const openModal = (type, title, message) => setModal({ open: true, type, title, message });
-  const closeModal = () => setModal((p) => ({ ...p, open: false }));
+  const showToast = (type, title, message, duration = 4000) => {
+    setToast({ type, title, message, duration });
+    setTimeout(() => setToast(null), duration);
+  };
+
+  const closeToast = () => setToast(null);
 
   const normalizeEmail = (e) => String(e || "").trim().toLowerCase();
   const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || "").trim());
@@ -51,20 +62,20 @@ export default function Forgot() {
 
     if (!isValidEmail(em)) {
       setErrors({ email: "Enter valid email" });
-      openModal("error", "Invalid Email", "Please enter a valid email address.");
+      showToast("error", "Invalid Email", "Please enter a valid email address.");
       return;
     }
 
     try {
       setLoading((p) => ({ ...p, send: true }));
 
-      const data = await apiPost("/api/auth/forgot/send-otp", { email_address: em });
+      const data = await apiPost("/api/personal-users/forgot/send-otp", { email_address: em });
 
       setStep("otp");
       setEmailLocked(true);
-      openModal("success", "OTP Sent", data?.message || "OTP sent to your email.");
+      showToast("success", "OTP Sent", data?.message || "OTP sent to your email.");
     } catch (err) {
-      openModal("error", "OTP Send Failed", err.message);
+      showToast("error", "OTP Send Failed", err.message);
     } finally {
       setLoading((p) => ({ ...p, send: false }));
     }
@@ -77,20 +88,23 @@ export default function Forgot() {
 
     if (!/^[0-9]{6}$/.test(String(otp || ""))) {
       setErrors({ otp: "OTP must be 6 digits" });
-      openModal("error", "Invalid OTP", "Please enter 6 digit OTP.");
+      showToast("error", "Invalid OTP", "Please enter 6 digit OTP.");
       return;
     }
 
     try {
       setLoading((p) => ({ ...p, verify: true }));
 
-      const data = await apiPost("/api/auth/forgot/verify-otp", { email_address: em, otp });
+      const data = await apiPost("/api/personal-users/forgot/verify-otp", { 
+        email_address: em, 
+        otp 
+      });
 
       setVerifyToken(data.verify_token || "");
       setStep("reset");
-      openModal("success", "Verified", "OTP verified. Now reset your password.");
+      showToast("success", "Verified", "OTP verified. Now reset your password.");
     } catch (err) {
-      openModal("error", "OTP Verification Failed", err.message);
+      showToast("error", "OTP Verification Failed", err.message);
     } finally {
       setLoading((p) => ({ ...p, verify: false }));
     }
@@ -102,433 +116,1041 @@ export default function Forgot() {
 
     if (!newPass || newPass.length < 6) {
       setErrors({ newPass: "Password must be at least 6 characters" });
-      openModal("error", "Weak Password", "Password must be at least 6 characters.");
+      showToast("error", "Weak Password", "Password must be at least 6 characters.");
       return;
     }
     if (newPass !== confirmPass) {
       setErrors({ confirmPass: "Password not match" });
-      openModal("error", "Not Match", "New password and confirm password not match.");
+      showToast("error", "Not Match", "New password and confirm password not match.");
       return;
     }
     if (!verifyToken) {
-      openModal("error", "Not Verified", "Please verify OTP first.");
+      showToast("error", "Not Verified", "Please verify OTP first.");
       return;
     }
 
     try {
       setLoading((p) => ({ ...p, reset: true }));
 
-      const data = await apiPost("/api/auth/forgot/reset-password", {
+      const data = await apiPost("/api/personal-users/forgot/reset-password", {
         email_address: normalizeEmail(email),
         new_password: newPass,
         verify_token: verifyToken,
       });
 
-      openModal("success", "Password Updated", data?.message || "Password reset successfully ✅");
+      showToast("success", "Password Updated", data?.message || "Password reset successfully ✅");
 
-      // ✅ SPA navigation (Vercel back button works)
       setTimeout(() => navigate("/login", { replace: true }), 900);
     } catch (err) {
-      openModal("error", "Reset Failed", err.message);
+      showToast("error", "Reset Failed", err.message);
     } finally {
       setLoading((p) => ({ ...p, reset: false }));
     }
   };
 
   return (
-    <div className="fp">
+    <div className="forgot-page">
       <style>{css}</style>
-      <div className="bg" />
 
-      {/* Center Modal */}
-      {modal.open ? (
-        <div className="mb" onClick={closeModal}>
-          <div className="mc" onClick={(e) => e.stopPropagation()}>
-            <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
-            <h3 className="mt">{modal.title}</h3>
-            <p className="mm">{modal.message}</p>
-            <button className="mBtn" type="button" onClick={closeModal}>
-              OK
+      {/* Animated Background */}
+      <div className="bg-animated">
+        <div className="orb orb-1"></div>
+        <div className="orb orb-2"></div>
+        <div className="orb orb-3"></div>
+        <div className="orb orb-4"></div>
+      </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast-overlay ${toast.type}`} onClick={closeToast}>
+          <div className="toast-container" onClick={(e) => e.stopPropagation()}>
+            <div className="toast-icon">
+              {toast.type === "success" && <CheckCircle size={28} color="#22c55e" />}
+              {toast.type === "error" && <XCircle size={28} color="#ef4444" />}
+              {toast.type === "info" && <AlertCircle size={28} color="#3b82f6" />}
+            </div>
+            <div className="toast-content">
+              <h4 className="toast-title">{toast.title}</h4>
+              <p className="toast-message">{toast.message}</p>
+            </div>
+            <button className="toast-close" onClick={closeToast}>
+              <XCircle size={20} />
             </button>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="card">
-        <div className="head">
-          <h2 className="title">Forgot Password</h2>
-          <p className="sub">Verify Email • OTP • Reset Password</p>
-        </div>
+      {/* Forgot Password Card */}
+      <div className="forgot-wrapper">
+        <div className="forgot-card glass-card">
 
-        {/* STEP 1: EMAIL */}
-        {step === "email" ? (
-          <>
-            <div className="field">
-              <label className="label">
-                Email Address <span className="req">*</span>
-              </label>
-              <input
-                className={`input ${errors.email ? "err" : ""}`}
-                placeholder="Enter registered email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-              {errors.email ? <div className="eTxt">{errors.email}</div> : null}
-            </div>
-
-            <button className="btn" onClick={sendOtp} disabled={loading.send}>
-              {loading.send ? "Sending OTP..." : "Send OTP"}
-            </button>
-          </>
-        ) : null}
-
-        {/* STEP 2: OTP */}
-        {step === "otp" ? (
-          <>
-            <div className="field">
-              <label className="label">Email Address</label>
-              <input className="input locked" value={normalizeEmail(email)} readOnly />
-            </div>
-
-            <div className="otpBox">
-              <div className="otpTop">
-                <div className="otpTitle">Enter OTP</div>
-                <div className="otpHint">Check inbox / spam</div>
-              </div>
-
-              <div className="otpRow">
-                <input
-                  className={`input ${errors.otp ? "err" : ""}`}
-                  name="otp"
-                  placeholder="6 digit OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  inputMode="numeric"
-                  maxLength={6}
-                />
-                <button className="btn2" type="button" onClick={verifyOtpFn} disabled={loading.verify}>
-                  {loading.verify ? "Verifying..." : "Verify OTP"}
-                </button>
-              </div>
-
-              {errors.otp ? <div className="eTxt center">{errors.otp}</div> : null}
-
-              <button className="linkBtn" type="button" onClick={sendOtp} disabled={loading.send}>
-                {loading.send ? "Resending..." : "Resend OTP"}
-              </button>
-            </div>
-          </>
-        ) : null}
-
-        {/* STEP 3: RESET */}
-        {step === "reset" ? (
-          <>
-            <div className="field">
-              <label className="label">Email Address</label>
-              <input className="input locked" value={normalizeEmail(email)} readOnly />
-            </div>
-
-            <div className="field">
-              <label className="label">
-                New Password <span className="req">*</span>
-              </label>
-              <input
-                className={`input ${errors.newPass ? "err" : ""}`}
-                type="password"
-                placeholder="Enter new password"
-                value={newPass}
-                onChange={(e) => setNewPass(e.target.value)}
-                autoComplete="new-password"
-              />
-              {errors.newPass ? <div className="eTxt">{errors.newPass}</div> : null}
-            </div>
-
-            <div className="field">
-              <label className="label">
-                Confirm Password <span className="req">*</span>
-              </label>
-              <input
-                className={`input ${errors.confirmPass ? "err" : ""}`}
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPass}
-                onChange={(e) => setConfirmPass(e.target.value)}
-                autoComplete="new-password"
-              />
-              {errors.confirmPass ? <div className="eTxt">{errors.confirmPass}</div> : null}
-            </div>
-
-            <button className="btn" onClick={resetPassword} disabled={loading.reset}>
-              {loading.reset ? "Updating..." : "Update Password"}
-            </button>
-          </>
-        ) : null}
-
-        {/* ✅ fixed navigation (no reload) */}
-        <div className="links">
-          <Link className="link" to="/login">
+          {/* Back Button */}
+          <Link to="/login" className="back-link">
+            <ArrowLeft size={18} />
             Back to Login
           </Link>
-          <span className="dot">•</span>
-          <Link className="link" to="/register">
-            Register
-          </Link>
+
+          {/* Brand */}
+          <div className="brand-section">
+            <div className="brand-icon">
+              <KeyRound size={28} color="#fff" />
+            </div>
+            <h1 className="brand-title">Forgot Password</h1>
+            <p className="brand-subtitle">
+              {step === "email" && "Enter your email to receive OTP"}
+              {step === "otp" && "Check your email for OTP"}
+              {step === "reset" && "Create a new password"}
+            </p>
+          </div>
+
+          {/* STEP 1: EMAIL */}
+          {step === "email" && (
+            <>
+              <div className="form-group">
+                <label className="form-label">
+                  Email Address <span className="required">*</span>
+                </label>
+                <div className="input-wrapper">
+                  <Mail size={18} className="input-icon" />
+                  <input
+                    className={`form-input ${errors.email ? "error" : ""}`}
+                    placeholder="Enter registered email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    autoComplete="email"
+                  />
+                </div>
+                {errors.email && <div className="error-text">{errors.email}</div>}
+              </div>
+
+              <button className="submit-btn" onClick={sendOtp} disabled={loading.send}>
+                {loading.send ? (
+                  <>
+                    <Loader2 size={20} className="spinner" />
+                    Sending OTP...
+                  </>
+                ) : (
+                  <>
+                    <Mail size={20} />
+                    Send OTP
+                  </>
+                )}
+              </button>
+            </>
+          )}
+
+          {/* STEP 2: OTP */}
+          {step === "otp" && (
+            <>
+              <div className="form-group locked-field">
+                <label className="form-label">Email Address</label>
+                <div className="input-wrapper">
+                  <Mail size={18} className="input-icon" />
+                  <input className="form-input locked" value={normalizeEmail(email)} readOnly />
+                </div>
+              </div>
+
+              <div className="otp-section">
+                <div className="otp-header">
+                  <span className="otp-title">Enter OTP</span>
+                  <span className="otp-hint">Check inbox / spam</span>
+                </div>
+
+                <div className="otp-row">
+                  <input
+                    className={`form-input otp-input ${errors.otp ? "error" : ""}`}
+                    placeholder="6 digit OTP"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    maxLength={6}
+                  />
+                  <button 
+                    className="verify-btn" 
+                    type="button" 
+                    onClick={verifyOtpFn} 
+                    disabled={loading.verify}
+                  >
+                    {loading.verify ? (
+                      <Loader2 size={18} className="spinner" />
+                    ) : (
+                      "Verify"
+                    )}
+                  </button>
+                </div>
+
+                {errors.otp && <div className="error-text center">{errors.otp}</div>}
+
+                <button 
+                  className="resend-link" 
+                  type="button" 
+                  onClick={sendOtp} 
+                  disabled={loading.send}
+                >
+                  {loading.send ? "Resending..." : "Resend OTP"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* STEP 3: RESET */}
+          {step === "reset" && (
+            <>
+              <div className="form-group locked-field">
+                <label className="form-label">Email Address</label>
+                <div className="input-wrapper">
+                  <Mail size={18} className="input-icon" />
+                  <input className="form-input locked" value={normalizeEmail(email)} readOnly />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  New Password <span className="required">*</span>
+                </label>
+                <div className="input-wrapper">
+                  <Lock size={18} className="input-icon" />
+                  <input
+                    className={`form-input ${errors.newPass ? "error" : ""}`}
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter new password (min 6 chars)"
+                    value={newPass}
+                    onChange={(e) => setNewPass(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.newPass && <div className="error-text">{errors.newPass}</div>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Confirm Password <span className="required">*</span>
+                </label>
+                <div className="input-wrapper">
+                  <Lock size={18} className="input-icon" />
+                  <input
+                    className={`form-input ${errors.confirmPass ? "error" : ""}`}
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmPass}
+                    onChange={(e) => setConfirmPass(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {errors.confirmPass && <div className="error-text">{errors.confirmPass}</div>}
+              </div>
+
+              <button className="submit-btn" onClick={resetPassword} disabled={loading.reset}>
+                {loading.reset ? (
+                  <>
+                    <Loader2 size={20} className="spinner" />
+                    Updating Password...
+                  </>
+                ) : (
+                  <>
+                    <Shield size={20} />
+                    Update Password
+                  </>
+                )}
+              </button>
+            </>
+          )}
+
+          {/* Footer Links - Only Back to Login */}
+          <div className="auth-links">
+            <Link className="auth-link" to="/login">
+              ← Back to Login
+            </Link>
+          </div>
+
+          <div className="footer-note">
+            🔒 Secured with industry standard encryption
+          </div>
         </div>
 
-        {!emailLocked ? null : <div className="note">Email is locked after OTP step ✅</div>}
+        {/* Developer Footer */}
+        <div className="dev-footer">
+          <div className="dev-line">
+            <Code2 size={16} className="dev-icon" />
+            <span className="dev-text">Developed by <span className="dev-name">Ajay Kedar</span></span>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
 const css = `
-  :root{
-    --txt:#0b1220;
-    --muted:rgba(11,18,32,.65);
-    --card:rgba(255,255,255,.90);
-    --shadow: 0 26px 80px rgba(0,0,0,.18);
+  /* ============================================
+     MODERN FORGOT PASSWORD PAGE CSS
+     ============================================ */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
-  .fp{
-    min-height:100vh;
-    width:100%;
-    position:relative;
-    overflow-x:hidden;
-    overflow-y:auto;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:20px;
-    box-sizing:border-box;
+  .forgot-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 20px;
+    background: #0f0a1a;
   }
 
-  .bg{
-    position:fixed;
-    inset:0;
-    background:
-      radial-gradient(900px 520px at 12% 12%, rgba(255, 0, 150, .26), transparent 60%),
-      radial-gradient(900px 520px at 88% 16%, rgba(0, 200, 255, .22), transparent 58%),
-      radial-gradient(1000px 650px at 50% 92%, rgba(0, 255, 150, .18), transparent 60%),
-      linear-gradient(135deg, #fffbeb 0%, #eff6ff 34%, #ecfeff 67%, #f0fdf4 100%);
-    z-index:0;
-    pointer-events:none;
+  /* ============================================
+     ANIMATED BACKGROUND
+     ============================================ */
+  .bg-animated {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(236, 72, 153, 0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+      #0f0a1a;
+    overflow: hidden;
   }
 
-  .card{
-    width:100%;
-    max-width:520px;
-    background:var(--card);
-    border:1px solid rgba(255,255,255,.55);
-    border-radius:22px;
-    padding:26px;
-    box-shadow:var(--shadow);
-    backdrop-filter: blur(14px);
-    z-index:1;
-    box-sizing:border-box;
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    animation: floatOrb 12s ease-in-out infinite alternate;
   }
 
-  .head{ text-align:center; margin-bottom:14px; }
-  .title{
-    margin:0;
-    font-weight:950;
-    letter-spacing:.2px;
-    color:var(--txt);
-    font-size: clamp(22px, 3.2vw, 30px);
-  }
-  .sub{
-    margin:8px 0 0;
-    color:var(--muted);
-    font-weight:700;
-    font-size: clamp(12px, 1.8vw, 14px);
+  .orb-1 {
+    width: 400px;
+    height: 400px;
+    background: rgba(124, 58, 237, 0.25);
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
   }
 
-  .field{ display:flex; flex-direction:column; margin-top:12px; }
-  .label{
-    font-size:12px;
-    font-weight:900;
-    color:rgba(11,18,32,.85);
-    margin-bottom:6px;
-  }
-  .req{ color:#ff2d55; }
-
-  .input{
-    width:100%;
-    padding: 12px 12px;
-    border-radius:14px;
-    border: 1px solid rgba(11,18,32,.10);
-    background: rgba(255,255,255,.92);
-    color: var(--txt);
-    outline: none;
-    box-sizing:border-box;
-    font-size: clamp(13px, 1.9vw, 14px);
-    transition: box-shadow .15s ease, border-color .15s ease, transform .12s ease;
-  }
-  .input:focus{
-    border-color: rgba(124,58,237,.35);
-    box-shadow: 0 0 0 5px rgba(124,58,237,.12);
-    transform: translateY(-1px);
-  }
-  .input.err{
-    border-color: rgba(255,45,85,.55);
-    box-shadow: 0 0 0 5px rgba(255,45,85,.10);
-  }
-  .input.locked{
-    opacity: .92;
-    cursor:not-allowed;
-    background: rgba(255,255,255,.70);
+  .orb-2 {
+    width: 350px;
+    height: 350px;
+    background: rgba(236, 72, 153, 0.2);
+    bottom: -80px;
+    right: -80px;
+    animation-delay: -4s;
   }
 
-  .eTxt{
-    margin-top:6px;
-    font-size:12px;
-    font-weight:800;
-    color:#ff2d55;
+  .orb-3 {
+    width: 250px;
+    height: 250px;
+    background: rgba(16, 185, 129, 0.15);
+    top: 50%;
+    left: 50%;
+    animation-delay: -8s;
   }
-  .eTxt.center{ text-align:center; margin-top:10px; }
 
-  .btn{
-    margin-top:16px;
-    width:100%;
-    border:none;
-    padding: 14px 14px;
+  .orb-4 {
+    width: 200px;
+    height: 200px;
+    background: rgba(59, 130, 246, 0.15);
+    top: 20%;
+    right: 20%;
+    animation-delay: -2s;
+  }
+
+  @keyframes floatOrb {
+    0% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -40px) scale(1.1); }
+    66% { transform: translate(-20px, 30px) scale(0.9); }
+    100% { transform: translate(40px, 20px) scale(1.05); }
+  }
+
+  /* ============================================
+     LAYOUT
+     ============================================ */
+  .forgot-wrapper {
+    width: 100%;
+    max-width: 440px;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: slideUp 0.6s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ============================================
+     GLASS CARD
+     ============================================ */
+  .forgot-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    padding: 32px 32px 28px;
+    box-shadow: 
+      0 40px 100px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 0 40px rgba(124, 58, 237, 0.05);
+    transition: all 0.4s ease;
+  }
+
+  .forgot-card:hover {
+    box-shadow: 
+      0 50px 120px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+      0 0 60px rgba(124, 58, 237, 0.08);
+    transform: translateY(-2px);
+  }
+
+  /* ============================================
+     BACK LINK
+     ============================================ */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    margin-bottom: 16px;
+  }
+
+  .back-link:hover {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* ============================================
+     BRAND SECTION
+     ============================================ */
+  .brand-section {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, #7C3AED, #EC4899);
     border-radius: 16px;
-    cursor:pointer;
-    color:#081018;
-    font-weight:980;
-    font-size: clamp(14px, 2.2vw, 16px);
-    background: linear-gradient(90deg, #fde047 0%, #fb7185 40%, #60a5fa 70%, #34d399 100%);
-    box-shadow: 0 18px 40px rgba(0,0,0,.14);
-  }
-  .btn:disabled{ opacity:.75; cursor:not-allowed; }
-
-  .otpBox{
-    margin-top:14px;
-    padding:14px;
-    border-radius:18px;
-    border:1px solid rgba(124,58,237,.18);
-    background:
-      radial-gradient(600px 180px at 10% 10%, rgba(124,58,237,.12), transparent 60%),
-      radial-gradient(600px 180px at 90% 30%, rgba(6,182,212,.10), transparent 60%),
-      rgba(255,255,255,.55);
+    margin-bottom: 12px;
+    box-shadow: 0 12px 40px rgba(124, 58, 237, 0.3);
+    transition: all 0.3s ease;
   }
 
-  .otpTop{ display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
-  .otpTitle{ font-weight:950; color:var(--txt); }
-  .otpHint{ color:var(--muted); font-weight:800; font-size:12px; }
+  .brand-icon:hover {
+    transform: scale(1.05) rotate(-5deg);
+    box-shadow: 0 16px 50px rgba(124, 58, 237, 0.4);
+  }
 
-  .otpRow{
-    display:grid;
+  .brand-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    margin: 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .brand-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+    margin-top: 4px;
+  }
+
+  /* ============================================
+     FORM ELEMENTS
+     ============================================ */
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group.locked-field {
+    opacity: 0.7;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 5px;
+  }
+
+  .required {
+    color: #f43f5e;
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .input-icon {
+    position: absolute;
+    left: 14px;
+    color: rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
+    outline: none;
+    transition: all 0.3s ease;
+    font-family: inherit;
+  }
+
+  .form-input::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+    font-weight: 400;
+  }
+
+  .form-input:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+  }
+
+  .form-input.error {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+
+  .form-input.locked {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .form-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .otp-input {
+    text-align: center;
+    letter-spacing: 4px;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 12px 16px;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 14px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease;
+  }
+
+  .password-toggle:hover {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .error-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #f87171;
+    margin-top: 5px;
+  }
+
+  .error-text.center {
+    text-align: center;
+  }
+
+  /* ============================================
+     OTP SECTION
+     ============================================ */
+  .otp-section {
+    margin: 8px 0 4px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(124, 58, 237, 0.15);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .otp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .otp-title {
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+  }
+
+  .otp-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 500;
+  }
+
+  .otp-row {
+    display: grid;
     grid-template-columns: 1fr auto;
-    gap:10px;
-    align-items:center;
+    gap: 10px;
+    align-items: center;
   }
 
-  .btn2{
-    border:none;
-    padding: 12px 14px;
-    border-radius: 14px;
-    cursor:pointer;
-    color:#fff;
-    font-weight:950;
-    font-size: clamp(13px, 2.0vw, 14px);
-    background: linear-gradient(90deg, #7c3aed 0%, #06b6d4 55%, #22c55e 100%);
-    box-shadow: 0 14px 30px rgba(124,58,237,.18);
-    white-space:nowrap;
+  .verify-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #7C3AED, #4F6BFF);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 100px;
   }
-  .btn2:disabled{ opacity:.75; cursor:not-allowed; }
 
-  .linkBtn{
-    margin-top:10px;
-    width:100%;
-    border:none;
+  .verify-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.3);
+  }
+
+  .verify-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .resend-link {
+    margin-top: 10px;
+    width: 100%;
+    border: none;
     background: transparent;
-    color:#7c3aed;
-    font-weight:950;
-    cursor:pointer;
+    color: rgba(124, 58, 237, 0.7);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+    transition: color 0.3s ease;
+    font-family: inherit;
     text-decoration: underline;
   }
-  .linkBtn:disabled{ opacity:.7; cursor:not-allowed; }
 
-  .links{
-    margin-top:14px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:10px;
-    color:var(--muted);
-    font-weight:850;
-    font-size: clamp(12px, 1.8vw, 14px);
+  .resend-link:hover:not(:disabled) {
+    color: #7C3AED;
   }
-  .link{
-    color:#7c3aed;
-    font-weight:980;
-    cursor:pointer;
+
+  .resend-link:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ============================================
+     SUBMIT BUTTON
+     ============================================ */
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.8), rgba(236, 72, 153, 0.8));
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: inherit;
+    box-shadow: 0 8px 30px rgba(124, 58, 237, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    border-radius: 12px;
+  }
+
+  .submit-btn:hover:not(:disabled)::before {
+    opacity: 1;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 12px 40px rgba(124, 58, 237, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .submit-btn:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .spinner {
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ============================================
+     AUTH LINKS - Only Back to Login
+     ============================================ */
+  .auth-links {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .auth-link {
+    color: rgba(124, 58, 237, 0.8);
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .auth-link:hover {
+    color: #7C3AED;
     text-decoration: underline;
   }
-  .dot{ opacity:.6; }
 
-  .note{
-    margin-top:10px;
-    text-align:center;
-    font-weight:850;
-    font-size:12px;
-    color:rgba(11,18,32,.65);
-  }
-
-  .mb{
-    position:fixed;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background: rgba(0,0,0,.38);
-    z-index:9999;
-    padding:16px;
-    box-sizing:border-box;
-  }
-  .mc{
-    width:100%;
-    max-width:440px;
-    background: rgba(255,255,255,.94);
-    border: 1px solid rgba(255,255,255,.70);
-    border-radius:22px;
-    padding:18px;
-    text-align:center;
-    box-shadow: 0 35px 95px rgba(0,0,0,.25);
-    backdrop-filter: blur(14px);
-  }
-  .pill{
-    display:inline-block;
-    padding:6px 12px;
-    border-radius:999px;
-    font-weight:980;
-    font-size:12px;
-    margin-bottom:10px;
-    border: 1px solid rgba(0,0,0,.08);
-  }
-  .pill.success{ background: rgba(34,197,94,.14); color:#0f5132; }
-  .pill.error{ background: rgba(255,45,85,.12); color:#9f1239; }
-  .pill.info{ background: rgba(124,58,237,.12); color:#4c1d95; }
-
-  .mt{ margin:4px 0 6px; font-weight:980; color:var(--txt); font-size:18px; }
-  .mm{ margin:0 0 14px; color:rgba(11,18,32,.78); font-weight:850; line-height:1.4; }
-  .mBtn{
-    width:100%;
-    border:none;
-    padding:12px 14px;
-    border-radius:16px;
-    background: linear-gradient(90deg, #111827 0%, #334155 100%);
-    color:#fff;
-    font-weight:980;
-    cursor:pointer;
+  .footer-note {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.15);
+    font-weight: 500;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
   }
 
-  @media (max-width: 640px){
-    .fp{ padding:14px; }
-    .card{ padding:16px; border-radius:18px; }
-    .otpRow{ grid-template-columns: 1fr; }
-    .btn2{ width:100%; }
+  /* ============================================
+     DEVELOPER FOOTER
+     ============================================ */
+  .dev-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+  }
+
+  .dev-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .dev-line:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .dev-icon {
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+  }
+
+  .dev-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.5px;
+  }
+
+  .dev-name {
+    font-weight: 800;
+    font-size: 14px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #A78BFA, #7C3AED, #EC4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 40px rgba(124, 58, 237, 0.3);
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+  }
+
+  .dev-line:hover .dev-name {
+    text-shadow: 0 0 60px rgba(124, 58, 237, 0.6), 0 0 100px rgba(124, 58, 237, 0.3);
+  }
+
+  /* ============================================
+     TOAST NOTIFICATION
+     ============================================ */
+  .toast-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: fadeIn 0.3s ease;
+    padding: 20px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .toast-container {
+    max-width: 400px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 22px 26px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
+    animation: toastSlide 0.4s ease;
+  }
+
+  @keyframes toastSlide {
+    from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .toast-overlay.success .toast-container {
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+
+  .toast-overlay.error .toast-container {
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .toast-overlay.info .toast-container {
+    border-color: rgba(59, 130, 246, 0.2);
+  }
+
+  .toast-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+  }
+
+  .toast-content {
+    flex: 1;
+  }
+
+  .toast-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 3px 0;
+  }
+
+  .toast-message {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.3s ease;
+  }
+
+  .toast-close:hover {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* ============================================
+     RESPONSIVE
+     ============================================ */
+  @media (max-width: 640px) {
+    .forgot-page {
+      padding: 16px;
+    }
+
+    .forgot-card {
+      padding: 24px 20px 20px;
+      border-radius: 24px;
+    }
+
+    .forgot-wrapper {
+      max-width: 100%;
+      gap: 14px;
+    }
+
+    .brand-title {
+      font-size: 20px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    .form-input {
+      padding: 10px 14px 10px 38px;
+      font-size: 13px;
+    }
+
+    .otp-row {
+      grid-template-columns: 1fr;
+    }
+
+    .verify-btn {
+      width: 100%;
+      justify-content: center;
+      min-width: auto;
+    }
+
+    .toast-container {
+      padding: 16px 18px;
+    }
+
+    .toast-title {
+      font-size: 14px;
+    }
+
+    .toast-message {
+      font-size: 12px;
+    }
+
+    .dev-text {
+      font-size: 12px;
+    }
+
+    .dev-name {
+      font-size: 13px;
+    }
+
+    .dev-line {
+      padding: 6px 16px;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .forgot-card {
+      padding: 18px 14px 16px;
+      border-radius: 20px;
+    }
+
+    .brand-title {
+      font-size: 18px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+    }
+
+    .toast-container {
+      padding: 14px 14px;
+    }
+
+    .forgot-wrapper {
+      gap: 12px;
+    }
+
+    .dev-text {
+      font-size: 11px;
+    }
+
+    .dev-name {
+      font-size: 12px;
+    }
+
+    .dev-line {
+      padding: 5px 12px;
+    }
   }
 `;

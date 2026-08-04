@@ -1,42 +1,39 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { CheckCircle, XCircle, AlertCircle, Loader2, Eye, EyeOff, Sparkles, LogIn, Code2 } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // ✅ Use env if available, else fallback
   const API_BASE = useMemo(
     () =>
       import.meta?.env?.VITE_API_BASE?.trim() ||
-      "https://express-projectrandom.onrender.com",
+      "http://localhost:5000",
     []
   );
 
-  const [form, setForm] = useState({ username: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
-  // ✅ server warm status (small info)
   const [serverStatus, setServerStatus] = useState({
-    state: "checking", // checking | ready | waking | down
+    state: "checking",
     ms: 0,
   });
 
-  const [modal, setModal] = useState({
-    open: false,
-    type: "info",
-    title: "",
-    message: "",
-  });
+  const [toast, setToast] = useState(null);
 
-  const openModal = (type, title, message) =>
-    setModal({ open: true, type, title, message });
-  const closeModal = () => setModal((p) => ({ ...p, open: false }));
+  const showToast = (type, title, message, duration = 4000) => {
+    setToast({ type, title, message, duration });
+    setTimeout(() => setToast(null), duration);
+  };
 
-  // ✅ prevent state updates after unmount
+  const closeToast = () => setToast(null);
+
   const aliveRef = useRef(true);
   useEffect(() => {
     aliveRef.current = true;
@@ -45,29 +42,13 @@ export default function Login() {
     };
   }, []);
 
-  // ✅ ESC close modal
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && closeModal();
+    const onKey = (e) => e.key === "Escape" && closeToast();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // ✅ Preconnect (DNS + TLS warm)
-  useEffect(() => {
-    try {
-      const origin = new URL(API_BASE).origin;
-      const link = document.createElement("link");
-      link.rel = "preconnect";
-      link.href = origin;
-      document.head.appendChild(link);
-      return () => document.head.removeChild(link);
-    } catch {
-      // ignore
-    }
-  }, [API_BASE]);
-
-  // ✅ Warm-up backend (FIXED)
-  // Previous bug: fetch 404 does NOT go to catch.
+  // Warm-up backend
   useEffect(() => {
     const warmUp = async () => {
       const start = performance.now();
@@ -79,13 +60,11 @@ export default function Login() {
       setStateSafe("checking", 0);
 
       try {
-        // 1) try /health
         const r1 = await fetch(`${API_BASE}/health`, {
           method: "GET",
           cache: "no-store",
         });
 
-        // if /health is missing (404) or not ok -> try root
         if (!r1.ok) {
           const r2 = await fetch(`${API_BASE}/`, {
             method: "GET",
@@ -116,44 +95,45 @@ export default function Login() {
 
   const validate = () => {
     const err = {};
-    const username = form.username.trim();
+    const email = form.email.trim();
     const password = form.password.trim();
 
-    if (!username)
-      err.username = isAdmin ? "Admin email required" : "Email or Mobile required";
+    if (!email) err.email = "Email address required";
     if (!password) err.password = "Password required";
 
     setErrors(err);
 
     if (Object.keys(err).length) {
-      openModal(
+      showToast(
         "error",
         "Missing Fields",
-        isAdmin
-          ? "Please enter Admin Email and Password."
-          : "Please enter Email/Mobile and Password."
+        "Please enter Email and Password."
       );
     }
     return Object.keys(err).length === 0;
   };
 
-  // ✅ better error detection
   function toNiceError(err, resStatus) {
     const msg = err?.message || "";
 
-    // Timeout / cold start
     if (msg.toLowerCase().includes("cold start") || err?.name === "AbortError") {
-      return "Server is waking up (Render cold start). Wait 5–10 seconds and try again.";
+      return "Server is waking up. Wait 5–10 seconds and try again.";
     }
 
-    // Network / CORS usually appears as TypeError: Failed to fetch
     if (msg.toLowerCase().includes("failed to fetch")) {
-      return "API unreachable (CORS / network). Check backend CORS and API URL.";
+      return "API unreachable. Check backend CORS and API URL.";
     }
 
-    // 404 route mismatch
     if (resStatus === 404) {
-      return "API route not found (404). Check endpoint path in backend.";
+      return "API route not found (404). Check endpoint path.";
+    }
+
+    if (resStatus === 401) {
+      return "Invalid email or password. Please try again.";
+    }
+
+    if (resStatus === 400) {
+      return "Please check your email and password.";
     }
 
     return msg || "Login failed. Please try again.";
@@ -186,7 +166,6 @@ export default function Login() {
 
       return data || {};
     } catch (e) {
-      // normalize abort
       if (e?.name === "AbortError") {
         const er = new Error(
           "Server is taking too long (cold start). Please try again."
@@ -200,21 +179,6 @@ export default function Login() {
     }
   }
 
-  function extractToken(data) {
-    return (
-      data?.token ||
-      data?.accessToken ||
-      data?.jwt ||
-      data?.user?.token ||
-      data?.user?.accessToken ||
-      data?.user?.jwt ||
-      data?.data?.token ||
-      data?.data?.accessToken ||
-      data?.data?.jwt ||
-      ""
-    );
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
@@ -222,44 +186,39 @@ export default function Login() {
 
     try {
       setLoading(true);
-      openModal("info", "Signing you in…", "Please wait a moment.");
+      showToast("info", "Signing you in…", "Please wait a moment.");
 
-      const endpoint = isAdmin ? "/admin/login" : "/api/auth/login";
-
-      const data = await apiPost(endpoint, {
-        username: form.username.trim(),
+      const data = await apiPost("/api/personal-users/login", {
+        email: form.email.trim(),
         password: form.password.trim(),
       });
 
       if (!aliveRef.current) return;
 
-      if (isAdmin) {
-        const adminToken = extractToken(data);
-        if (adminToken) localStorage.setItem("admin_token", adminToken);
-        localStorage.removeItem("token");
-
-        const adminObj = data.admin || data.user || {};
-        login({ ...adminObj, role: "admin" });
-
-        openModal("success", "Admin Login Success", data?.message || "Logged in ✅");
-        setTimeout(() => navigate("/admin", { replace: true }), 450);
+      const token = data?.token || data?.accessToken || data?.jwt || "";
+      
+      if (token) {
+        localStorage.setItem("token", token);
+        if (rememberMe) {
+          localStorage.setItem("remember_token", token);
+        }
       } else {
-        localStorage.removeItem("admin_token");
-
-        const userToken = extractToken(data);
-        if (userToken) localStorage.setItem("token", userToken);
-        else localStorage.removeItem("token");
-
-        login(data.user);
-
-        openModal("success", "Login Success", data?.message || "Logged in ✅");
-        setTimeout(() => navigate("/dashboard", { replace: true }), 450);
+        localStorage.removeItem("token");
       }
+
+      if (data.success && data.data) {
+        login(data.data);
+        showToast("success", "Welcome Back! 🎉", data?.message || "Login successful!");
+        setTimeout(() => navigate("/", { replace: true }), 800);
+      } else {
+        throw new Error(data?.message || "Login failed");
+      }
+
     } catch (err) {
       if (!aliveRef.current) return;
-      openModal(
+      showToast(
         "error",
-        isAdmin ? "Admin Login Failed" : "Login Failed",
+        "Login Failed",
         toNiceError(err, err?.status)
       );
     } finally {
@@ -276,392 +235,866 @@ export default function Login() {
       ? `Server not reachable`
       : `Checking server…`;
 
-  return (
-    <div className="lp">
-      <style>{css}</style>
-      <div className="bg" />
+  const serverColor =
+    serverStatus.state === "ready" ? "#22c55e" :
+    serverStatus.state === "waking" ? "#f59e0b" :
+    serverStatus.state === "down" ? "#ef4444" :
+    "#94a3b8";
 
-      {modal.open && (
-        <div className="mb" onClick={closeModal}>
-          <div className="mc" onClick={(e) => e.stopPropagation()}>
-            <div className={`pill ${modal.type}`}>{modal.type.toUpperCase()}</div>
-            <h3 className="mt">{modal.title}</h3>
-            <p className="mm">{modal.message}</p>
-            <button className="mBtn" onClick={closeModal}>
-              OK
+  return (
+    <div className="login-page">
+      <style>{css}</style>
+      
+      {/* Animated Background */}
+      <div className="bg-animated">
+        <div className="orb orb-1"></div>
+        <div className="orb orb-2"></div>
+        <div className="orb orb-3"></div>
+        <div className="orb orb-4"></div>
+      </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast-overlay ${toast.type}`} onClick={closeToast}>
+          <div className="toast-container" onClick={(e) => e.stopPropagation()}>
+            <div className="toast-icon">
+              {toast.type === "success" && <CheckCircle size={28} color="#22c55e" />}
+              {toast.type === "error" && <XCircle size={28} color="#ef4444" />}
+              {toast.type === "info" && <AlertCircle size={28} color="#3b82f6" />}
+            </div>
+            <div className="toast-content">
+              <h4 className="toast-title">{toast.title}</h4>
+              <p className="toast-message">{toast.message}</p>
+            </div>
+            <button className="toast-close" onClick={closeToast}>
+              <XCircle size={20} />
             </button>
-            <div className="mHint">Press ESC to close</div>
           </div>
         </div>
       )}
 
-      <div className="wrap">
-        <div className="devline">
-          <span className="codeIcon">{"</>"}</span>
-          <span className="devText">Develop by Ajay Kedar</span>
+      {/* Login Card */}
+      <div className="login-wrapper">
+        <div className="login-card glass-card">
+          {/* Brand */}
+          <div className="brand-section">
+            <div className="brand-icon">
+              <Sparkles size={28} color="#fff" />
+            </div>
+            <h1 className="brand-title">Welcome Back</h1>
+            <p className="brand-subtitle">Sign in to your account</p>
+          </div>
+
+          {/* Server Status */}
+          <div className="server-status">
+            <span className="status-dot" style={{ background: serverColor }} />
+            <span className="status-text">{serverText}</span>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            {/* Email Field */}
+            <div className="form-group">
+              <label className="form-label">
+                Email Address <span className="required">*</span>
+              </label>
+              <div className="input-wrapper">
+                <input
+                  className={`form-input ${errors.email ? "error" : ""}`}
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="your@email.com"
+                  type="email"
+                  autoComplete="email"
+                  disabled={loading}
+                />
+              </div>
+              {errors.email && <div className="error-text">{errors.email}</div>}
+            </div>
+
+            {/* Password Field */}
+            <div className="form-group">
+              <label className="form-label">
+                Password <span className="required">*</span>
+              </label>
+              <div className="input-wrapper">
+                <input
+                  className={`form-input ${errors.password ? "error" : ""}`}
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && <div className="error-text">{errors.password}</div>}
+            </div>
+
+            {/* Options */}
+            <div className="form-options">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <span>Remember me</span>
+              </label>
+              <Link className="forgot-link" to="/forgot">
+                Forgot password?
+              </Link>
+            </div>
+
+            {/* Submit Button */}
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 size={20} className="spinner" />
+                  Logging in...
+                </>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  Sign In
+                </>
+              )}
+            </button>
+
+            {/* Register Link */}
+            <div className="auth-links">
+              <span>Don't have an account?</span>
+              <Link className="auth-link" to="/register">
+                Create Account
+              </Link>
+            </div>
+
+            {/* Footer */}
+            <div className="footer-note">
+              🔒 Secured with industry standard encryption
+            </div>
+          </form>
         </div>
 
-        <form className="card" onSubmit={handleSubmit}>
-          <div className="head">
-            <h2 className="title">{isAdmin ? "Admin Login" : "Login"}</h2>
-            <p className="sub">
-              {isAdmin ? "Admin access • Secure Sign-in" : "Welcome back • Secure Sign-in"}
-            </p>
-
-            {/* ✅ Small server status (professional) */}
-            <div className="srvLine">
-              <span className={`srvDot ${serverStatus.state}`} />
-              <span className="srvText">{serverText}</span>
-            </div>
+        {/* Developer Footer - Below Card with Bold White Text */}
+        <div className="dev-footer">
+          <div className="dev-line">
+            <Code2 size={16} className="dev-icon" />
+            <span className="dev-text">Developed by <span className="dev-name">Ajay Kedar</span></span>
           </div>
-
-          <div className="modeRow">
-            <span className={`modeTag ${!isAdmin ? "on" : ""}`}>User</span>
-            <button
-              type="button"
-              className={`toggle ${isAdmin ? "on" : ""}`}
-              onClick={() => setIsAdmin((p) => !p)}
-              disabled={loading}
-              title="Switch mode"
-            >
-              <span className="knob" />
-            </button>
-            <span className={`modeTag ${isAdmin ? "on" : ""}`}>Admin</span>
-          </div>
-
-          <div className="field">
-            <label className="label">
-              {isAdmin ? "Admin Email" : "Email / Mobile"} <span className="req">*</span>
-            </label>
-            <input
-              className={`input ${errors.username ? "err" : ""}`}
-              name="username"
-              value={form.username}
-              onChange={handleChange}
-              placeholder={isAdmin ? "admin@gmail.com" : "Email or Mobile"}
-              type={isAdmin ? "email" : "text"}
-              autoComplete="username"
-              disabled={loading}
-            />
-            {errors.username && <div className="eTxt">{errors.username}</div>}
-          </div>
-
-          <div className="field">
-            <label className="label">
-              Password <span className="req">*</span>
-            </label>
-            <input
-              className={`input ${errors.password ? "err" : ""}`}
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Enter password"
-              autoComplete="current-password"
-              disabled={loading}
-            />
-            {errors.password && <div className="eTxt">{errors.password}</div>}
-          </div>
-
-          <button type="submit" className="submit" disabled={loading}>
-            {loading ? "Logging in..." : isAdmin ? "Login as Admin" : "Login"}
-          </button>
-
-          <div className="links">
-            {!isAdmin ? (
-              <>
-                <Link className="link" to="/register">
-                  Register
-                </Link>
-                <span className="dot">•</span>
-                <Link className="link" to="/forgot">
-                  Forgot Password?
-                </Link>
-              </>
-            ) : (
-              <span className="dot">Admin mode enabled</span>
-            )}
-          </div>
-
-          <div
-            style={{
-              marginTop: 10,
-              textAlign: "center",
-              fontSize: 11,
-              fontWeight: 800,
-              color: "rgba(11,18,32,.55)",
-            }}
-          >
-            Tip: First login can be slow if server is waking up (Render).
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 }
 
-const css = `/* same CSS as your file (unchanged) */
-  :root{
-    --txt:#0b1220;
-    --muted:rgba(11,18,32,.65);
-    --card:rgba(255,255,255,.90);
-    --shadow: 0 26px 80px rgba(0,0,0,.18);
-  }
-
-  .lp{
-    min-height:100vh;
-    width:100%;
-    position:relative;
-    overflow-x:hidden;
-    overflow-y:auto;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:20px;
-    box-sizing:border-box;
-  }
-
-  .bg{
-    position:fixed;
-    inset:0;
-    background:
-      radial-gradient(900px 520px at 12% 12%, rgba(255, 0, 150, .26), transparent 60%),
-      radial-gradient(900px 520px at 88% 16%, rgba(0, 200, 255, .22), transparent 58%),
-      radial-gradient(1000px 650px at 50% 92%, rgba(0, 255, 150, .18), transparent 60%),
-      linear-gradient(135deg, #fffbeb 0%, #eff6ff 34%, #ecfeff 67%, #f0fdf4 100%);
-    z-index:0;
-    pointer-events:none;
-  }
-
-  .wrap{ width:100%; max-width:520px; z-index:1; }
-
-  .devline{
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    margin: 0 0 12px;
-    padding: 10px 12px;
-    border-radius: 16px;
-    background: rgba(255,255,255,.55);
-    border: 1px solid rgba(255,255,255,.55);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 14px 40px rgba(0,0,0,.10);
-    user-select:none;
-  }
-  .codeIcon{ font-weight: 1000; color:#ff2d55; font-size: 16px; letter-spacing: .2px; }
-  .devText{ font-weight: 980; color: rgba(11,18,32,.88); font-size: 13px; letter-spacing: .3px; }
-
-  .card{
-    width:100%;
-    background:rgba(255,255,255,.90);
-    border:1px solid rgba(255,255,255,.55);
-    border-radius:22px;
-    padding:26px;
-    box-shadow: 0 26px 80px rgba(0,0,0,.18);
-    backdrop-filter: blur(14px);
-    box-sizing:border-box;
-  }
-
-  .head{ text-align:center; margin-bottom:14px; }
-  .title{ margin:0; font-weight:950; color:var(--txt); font-size: clamp(22px, 3.2vw, 30px); }
-  .sub{ margin:8px 0 0; color:var(--muted); font-weight:700; font-size: clamp(12px, 1.8vw, 14px); }
-
-  /* ✅ small server status */
-  .srvLine{
-    margin-top: 10px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    font-weight: 900;
-    font-size: 12px;
-    color: rgba(11,18,32,.70);
-  }
-  .srvDot{
-    width: 10px; height: 10px;
-    border-radius: 999px;
-    background: rgba(148,163,184,.9);
-    box-shadow: 0 0 0 0 rgba(148,163,184,.35);
-  }
-  .srvDot.ready{ background: rgba(34,197,94,.95); }
-  .srvDot.waking{ background: rgba(245,158,11,.95); }
-  .srvDot.down{ background: rgba(255,45,85,.95); }
-  .srvDot.checking{ background: rgba(148,163,184,.95); }
-
-  .modeRow{
-    margin: 14px auto 4px;
-    width: fit-content;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    padding: 8px 10px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.65);
-    border: 1px solid rgba(11,18,32,.08);
-    backdrop-filter: blur(10px);
-  }
-  .modeTag{
-    font-size: 12px;
-    font-weight: 950;
-    color: rgba(11,18,32,.55);
-    letter-spacing:.2px;
-  }
-  .modeTag.on{ color: rgba(11,18,32,.88); }
-
-  .toggle{
-    width: 46px;
-    height: 26px;
-    border-radius: 999px;
-    border: 1px solid rgba(11,18,32,.14);
-    background: rgba(11,18,32,.10);
-    position: relative;
-    cursor: pointer;
+const css = `
+  /* ============================================
+     MODERN LOGIN PAGE CSS
+     ============================================ */
+  * {
+    margin: 0;
     padding: 0;
+    box-sizing: border-box;
+  }
+
+  .login-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 20px;
+    background: #0f0a1a;
+  }
+
+  /* ============================================
+     ANIMATED BACKGROUND WITH ORBS
+     ============================================ */
+  .bg-animated {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 50%, rgba(236, 72, 153, 0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+      #0f0a1a;
+    overflow: hidden;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    animation: floatOrb 12s ease-in-out infinite alternate;
+  }
+
+  .orb-1 {
+    width: 400px;
+    height: 400px;
+    background: rgba(124, 58, 237, 0.25);
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
+  }
+
+  .orb-2 {
+    width: 350px;
+    height: 350px;
+    background: rgba(236, 72, 153, 0.2);
+    bottom: -80px;
+    right: -80px;
+    animation-delay: -4s;
+  }
+
+  .orb-3 {
+    width: 250px;
+    height: 250px;
+    background: rgba(16, 185, 129, 0.15);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-delay: -8s;
+  }
+
+  .orb-4 {
+    width: 200px;
+    height: 200px;
+    background: rgba(59, 130, 246, 0.15);
+    top: 20%;
+    right: 20%;
+    animation-delay: -2s;
+  }
+
+  @keyframes floatOrb {
+    0% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -40px) scale(1.1); }
+    66% { transform: translate(-20px, 30px) scale(0.9); }
+    100% { transform: translate(40px, 20px) scale(1.05); }
+  }
+
+  /* ============================================
+     LAYOUT
+     ============================================ */
+  .login-wrapper {
+    width: 100%;
+    max-width: 420px;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: slideUp 0.6s ease-out;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ============================================
+     GLASS LOGIN CARD
+     ============================================ */
+  .login-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    padding: 32px 32px 28px;
+    box-shadow: 
+      0 40px 100px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 0 40px rgba(124, 58, 237, 0.05);
+    transition: all 0.4s ease;
+  }
+
+  .login-card:hover {
+    box-shadow: 
+      0 50px 120px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+      0 0 60px rgba(124, 58, 237, 0.08);
+    transform: translateY(-2px);
+  }
+
+  /* ============================================
+     BRAND SECTION
+     ============================================ */
+  .brand-section {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, #7C3AED, #EC4899);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 12px 40px rgba(124, 58, 237, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .brand-icon:hover {
+    transform: scale(1.05) rotate(-5deg);
+    box-shadow: 0 16px 50px rgba(124, 58, 237, 0.4);
+  }
+
+  .brand-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    margin: 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .brand-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  /* ============================================
+     SERVER STATUS
+     ============================================ */
+  .server-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: all 0.3s ease;
+    animation: pulseDot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .status-text {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* ============================================
+     FORM ELEMENTS
+     ============================================ */
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 5px;
+  }
+
+  .required {
+    color: #f43f5e;
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
     outline: none;
-    transition: background .18s ease, border-color .18s ease;
+    transition: all 0.3s ease;
+    font-family: inherit;
   }
-  .toggle.on{
-    background: rgba(34,197,94,.22);
-    border-color: rgba(34,197,94,.35);
-  }
-  .knob{
-    position:absolute;
-    top: 3px;
-    left: 3px;
-    width: 20px;
-    height: 20px;
-    border-radius: 999px;
-    background: #fff;
-    box-shadow: 0 10px 24px rgba(0,0,0,.18);
-    transition: transform .18s ease;
-  }
-  .toggle.on .knob{ transform: translateX(20px); }
 
-  .field{ display:flex; flex-direction:column; margin-top:12px; }
-  .label{ font-size:12px; font-weight:900; color: rgba(11,18,32,.85); margin-bottom:6px; }
-  .req{ color:#ff2d55; }
-
-  .input{
-    width:100%;
-    padding:12px;
-    border-radius:14px;
-    border:1px solid rgba(11,18,32,.10);
-    font-size: clamp(13px, 1.9vw, 14px);
-    background: rgba(255,255,255,.92);
-    outline:none;
-    box-sizing:border-box;
-    transition: box-shadow .15s ease, border-color .15s ease, transform .12s ease;
+  .form-input::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+    font-weight: 400;
   }
-  .input:focus{
-    border-color: rgba(124,58,237,.35);
-    box-shadow: 0 0 0 5px rgba(124,58,237,.12);
+
+  .form-input:focus {
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+  }
+
+  .form-input.error {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+
+  .form-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 14px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease;
+  }
+
+  .password-toggle:hover {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .error-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #f87171;
+    margin-top: 5px;
+  }
+
+  /* ============================================
+     FORM OPTIONS
+     ============================================ */
+  .form-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+
+  .checkbox-label:hover {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #7C3AED;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .forgot-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(124, 58, 237, 0.7);
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .forgot-link:hover {
+    color: #7C3AED;
+    text-decoration: underline;
+  }
+
+  /* ============================================
+     SUBMIT BUTTON
+     ============================================ */
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.8), rgba(236, 72, 153, 0.8));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: inherit;
+    box-shadow: 0 8px 30px rgba(124, 58, 237, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent 50%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    border-radius: 12px;
+  }
+
+  .submit-btn:hover:not(:disabled)::before {
+    opacity: 1;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 12px 40px rgba(124, 58, 237, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .submit-btn:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .spinner {
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ============================================
+     AUTH LINKS
+     ============================================ */
+  .auth-links {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 500;
+  }
+
+  .auth-link {
+    color: rgba(124, 58, 237, 0.8);
+    font-weight: 700;
+    text-decoration: none;
+    margin-left: 4px;
+    transition: all 0.3s ease;
+  }
+
+  .auth-link:hover {
+    color: #7C3AED;
+    text-decoration: underline;
+  }
+
+  .footer-note {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.15);
+    font-weight: 500;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  /* ============================================
+     DEVELOPER FOOTER - BOLD WHITE WITH GLOW
+     ============================================ */
+  .dev-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+  }
+
+  .dev-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .dev-line:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
     transform: translateY(-1px);
-  }
-  .input.err{
-    border-color: rgba(255,45,85,.55);
-    box-shadow: 0 0 0 5px rgba(255,45,85,.10);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
   }
 
-  .eTxt{ margin-top:6px; font-size:12px; font-weight:800; color:#ff2d55; }
-
-  .submit{
-    margin-top:18px;
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:16px;
-    font-weight:980;
-    cursor:pointer;
-    background:linear-gradient(90deg,#fde047,#fb7185,#60a5fa,#34d399);
-    box-shadow: 0 18px 40px rgba(0,0,0,.14);
-    color:#081018;
-    font-size: clamp(14px, 2.2vw, 16px);
-  }
-  .submit:disabled{ opacity:.75; cursor:not-allowed; }
-
-  .links{
-    margin-top:14px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:10px;
-    color: var(--muted);
-    font-weight:850;
-    font-size: clamp(12px, 1.8vw, 14px);
-  }
-  .link{
-    color:#7c3aed;
-    font-weight:980;
-    cursor:pointer;
-    text-decoration:underline;
-  }
-  .dot{ opacity:.6; }
-
-  .mb{
-    position:fixed;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:rgba(0,0,0,.42);
-    z-index:9999;
-    padding:16px;
-    box-sizing:border-box;
-  }
-  .mc{
-    width:100%;
-    max-width:460px;
-    background: rgba(255,255,255,.92);
-    border: 1px solid rgba(255,255,255,.60);
-    border-radius:24px;
-    padding:18px;
-    text-align:center;
-    box-shadow: 0 35px 95px rgba(0,0,0,.28);
-    backdrop-filter: blur(14px);
-  }
-  .pill{
-    display:inline-block;
-    padding:6px 12px;
-    border-radius:999px;
-    font-weight:980;
-    font-size:12px;
-    border: 1px solid rgba(0,0,0,.08);
-    margin-bottom:10px;
-    background: rgba(124,58,237,.10);
-    color:#4c1d95;
-  }
-  .pill.success{ background: rgba(34,197,94,.14); color:#0f5132; }
-  .pill.error{ background: rgba(255,45,85,.12); color:#9f1239; }
-  .pill.info{ background: rgba(124,58,237,.12); color:#4c1d95; }
-
-  .mt{ margin:4px 0 6px; font-weight:980; color:var(--txt); font-size:18px; }
-  .mm{ margin:0 0 14px; color:rgba(11,18,32,.78); font-weight:850; line-height:1.4; }
-
-  .mBtn{
-    width:100%;
-    border:none;
-    padding:12px 14px;
-    border-radius:16px;
-    background: linear-gradient(90deg, #111827 0%, #334155 100%);
-    color:#fff;
-    font-weight:980;
-    cursor:pointer;
-  }
-  .mHint{
-    margin-top:10px;
-    font-size:11px;
-    color: rgba(11,18,32,.55);
-    font-weight:800;
+  .dev-icon {
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
   }
 
-  @media (max-width: 640px){
-    .lp{ padding:14px; }
-    .card{ padding:16px; border-radius:18px; }
-    .mc{ border-radius:20px; }
-    .devline{ border-radius:14px; padding: 9px 10px; }
+  .dev-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.5px;
+  }
+
+  .dev-name {
+    font-weight: 800;
+    font-size: 14px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #A78BFA, #7C3AED, #EC4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 40px rgba(124, 58, 237, 0.3);
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+  }
+
+  .dev-line:hover .dev-name {
+    text-shadow: 0 0 60px rgba(124, 58, 237, 0.6), 0 0 100px rgba(124, 58, 237, 0.3);
+  }
+
+  /* ============================================
+     TOAST NOTIFICATION
+     ============================================ */
+  .toast-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: fadeIn 0.3s ease;
+    padding: 20px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .toast-container {
+    max-width: 400px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 22px 26px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
+    animation: toastSlide 0.4s ease;
+  }
+
+  @keyframes toastSlide {
+    from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .toast-overlay.success .toast-container {
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+
+  .toast-overlay.error .toast-container {
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .toast-overlay.info .toast-container {
+    border-color: rgba(59, 130, 246, 0.2);
+  }
+
+  .toast-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+  }
+
+  .toast-content {
+    flex: 1;
+  }
+
+  .toast-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 3px 0;
+  }
+
+  .toast-message {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .toast-close:hover {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* ============================================
+     RESPONSIVE
+     ============================================ */
+  @media (max-width: 640px) {
+    .login-page {
+      padding: 16px;
+    }
+
+    .login-card {
+      padding: 24px 20px 20px;
+      border-radius: 24px;
+    }
+
+    .login-wrapper {
+      max-width: 100%;
+      gap: 14px;
+    }
+
+    .brand-title {
+      font-size: 20px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    .form-input {
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    .toast-container {
+      padding: 16px 18px;
+    }
+
+    .toast-title {
+      font-size: 14px;
+    }
+
+    .toast-message {
+      font-size: 12px;
+    }
+
+    .dev-text {
+      font-size: 12px;
+    }
+
+    .dev-name {
+      font-size: 13px;
+    }
+
+    .dev-line {
+      padding: 6px 16px;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .login-card {
+      padding: 18px 14px 16px;
+      border-radius: 20px;
+    }
+
+    .form-options {
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .brand-title {
+      font-size: 18px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+    }
+
+    .toast-container {
+      padding: 14px 14px;
+    }
+
+    .login-wrapper {
+      gap: 12px;
+    }
+
+    .dev-text {
+      font-size: 11px;
+    }
+
+    .dev-name {
+      font-size: 12px;
+    }
+
+    .dev-line {
+      padding: 5px 12px;
+    }
   }
 `;
