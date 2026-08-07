@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   TrendingUp, TrendingDown, DollarSign, Briefcase, Activity,
-  BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Calendar,
-  Target, Zap, Star, Trophy, AlertTriangle, Clock, Filter,
-  Download, Share2, MoreVertical, Eye, EyeOff, RefreshCw,
-  IndianRupee, Banknote, LineChart, CandlestickChart, Wallet,
-  CreditCard, Fuel, PiggyBank, HandCoins, Building2, Landmark,
-  Receipt, BanknoteIcon, Plus, Minus, CheckCircle, XCircle,
-  Clock as ClockIcon, Users, ShoppingBag, Truck, Home,
-  Car, Utensils, Music, Film, Coffee, Gift, Heart, Edit2, Save, X,
-  ChevronDown, ChevronUp
+  BarChart3, PieChart, Calendar, Trophy, RefreshCw,
+  CreditCard, Fuel, PiggyBank, HandCoins, Building2,
+  ShoppingBag, Truck, Home, Car, Utensils, Film, Coffee,
+  Edit2, Save, X, Plus, Trash2, Eye, EyeOff, Search,
+  Filter, Download, Share2, MoreVertical, Clock, AlertTriangle,
+  CheckCircle, XCircle, Users, Wallet, Landmark, Receipt
 } from 'lucide-react';
 
 const Overview = () => {
@@ -17,37 +14,90 @@ const Overview = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [messageSection, setMessageSection] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [sectionLoading, setSectionLoading] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [noDataMessage, setNoDataMessage] = useState(null);
   
-  // Get current month as default
-  const getCurrentMonth = () => {
-    const months = ['January 2024', 'February 2024', 'March 2024', 'April 2024', 'May 2024', 'June 2024', 'July 2024', 'August 2024', 'September 2024', 'October 2024', 'November 2024', 'December 2024'];
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    const monthStr = `${months[month]} ${year}`;
-    return monthStr;
-  };
-  
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
-  const [activeButton, setActiveButton] = useState(null);
-  const [overviewId, setOverviewId] = useState(null);
+  // =============================================
+  // USER & DATE
+  // =============================================
   const [userId] = useState(1);
   
-  // Section-wise editing
+  const getCurrentMonth = () => {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    const now = new Date();
+    return `${months[now.getMonth()]} ${now.getFullYear()}`;
+  };
+  
+  const getMonthNumber = (monthName) => {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return months.indexOf(monthName.split(' ')[0]) + 1;
+  };
+  
+  const getYear = (monthName) => parseInt(monthName.split(' ')[1]);
+
+  const toDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatWeekDate = (date) => date.toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+
+  const getWeekRange = (date) => {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - start.getDay());
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+
+    return {
+      key: `${toDateKey(start)}_${toDateKey(end)}`,
+      start: toDateKey(start),
+      end: toDateKey(end),
+      label: `${formatWeekDate(start)} to ${formatWeekDate(end)}`
+    };
+  };
+
+  const getWeeksForMonth = (monthName) => {
+    const year = getYear(monthName);
+    const monthIndex = getMonthNumber(monthName) - 1;
+    const firstSunday = new Date(year, monthIndex, 1);
+
+    while (firstSunday.getDay() !== 0) {
+      firstSunday.setDate(firstSunday.getDate() + 1);
+    }
+
+    const weeks = [];
+    const weekStart = new Date(firstSunday);
+    while (weekStart.getMonth() === monthIndex) {
+      weeks.push(getWeekRange(weekStart));
+      weekStart.setDate(weekStart.getDate() + 7);
+    }
+    return weeks;
+  };
+
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedWeek, setSelectedWeek] = useState(() => getWeekRange(new Date()));
+  const [overviewId, setOverviewId] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
   const sectionRefs = useRef({});
 
   // =============================================
-  // FORMAT FUNCTIONS - Clean number display
+  // FORMAT FUNCTIONS
   // =============================================
   const formatCurrency = (amount) => {
     if (amount === undefined || amount === null || isNaN(amount)) return '₹0';
-    const num = parseFloat(amount);
-    if (Number.isInteger(num)) {
-      return `₹${num.toLocaleString('en-IN')}`;
-    }
-    return `₹${num.toLocaleString('en-IN')}`;
+    return `₹${parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   };
 
   const formatNumber = (num) => {
@@ -55,113 +105,99 @@ const Overview = () => {
     return parseFloat(num).toLocaleString('en-IN');
   };
 
-  const formatCompactCurrency = (amount) => {
-    if (amount === undefined || amount === null || isNaN(amount)) return '₹0';
-    const num = parseFloat(amount);
-    if (Number.isInteger(num)) {
-      return `₹${num.toLocaleString('en-IN')}`;
-    }
-    return `₹${num.toLocaleString('en-IN')}`;
+  const formatDate = (date) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    const day = d.getDate();
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
   };
 
   // =============================================
-  // STATE FOR ALL DATA
+  // STATE - Matches Backend Schema
   // =============================================
+  
+  // Financial Review
   const [financialReview, setFinancialReview] = useState({
-    totalBusiness: 2,
-    totalWorks: 1,
-    totalBusinessPayment: 8942000,
-    totalWorkPayment: 1247000
+    total_business: 0,
+    total_works: 0,
+    business_payment: 0,
+    work_payment: 0,
+    total_payment: 0,
+    total_expenses: 0,
+    total_borrow: 0,
+    total_loans: 0,
+    total_savings: 0
   });
 
-  const [paymentExpenses, setPaymentExpenses] = useState({
-    totalPayment: 1875000,
-    totalExpenses: 842300,
-    petrolExpense: 125800,
-    otherExpense: 7900
+  // Expenses
+  const [expenses, setExpenses] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [expensePieData, setExpensePieData] = useState([]);
+
+  // Loans
+  const [loans, setLoans] = useState([]);
+  const [totalBorrow, setTotalBorrow] = useState(0);
+  const [totalLoans, setTotalLoans] = useState(0);
+
+  // Payments
+  const [payments, setPayments] = useState([]);
+  const [pendingPayments, setPendingPayments] = useState(0);
+
+  // Performance
+  const [weeklyPerformance, setWeeklyPerformance] = useState(null);
+  const [monthlyPerformance, setMonthlyPerformance] = useState(null);
+
+  // Summary
+  const [summary, setSummary] = useState(null);
+  const [summaryPieData, setSummaryPieData] = useState([]);
+
+  // New Expense Form
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [expenseCategoryOpen, setExpenseCategoryOpen] = useState(false);
+  const [newExpense, setNewExpense] = useState({
+    category: '',
+    amount: '',
+    expense_date: new Date().toISOString().split('T')[0],
+    notes: ''
   });
 
-  const [borrowData, setBorrowData] = useState({
-    totalBorrow: 550000,
-    totalLoans: 1280000,
-    totalSavings: 420000,
-    totalRemainingPayment: 860000
+  // New Loan Form
+  const [showLoanForm, setShowLoanForm] = useState(false);
+  const [editingLoanId, setEditingLoanId] = useState(null);
+  const [newLoan, setNewLoan] = useState({
+    name: '',
+    amount: '',
+    emi: '',
+    loan_date: new Date().toISOString().split('T')[0],
+    type: 'Borrow',
+    notes: ''
   });
 
-  // Portfolio Distribution - All time totals
-  const [portfolioData, setPortfolioData] = useState({
-    totalBorrow: 550000,
-    totalPaid: 420000,
-    totalWork: 1247000,
-    totalBusiness: 8942000,
-    totalExpense: 842300,
-    totalIncome: 10189000,
-    netProfit: 9346700
+  // New Payment Form
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
+  const [newPayment, setNewPayment] = useState({
+    person_name: '',
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    notes: '',
+    status: 'pending'
   });
-
-  // Monthly Performance - Current month
-  const [monthlyPerformance, setMonthlyPerformance] = useState({
-    totalWork: 1247,
-    businessPayment: 8942000,
-    totalExpense: 842300,
-    totalBorrow: 550000,
-    otherExpense: 125800,
-    totalBalance: 2530000,
-    netProfit: 9346700,
-    profitLoss: '+32.1%'
-  });
-
-  // All Months Data for Bar Chart
-  const [allMonthsData, setAllMonthsData] = useState([
-    { month: 'Jan', profit: 125000, loss: 25000, net: 100000 },
-    { month: 'Feb', profit: 95000, loss: 45000, net: 50000 },
-    { month: 'Mar', profit: 210000, loss: 30000, net: 180000 },
-    { month: 'Apr', profit: 185000, loss: 55000, net: 130000 },
-    { month: 'May', profit: 285000, loss: 15000, net: 270000 },
-    { month: 'Jun', profit: 150000, loss: 40000, net: 110000 },
-    { month: 'Jul', profit: 320000, loss: 20000, net: 300000 },
-    { month: 'Aug', profit: 280000, loss: 35000, net: 245000 },
-    { month: 'Sep', profit: 190000, loss: 28000, net: 162000 },
-    { month: 'Oct', profit: 230000, loss: 32000, net: 198000 },
-    { month: 'Nov', profit: 260000, loss: 18000, net: 242000 },
-    { month: 'Dec', profit: 310000, loss: 22000, net: 288000 }
-  ]);
-
-  const [monthlyExpenses, setMonthlyExpenses] = useState({
-    'July 2024': {
-      totalExpense: 28500,
-      petrol: 5200,
-      food: 3800,
-      shopping: 4500,
-      transport: 2200,
-      utilities: 3100,
-      entertainment: 1800,
-      other: 7900
-    },
-    'August 2024': {
-      totalExpense: 32000,
-      petrol: 5800,
-      food: 4200,
-      shopping: 5100,
-      transport: 2500,
-      utilities: 3400,
-      entertainment: 2100,
-      other: 8900
-    }
-  });
-
-  const [productsBought, setProductsBought] = useState([
-    { name: 'Laptop', price: 45000, date: '20 July 2024', category: 'Electronics' },
-    { name: 'Office Chair', price: 8500, date: '15 July 2024', category: 'Furniture' },
-    { name: 'Desk Lamp', price: 1200, date: '10 July 2024', category: 'Accessories' },
-  ]);
 
   // =============================================
-  // FETCH DATA
+  // API BASE URL
+  // =============================================
+  const API_BASE = 'http://localhost:5000/api/personal-overview';
+
+  // =============================================
+  // FETCH ALL DATA
   // =============================================
   useEffect(() => {
-    fetchOverviewData();
-  }, []);
+    fetchAllData();
+  }, [selectedMonth, selectedYear, selectedWeek]);
 
   useEffect(() => {
     if (successMessage) {
@@ -170,1129 +206,2032 @@ const Overview = () => {
     }
   }, [successMessage]);
 
-  // Update monthly performance when values change
-  useEffect(() => {
-    updateMonthlyPerformance();
-  }, [financialReview, paymentExpenses, borrowData, selectedMonth]);
-
-  const updateMonthlyPerformance = () => {
-    const totalIncome = financialReview.totalBusinessPayment + financialReview.totalWorkPayment;
-    const totalExpense = paymentExpenses.totalExpenses + paymentExpenses.petrolExpense + paymentExpenses.otherExpense;
-    const netProfit = totalIncome - totalExpense - borrowData.totalBorrow;
-    const profitLossPercent = totalIncome > 0 ? ((netProfit / totalIncome) * 100).toFixed(1) : 0;
-
-    setMonthlyPerformance({
-      totalWork: financialReview.totalWorks,
-      businessPayment: financialReview.totalBusinessPayment,
-      totalExpense: totalExpense,
-      totalBorrow: borrowData.totalBorrow,
-      otherExpense: paymentExpenses.otherExpense,
-      totalBalance: financialReview.totalBusinessPayment + financialReview.totalWorkPayment - totalExpense,
-      netProfit: netProfit,
-      profitLoss: `${profitLossPercent >= 0 ? '+' : ''}${profitLossPercent}%`
-    });
-
-    // Update portfolio data
-    setPortfolioData({
-      totalBorrow: borrowData.totalBorrow,
-      totalPaid: borrowData.totalSavings,
-      totalWork: financialReview.totalWorkPayment,
-      totalBusiness: financialReview.totalBusinessPayment,
-      totalExpense: totalExpense,
-      totalIncome: totalIncome,
-      netProfit: netProfit
-    });
+  const showSuccess = (section, message) => {
+    setError(null);
+    setMessageSection(section);
+    setSuccessMessage(message);
   };
 
-  const fetchOverviewData = async () => {
+  const showError = (section, message) => {
+    setSuccessMessage(null);
+    setMessageSection(section);
+    setError(message);
+  };
+
+  const askForConfirmation = (section, message, onConfirm) => {
+    setConfirmDialog({ section, message, onConfirm });
+  };
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+    setNoDataMessage(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch(`http://localhost:5000/api/personal-overview/user/${userId}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          setLoading(false);
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const monthNum = getMonthNumber(selectedMonth);
+      const year = getYear(selectedMonth);
 
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const data = result.data;
-        setOverviewId(data.id);
-        
-        setFinancialReview({
-          totalBusiness: data.total_business || 0,
-          totalWorks: data.total_works || 0,
-          totalBusinessPayment: parseFloat(data.total_business_payment) || 0,
-          totalWorkPayment: parseFloat(data.total_work_payment) || 0
-        });
+      await fetchFinancialReview();
+      await fetchExpenses(monthNum, year);
+      await fetchExpensePie(monthNum, year);
+      await fetchLoans(monthNum, year);
+      await fetchPayments(monthNum, year);
+      await fetchMonthlyPerformance(monthNum, year);
+      await fetchWeeklyPerformance(selectedWeek);
+      await fetchSummary();
+      await fetchSummaryPie();
 
-        setPaymentExpenses({
-          totalPayment: parseFloat(data.total_payment) || 0,
-          totalExpenses: parseFloat(data.total_expenses) || 0,
-          petrolExpense: parseFloat(data.petrol_expense) || 0,
-          otherExpense: parseFloat(data.other_expense) || 0
-        });
-
-        setBorrowData({
-          totalBorrow: parseFloat(data.total_borrow) || 0,
-          totalLoans: parseFloat(data.total_loans) || 0,
-          totalSavings: parseFloat(data.total_savings) || 0,
-          totalRemainingPayment: parseFloat(data.remaining_payment) || 0
-        });
-
-        if (data.month_year) setSelectedMonth(data.month_year);
-        if (data.monthly_expenses) {
-          try {
-            const parsed = typeof data.monthly_expenses === 'string' ? JSON.parse(data.monthly_expenses) : data.monthly_expenses;
-            setMonthlyExpenses(parsed);
-          } catch (e) {}
-        }
-        if (data.products_data) {
-          try {
-            const parsed = typeof data.products_data === 'string' ? JSON.parse(data.products_data) : data.products_data;
-            if (parsed.length) setProductsBought(parsed);
-          } catch (e) {}
-        }
-      }
     } catch (err) {
-      console.error('Error fetching overview:', err);
-      setError('Failed to load data. Using default values.');
+      console.error('Error fetching data:', err);
+      showError('overview', 'Failed to load data. Please refresh.');
     } finally {
       setLoading(false);
     }
   };
 
   // =============================================
-  // SAVE SECTION DATA
+  // API CALLS - NO month/year in payloads
   // =============================================
-  const saveSectionData = async (section) => {
+
+  // 1. Financial Review
+  const fetchFinancialReview = async () => {
     try {
-      setSaving(true);
-      setError(null);
-
-      const payload = {
-        user_id: userId,
-        total_business: financialReview.totalBusiness,
-        total_works: financialReview.totalWorks,
-        total_business_payment: financialReview.totalBusinessPayment,
-        total_work_payment: financialReview.totalWorkPayment,
-        total_payment: paymentExpenses.totalPayment,
-        total_expenses: paymentExpenses.totalExpenses,
-        petrol_expense: paymentExpenses.petrolExpense,
-        other_expense: paymentExpenses.otherExpense,
-        total_borrow: borrowData.totalBorrow,
-        total_loans: borrowData.totalLoans,
-        total_savings: borrowData.totalSavings,
-        remaining_payment: borrowData.totalRemainingPayment,
-        month_year: selectedMonth,
-        monthly_expenses: monthlyExpenses,
-        products_data: productsBought,
-        top_performers: {
-          biggestExpense: getTopPerformers().biggestExpense,
-          biggestSaving: getTopPerformers().biggestSaving,
-          pendingAmount: getTopPerformers().pendingAmount,
-          duePayment: getTopPerformers().duePayment
+      const response = await fetch(`${API_BASE}/review/${userId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setFinancialReview(result.data);
+          setOverviewId(result.data.id);
+        } else {
+          setNoDataMessage('No financial data found. Add your first entry!');
         }
-      };
-
-      let response;
-      let url;
-
-      if (overviewId) {
-        url = `http://localhost:5000/api/personal-overview/update/${overviewId}`;
-        response = await fetch(url, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        url = 'http://localhost:5000/api/personal-overview/add';
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        if (result.data) setOverviewId(result.data.id);
-        setSuccessMessage(`✅ ${section} saved successfully!`);
-        setEditingSection(null);
-        updateMonthlyPerformance();
-      } else {
-        throw new Error(result.message || 'Failed to save');
       }
     } catch (err) {
-      console.error('Error saving:', err);
-      setError(err.message || 'Failed to save data');
+      console.error('Fetch review error:', err);
+    }
+  };
+
+  const saveFinancialReview = async () => {
+    try {
+      setSaving(true);
+      setSectionLoading('overview');
+      const payload = {
+        user_id: userId,
+        total_business: financialReview.total_business || 0,
+        total_works: financialReview.total_works || 0,
+        business_payment: financialReview.business_payment || 0,
+        work_payment: financialReview.work_payment || 0
+      };
+
+      const response = await fetch(`${API_BASE}/review/upsert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        showSuccess('overview', 'Financial review saved!');
+        setEditingSection(null);
+        await fetchAllData();
+      }
+    } catch (err) {
+      showError('overview', 'Failed to save review');
     } finally {
       setSaving(false);
+      setSectionLoading(null);
     }
   };
 
-  // =============================================
-  // SECTION EDIT TOGGLE
-  // =============================================
-  const toggleSectionEdit = (section) => {
-    if (editingSection === section) {
-      setEditingSection(null);
-    } else {
-      setEditingSection(section);
-      setTimeout(() => {
-        if (sectionRefs.current[section]) {
-          sectionRefs.current[section].scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-          });
+  // 2. Expenses
+  const fetchExpenses = async (month, year) => {
+    try {
+      const response = await fetch(`${API_BASE}/expenses/${userId}?month=${month}&year=${year}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setExpenses(result.data || []);
+          setExpenseCategories(result.categoryBreakdown || {});
+          if (result.data.length === 0) {
+            setNoDataMessage('No expenses found. Add your first expense!');
+          }
         }
-      }, 100);
+      }
+    } catch (err) {
+      console.error('Fetch expenses error:', err);
+    }
+  };
+
+  const fetchExpensePie = async (month, year) => {
+    try {
+      const response = await fetch(`${API_BASE}/expenses/pie/${userId}?month=${month}&year=${year}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setExpensePieData(result.data || []);
+        }
+      }
+    } catch (err) {
+      console.error('Fetch expense pie error:', err);
+    }
+  };
+
+  const saveExpense = async () => {
+    const isEditing = editingExpenseId !== null;
+    if (!newExpense.category || !newExpense.amount) {
+      showError('expenses', 'Category and amount are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setSectionLoading('expenses');
+      const payload = {
+        user_id: userId,
+        category: newExpense.category,
+        amount: parseFloat(newExpense.amount),
+        expense_date: newExpense.expense_date,
+        notes: newExpense.notes
+      };
+
+      const response = await fetch(isEditing ? `${API_BASE}/expenses/update/${editingExpenseId}` : `${API_BASE}/expenses/add`, {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        showSuccess('expenses', isEditing ? 'Expense updated!' : 'Expense added!');
+        setShowExpenseForm(false);
+        setEditingExpenseId(null);
+        setNewExpense({ category: '', amount: '', expense_date: new Date().toISOString().split('T')[0], notes: '' });
+        await fetchAllData();
+      }
+    } catch (err) {
+      showError('expenses', isEditing ? 'Failed to update expense' : 'Failed to add expense');
+    } finally {
+      setSaving(false);
+      setSectionLoading(null);
+    }
+  };
+
+  const editExpense = (expense) => {
+    setNewExpense({ category: expense.category || '', amount: expense.amount ?? '', expense_date: expense.expense_date || new Date().toISOString().split('T')[0], notes: expense.notes || '' });
+    setEditingExpenseId(expense.id);
+    setShowExpenseForm(true);
+  };
+
+  const cancelExpenseForm = () => {
+    setShowExpenseForm(false);
+    setEditingExpenseId(null);
+  };
+
+  const deleteExpense = async (id) => {
+    askForConfirmation('expenses', 'Delete this expense?', async () => {
+      try {
+        setSectionLoading('expenses');
+        const response = await fetch(`${API_BASE}/expenses/delete/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+          showSuccess('expenses', 'Expense deleted!');
+          await fetchAllData();
+        }
+      } catch (err) {
+        showError('expenses', 'Failed to delete expense');
+      } finally {
+        setSectionLoading(null);
+      }
+    });
+  };
+
+  // 3. Loans
+  const fetchLoans = async (month, year) => {
+    try {
+      const response = await fetch(`${API_BASE}/loans/${userId}?month=${month}&year=${year}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setLoans(result.data || []);
+          setTotalBorrow(result.totalBorrow || 0);
+          setTotalLoans(result.totalLoans || 0);
+          if (result.data.length === 0) {
+            setNoDataMessage('No loans found. Add your first loan!');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fetch loans error:', err);
+    }
+  };
+
+  const saveLoan = async () => {
+    const isEditing = editingLoanId !== null;
+    if (!newLoan.name || !newLoan.amount || !newLoan.type) {
+      showError('loans', 'Name, amount, and type are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setSectionLoading('loans');
+      const payload = {
+        user_id: userId,
+        name: newLoan.name,
+        amount: parseFloat(newLoan.amount),
+        emi: parseFloat(newLoan.emi) || 0,
+        loan_date: newLoan.loan_date,
+        type: newLoan.type,
+        notes: newLoan.notes
+      };
+
+      const response = await fetch(isEditing ? `${API_BASE}/loans/update/${editingLoanId}` : `${API_BASE}/loans/add`, {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        showSuccess('loans', isEditing ? 'Loan updated!' : `${newLoan.type} added!`);
+        setShowLoanForm(false);
+        setEditingLoanId(null);
+        setNewLoan({ name: '', amount: '', emi: '', loan_date: new Date().toISOString().split('T')[0], type: 'Borrow', notes: '' });
+        await fetchAllData();
+      }
+    } catch (err) {
+      showError('loans', isEditing ? 'Failed to update loan' : 'Failed to add loan');
+    } finally {
+      setSaving(false);
+      setSectionLoading(null);
+    }
+  };
+
+  const editLoan = (loan) => {
+    setNewLoan({ name: loan.name || '', amount: loan.amount ?? '', emi: loan.emi ?? '', loan_date: loan.loan_date || new Date().toISOString().split('T')[0], type: loan.type || 'Borrow', notes: loan.notes || '' });
+    setEditingLoanId(loan.id);
+    setShowLoanForm(true);
+  };
+
+  const cancelLoanForm = () => {
+    setShowLoanForm(false);
+    setEditingLoanId(null);
+  };
+
+  const deleteLoan = async (id) => {
+    askForConfirmation('loans', 'Delete this loan record?', async () => {
+      try {
+        setSectionLoading('loans');
+        const response = await fetch(`${API_BASE}/loans/delete/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+          showSuccess('loans', 'Loan deleted!');
+          await fetchAllData();
+        }
+      } catch (err) {
+        showError('loans', 'Failed to delete loan');
+      } finally {
+        setSectionLoading(null);
+      }
+    });
+  };
+
+  // 4. Payments
+  const fetchPayments = async (month, year) => {
+    try {
+      const response = await fetch(`${API_BASE}/payments/${userId}?month=${month}&year=${year}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setPayments(result.data || []);
+          setPendingPayments(result.totalPending || 0);
+          if (result.data.length === 0) {
+            setNoDataMessage('No payments found. Add your first payment!');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fetch payments error:', err);
+    }
+  };
+
+  const savePayment = async () => {
+    const isEditing = editingPaymentId !== null;
+    if (!newPayment.person_name || !newPayment.amount) {
+      showError('payments', 'Person name and amount are required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setSectionLoading('payments');
+      const payload = {
+        user_id: userId,
+        person_name: newPayment.person_name,
+        amount: parseFloat(newPayment.amount),
+        payment_date: newPayment.payment_date,
+        notes: newPayment.notes,
+        status: newPayment.status
+      };
+
+      const response = await fetch(isEditing ? `${API_BASE}/payments/update/${editingPaymentId}` : `${API_BASE}/payments/add`, {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        showSuccess('payments', isEditing ? 'Payment updated!' : 'Payment added!');
+        setShowPaymentForm(false);
+        setEditingPaymentId(null);
+        setNewPayment({ person_name: '', amount: '', payment_date: new Date().toISOString().split('T')[0], notes: '', status: 'pending' });
+        await fetchAllData();
+      }
+    } catch (err) {
+      showError('payments', isEditing ? 'Failed to update payment' : 'Failed to add payment');
+    } finally {
+      setSaving(false);
+      setSectionLoading(null);
+    }
+  };
+
+  const editPayment = (payment) => {
+    setNewPayment({ person_name: payment.person_name || '', amount: payment.amount ?? '', payment_date: payment.payment_date || new Date().toISOString().split('T')[0], notes: payment.notes || '', status: payment.status || 'pending' });
+    setEditingPaymentId(payment.id);
+    setShowPaymentForm(true);
+  };
+
+  const cancelPaymentForm = () => {
+    setShowPaymentForm(false);
+    setEditingPaymentId(null);
+  };
+
+  const updatePaymentStatus = async (id, status) => {
+    try {
+      setSectionLoading('payments');
+      const response = await fetch(`${API_BASE}/payments/status/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      const result = await response.json();
+      if (result.success) {
+        showSuccess('payments', 'Payment status updated!');
+        await fetchAllData();
+      }
+    } catch (err) {
+      showError('payments', 'Failed to update payment status');
+    } finally {
+      setSectionLoading(null);
+    }
+  };
+
+  const deletePayment = async (id) => {
+    askForConfirmation('payments', 'Delete this payment record?', async () => {
+      try {
+        setSectionLoading('payments');
+        const response = await fetch(`${API_BASE}/payments/delete/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.success) {
+          showSuccess('payments', 'Payment deleted!');
+          await fetchAllData();
+        }
+      } catch (err) {
+        showError('payments', 'Failed to delete payment');
+      } finally {
+        setSectionLoading(null);
+      }
+    });
+  };
+
+  // 5. Performance
+  const fetchWeeklyPerformance = async (week) => {
+    try {
+      setWeeklyPerformance(null);
+      const params = new URLSearchParams({
+        week_start: week.start,
+        week_end: week.end
+      });
+      const response = await fetch(`${API_BASE}/performance/weekly/${userId}?${params}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setWeeklyPerformance(result.data || null);
+        }
+      }
+    } catch (err) {
+      console.error('Fetch weekly performance error:', err);
+    }
+  };
+
+  const fetchMonthlyPerformance = async (month, year) => {
+    try {
+      const response = await fetch(`${API_BASE}/performance/monthly/${userId}?month=${month}&year=${year}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setMonthlyPerformance(result.data);
+        }
+      }
+    } catch (err) {
+      console.error('Fetch monthly performance error:', err);
+    }
+  };
+
+  // 6. Summary
+  const fetchSummary = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/summary/${userId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setSummary(result.data);
+        }
+      }
+    } catch (err) {
+      console.error('Fetch summary error:', err);
+    }
+  };
+
+  const fetchSummaryPie = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/summary/pie/${userId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setSummaryPieData(result.data || []);
+        }
+      }
+    } catch (err) {
+      console.error('Fetch summary pie error:', err);
     }
   };
 
   // =============================================
-  // TOP PERFORMERS
+  // HANDLE CHANGES
   // =============================================
-  const getTopPerformers = () => {
-    const currentMonthData = monthlyExpenses[selectedMonth] || monthlyExpenses['July 2024'];
-    const categories = [
-      { name: 'Petrol', amount: currentMonthData.petrol || 0 },
-      { name: 'Food', amount: currentMonthData.food || 0 },
-      { name: 'Shopping', amount: currentMonthData.shopping || 0 },
-      { name: 'Transport', amount: currentMonthData.transport || 0 },
-      { name: 'Utilities', amount: currentMonthData.utilities || 0 },
-      { name: 'Entertainment', amount: currentMonthData.entertainment || 0 },
-      { name: 'Other', amount: currentMonthData.other || 0 }
-    ];
-    
-    const biggest = categories.reduce((max, cat) => cat.amount > max.amount ? cat : max, categories[0]);
-    const totalExpense = currentMonthData.totalExpense || 0;
-    const savings = Math.max(0, 50000 - totalExpense);
-    const pendingTotal = 0;
-    const dueTotal = 0;
-    
-    return {
-      biggestExpense: `${biggest.name} - ₹${formatNumber(biggest.amount)}`,
-      biggestSaving: `Saved ₹${formatNumber(savings)} this month`,
-      pendingAmount: `₹${formatNumber(pendingTotal)} pending from 0 people`,
-      duePayment: `₹${formatNumber(dueTotal)} due to pay`
-    };
-  };
-
-  const topPerformers = getTopPerformers();
-
-  // =============================================
-  // EXPENSE CATEGORIES
-  // =============================================
-  const getExpenseCategories = () => {
-    const currentMonthData = monthlyExpenses[selectedMonth] || monthlyExpenses['July 2024'];
-    return [
-      { name: 'Petrol', amount: currentMonthData.petrol || 0, icon: Fuel, color: '#F59E0B' },
-      { name: 'Food', amount: currentMonthData.food || 0, icon: Utensils, color: '#10B981' },
-      { name: 'Shopping', amount: currentMonthData.shopping || 0, icon: ShoppingBag, color: '#7C3AED' },
-      { name: 'Transport', amount: currentMonthData.transport || 0, icon: Truck, color: '#4F6BFF' },
-      { name: 'Utilities', amount: currentMonthData.utilities || 0, icon: Home, color: '#2EA8FF' },
-      { name: 'Entertainment', amount: currentMonthData.entertainment || 0, icon: Film, color: '#F43F5E' },
-      { name: 'Other', amount: currentMonthData.other || 0, icon: Coffee, color: '#8B5CF6' },
-    ];
-  };
-
-  const expenseCategories = getExpenseCategories();
-
-  // =============================================
-  // EDIT HANDLERS
-  // =============================================
-  const handleFinancialReviewChange = (field, value) => {
-    setFinancialReview(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
-  };
-
-  const handlePaymentExpensesChange = (field, value) => {
-    setPaymentExpenses(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
-  };
-
-  const handleBorrowDataChange = (field, value) => {
-    setBorrowData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
-  };
-
-  const handlePortfolioChange = (field, value) => {
-    setPortfolioData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
-  };
-
-  const handleMonthlyPerformanceChange = (field, value) => {
-    setMonthlyPerformance(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
-  };
-
-  const handleProductChange = (index, field, value) => {
-    const updated = [...productsBought];
-    updated[index] = { ...updated[index], [field]: value };
-    setProductsBought(updated);
-  };
-
-  const handleMonthlyExpenseChange = (category, value) => {
-    const newExpenses = { ...monthlyExpenses };
-    if (newExpenses[selectedMonth]) {
-      newExpenses[selectedMonth][category] = parseFloat(value) || 0;
-      const totals = newExpenses[selectedMonth];
-      newExpenses[selectedMonth].totalExpense = 
-        (totals.petrol || 0) + (totals.food || 0) + (totals.shopping || 0) + 
-        (totals.transport || 0) + (totals.utilities || 0) + (totals.entertainment || 0) + 
-        (totals.other || 0);
-      setMonthlyExpenses(newExpenses);
+  const handleFinancialChange = (field, value) => {
+    if (value === '') {
+      setFinancialReview(prev => ({ ...prev, [field]: '' }));
+    } else {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        setFinancialReview(prev => ({ ...prev, [field]: num }));
+      }
     }
   };
 
-  // =============================================
-  // PIE CHART DATA - All Time Totals
-  // =============================================
-  const pieChartData = [
-    { label: 'Total Borrow', value: portfolioData.totalBorrow, color: '#F43F5E', amount: `₹${formatNumber(portfolioData.totalBorrow)}` },
-    { label: 'Total Paid', value: portfolioData.totalPaid, color: '#10B981', amount: `₹${formatNumber(portfolioData.totalPaid)}` },
-    { label: 'Total Work', value: portfolioData.totalWork, color: '#7C3AED', amount: `₹${formatNumber(portfolioData.totalWork)}` },
-    { label: 'Total Business', value: portfolioData.totalBusiness, color: '#4F6BFF', amount: `₹${formatNumber(portfolioData.totalBusiness)}` },
-    { label: 'Total Expense', value: portfolioData.totalExpense, color: '#F59E0B', amount: `₹${formatNumber(portfolioData.totalExpense)}` }
-  ];
-
-  const totalPie = pieChartData.reduce((sum, item) => sum + item.value, 0);
-  let cumulativeAngle = 0;
-  const pieSegments = pieChartData.map(item => {
-    const angle = (item.value / totalPie) * 360;
-    const startAngle = cumulativeAngle;
-    cumulativeAngle += angle;
-    return { ...item, startAngle, angle };
-  });
-
-  const polarToCartesian = (cx, cy, r, angleDeg) => {
-    const angleRad = (angleDeg - 90) * Math.PI / 180;
-    return { x: cx + r * Math.cos(angleRad), y: cy + r * Math.sin(angleRad) };
+  const handleExpenseChange = (field, value) => {
+    setNewExpense(prev => ({ ...prev, [field]: value }));
   };
 
-  const describeArc = (cx, cy, r, startAngle, endAngle) => {
-    const start = polarToCartesian(cx, cy, r, endAngle);
-    const end = polarToCartesian(cx, cy, r, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
-    return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
+  const getExpenseCategoryOptions = () => {
+    const savedCategories = Object.keys(expenseCategories || {});
+    const defaultCategories = ['Petrol', 'Food', 'Travel', 'Shopping', 'Utilities', 'Entertainment', 'Other'];
+    return [...new Set([...savedCategories, ...defaultCategories])];
+  };
+
+  const handleLoanChange = (field, value) => {
+    setNewLoan(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePaymentChange = (field, value) => {
+    setNewPayment(prev => ({ ...prev, [field]: value }));
   };
 
   // =============================================
-  // BAR CHART DATA - Monthly Performance
+  // SECTION HEADER
   // =============================================
-  const maxBarValue = Math.max(...allMonthsData.map(d => Math.max(d.profit, d.loss, d.net)));
-
-  const months = ['January 2024', 'February 2024', 'March 2024', 'April 2024', 'May 2024', 'June 2024', 'July 2024', 'August 2024', 'September 2024', 'October 2024', 'November 2024', 'December 2024'];
-
-  const handleButtonClick = (name) => {
-    setActiveButton(name);
-    setTimeout(() => setActiveButton(null), 300);
-  };
-
-  // =============================================
-  // SECTION HEADER COMPONENT
-  // =============================================
-  const SectionHeader = ({ title, icon, section, onEdit, isEditing, onSave, onCancel, saving }) => (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: '0.5rem',
-      marginBottom: '1rem',
-      paddingBottom: '0.5rem',
-      borderBottom: '1px solid rgba(255,255,255,0.06)'
-    }}>
-      <h3 style={{ 
-        fontSize: '0.9rem', 
-        fontWeight: '700', 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '0.5rem',
-        color: '#A78BFA'
-      }}>
-        {icon} {title}
-      </h3>
-      <div style={{ display: 'flex', gap: '0.3rem' }}>
-        {isEditing ? (
-          <>
-            <button 
-              className="glass-btn" 
-              onClick={onSave}
-              disabled={saving}
-              style={{
-                background: 'rgba(16,185,129,0.15)',
-                borderColor: 'rgba(16,185,129,0.3)',
-                color: '#6EE7B7',
-                padding: '0.25rem 0.6rem',
-                fontSize: '0.65rem'
-              }}
-            >
-              <Save size={12} /> Save
-            </button>
-            <button 
-              className="glass-btn" 
-              onClick={onCancel}
-              style={{
-                background: 'rgba(239,68,68,0.15)',
-                borderColor: 'rgba(239,68,68,0.3)',
-                color: '#FCA5A5',
-                padding: '0.25rem 0.6rem',
-                fontSize: '0.65rem'
-              }}
-            >
-              <X size={12} /> Cancel
-            </button>
-          </>
-        ) : (
-          <button 
-            className="glass-btn" 
-            onClick={onEdit}
-            style={{
-              background: 'rgba(124,58,237,0.12)',
-              borderColor: 'rgba(124,58,237,0.2)',
-              color: '#A78BFA',
-              padding: '0.25rem 0.6rem',
-              fontSize: '0.65rem'
-            }}
-          >
-            <Edit2 size={12} /> Edit
+  const SectionHeader = ({ title, icon, onEdit, isEditing, onSave, onCancel, saving, onAdd }) => (
+    <div className="section-header">
+      <h3>{icon} {title}</h3>
+      <div className="section-actions">
+        {onAdd && !isEditing && (
+          <button className="btn-glass btn-add" onClick={onAdd}>
+            <Plus size={14} /> Add
           </button>
         )}
+        {isEditing ? (
+          <>
+            <button className="btn-glass btn-save" onClick={onSave} disabled={saving}>
+              <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button className="btn-glass btn-cancel" onClick={onCancel}>
+              <X size={14} /> Cancel
+            </button>
+          </>
+        ) : onEdit ? (
+          <button className="btn-glass btn-edit" onClick={onEdit}>
+            <Edit2 size={14} /> Edit
+          </button>
+        ) : null}
       </div>
     </div>
   );
 
+  const renderSectionFeedback = (section) => (
+    <>
+      {sectionLoading === section && (
+        <div className="section-loading" role="status" aria-live="polite">
+          <span className="section-spinner"></span>
+          <span>Processing...</span>
+        </div>
+      )}
+      {messageSection === section && error && <div className="section-feedback error-feedback">⚠️ {error}</div>}
+      {messageSection === section && successMessage && <div className="section-feedback success-feedback">✅ {successMessage}</div>}
+      {confirmDialog?.section === section && (
+        <div className="section-confirm-backdrop">
+          <div className="section-confirm-dialog">
+            <AlertTriangle size={22} color="#FCD34D" />
+            <p>{confirmDialog.message}</p>
+            <div className="section-confirm-actions">
+              <button className="btn-glass btn-danger" onClick={() => setConfirmDialog(null)}>Cancel</button>
+              <button className="btn-glass btn-save" onClick={async () => {
+                const action = confirmDialog.onConfirm;
+                setConfirmDialog(null);
+                await action();
+              }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // =============================================
+  // PIE CHART COMPONENT
+  // =============================================
+  const PieChartComponent = ({ data, total, colors }) => {
+    const totalValue = total || data.reduce((sum, d) => sum + d.amount, 0);
+    if (!data || data.length === 0) {
+      return <div className="empty-chart">📊 No data available</div>;
+    }
+
+    let cumulativeAngle = 0;
+    const pieSegments = data.map((item, index) => {
+      const angle = (item.amount / totalValue) * 360;
+      const startAngle = cumulativeAngle;
+      cumulativeAngle += angle;
+      return { ...item, startAngle, angle, color: colors?.[index] || '#7C3AED' };
+    });
+
+    const polarToCartesian = (cx, cy, r, angleDeg) => {
+      const angleRad = (angleDeg - 90) * Math.PI / 180;
+      return { x: cx + r * Math.cos(angleRad), y: cy + r * Math.sin(angleRad) };
+    };
+
+    const describeArc = (cx, cy, r, startAngle, endAngle) => {
+      const start = polarToCartesian(cx, cy, r, endAngle);
+      const end = polarToCartesian(cx, cy, r, startAngle);
+      const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+      return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
+    };
+
+    return (
+      <div className="pie-chart-container">
+        <div className="pie-chart">
+          <svg width="180" height="180" viewBox="0 0 180 180">
+            {pieSegments.map((seg, i) => (
+              <path 
+                key={i} 
+                d={describeArc(90, 90, 75, seg.startAngle, seg.startAngle + seg.angle)} 
+                fill={seg.color} 
+                className="pie-segment"
+                stroke="#06060f" 
+                strokeWidth="2"
+              />
+            ))}
+            <circle cx="90" cy="90" r="40" fill="#06060f" />
+            <text x="90" y="85" textAnchor="middle" fill="white" fontSize="14" fontWeight="800">
+              {formatCurrency(totalValue)}
+            </text>
+            <text x="90" y="102" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="8" fontWeight="600">
+              Total
+            </text>
+          </svg>
+        </div>
+        <div className="pie-legend">
+          {pieSegments.map((item, i) => (
+            <div key={i} className="legend-item">
+              <span className="legend-color" style={{ background: item.color }}></span>
+              <span className="legend-label">{item.category || item.label}</span>
+              <span className="legend-value">{formatCurrency(item.amount)}</span>
+              <span className="legend-percentage">{item.percentage || Math.round((item.amount / totalValue) * 100)}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // =============================================
+  // NO DATA COMPONENT
+  // =============================================
+  const NoDataMessage = ({ message }) => (
+    <div className="no-data-container">
+      <div className="no-data-icon">📋</div>
+      <p className="no-data-text">{message || 'No data found. Start adding your financial records!'}</p>
+    </div>
+  );
+
+  // =============================================
+  // RENDER
+  // =============================================
   if (loading) {
     return (
-      <div style={{
-        display: 'flex', justifyContent: 'center', alignItems: 'center',
-        minHeight: '100vh', background: '#06060f'
-      }}>
-        <div style={{ color: '#A78BFA', fontSize: '1.2rem' }}>Loading...</div>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading your financial data...</p>
       </div>
     );
   }
 
+  const allTimeSummary = summary?.summary || {};
+  const allTimeIncome = Number(allTimeSummary.totalIncome) || 0;
+  const allTimeExpenses = Number(allTimeSummary.totalExpenses) || 0;
+  const netTotalSavings = allTimeIncome - allTimeExpenses;
+  const selectedMonthIncome = Number(monthlyPerformance?.totalIncome) || 0;
+  const selectedMonthExpenses = Number(monthlyPerformance?.totalExpenses) || expenses.reduce((total, expense) => total + (Number(expense.amount) || 0), 0);
+  const selectedMonthSavings = Number(monthlyPerformance?.totalSavings) || 0;
+  const selectedMonthBorrow = Number(monthlyPerformance?.totalBorrow) || totalBorrow;
+  const selectedMonthLoanEmi = loans
+    .filter(loan => String(loan.type).toLowerCase() === 'loan')
+    .reduce((total, loan) => total + (Number(loan.emi) || 0), 0);
+
   return (
-    <>
+    <div className="overview-container">
       <style>{`
+        /* ============================================
+           GLOBAL STYLES
+           ============================================ */
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; background: #06060f; color: white; }
-
+        
         .overview-container {
+          font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           min-height: 100vh;
-          background: linear-gradient(135deg, #06060f 0%, #0a0a1f 50%, #0f0f2e 100%);
-          padding: 1.5rem;
-          scroll-behavior: smooth;
+          width: 100%;
+          overflow-x: hidden;
+          background: linear-gradient(135deg, #11152b 0%, #181b3a 48%, #20224a 100%);
+          padding: 20px;
+          color: #ffffff;
         }
 
-        .glass-card {
-          background: rgba(255, 255, 255, 0.03);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
-          transition: all 0.4s ease;
-          padding: 1.25rem;
-          scroll-margin-top: 1rem;
+        /* ============================================
+           LOADING
+           ============================================ */
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          background: #06060f;
+          gap: 1rem;
         }
-
-        .glass-card:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.15);
-          transform: translateY(-2px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        .loading-spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(124,58,237,0.2);
+          border-top-color: #7C3AED;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .glass-card.editing {
-          border-color: rgba(124,58,237,0.4);
-          box-shadow: 0 0 40px rgba(124,58,237,0.1);
+        /* ============================================
+           HEADER
+           ============================================ */
+        .app-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
         }
-
-        .glass-btn {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 10px;
-          color: white;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          padding: 0.4rem 0.8rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        .glass-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 255, 255, 0.25);
-          transform: translateY(-2px);
-        }
-
-        .glass-btn:active {
-          transform: scale(0.95);
-        }
-
-        .status-badge {
-          padding: 0.2rem 0.6rem;
-          border-radius: 6px;
-          font-size: 0.6rem;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .status-pending {
-          background: rgba(245, 158, 11, 0.15);
-          color: #FCD34D;
-          border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .status-received {
-          background: rgba(16, 185, 129, 0.15);
-          color: #6EE7B7;
-          border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .number-box {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 16px;
-          padding: 1.25rem;
-          text-align: center;
-          transition: all 0.3s ease;
-          cursor: pointer;
-        }
-
-        .number-box:hover {
-          transform: translateY(-4px);
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(124, 58, 237, 0.3);
-          box-shadow: 0 12px 30px rgba(124, 58, 237, 0.15);
-        }
-
-        .number-box .value {
-          font-size: 2.2rem;
+        .app-header h1 {
+          font-size: clamp(1.2rem, 4vw, 1.8rem);
           font-weight: 800;
-          background: linear-gradient(135deg, #A78BFA, #7C3AED);
+          background: linear-gradient(135deg, #FFFFFF, #A78BFA);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
+        .app-header p {
+          font-size: 0.75rem;
+          color: rgba(255,255,255,0.5);
+          margin-top: 0.2rem;
+        }
+        .header-actions {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
 
-        .edit-input {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+        /* ============================================
+           BUTTONS - Glass Effect
+           ============================================ */
+        .btn-glass {
+          background: rgba(255,255,255,0.1);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.18);
           border-radius: 10px;
-          padding: 0.4rem 0.6rem;
-          color: white;
+          color: #fff;
+          padding: 0.4rem 0.8rem;
+          font-size: 0.7rem;
+          font-weight: 600;
+          font-family: inherit;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          min-height: 32px;
+          justify-content: center;
+          white-space: nowrap;
+        }
+        .btn-glass:hover {
+          background: rgba(124,58,237,0.28);
+          border-color: rgba(196,181,253,0.55);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(124,58,237,0.15);
+        }
+        .btn-glass:active { transform: scale(0.95); }
+
+        .btn-glass.btn-edit { 
+          background: rgba(124,58,237,0.15); 
+          border-color: rgba(124,58,237,0.25); 
+          color: #A78BFA; 
+        }
+        .btn-glass.btn-edit:hover { background: rgba(124,58,237,0.25); }
+
+        .btn-glass.btn-save { 
+          background: rgba(16,185,129,0.15); 
+          border-color: rgba(16,185,129,0.25); 
+          color: #6EE7B7; 
+        }
+        .btn-glass.btn-save:hover { background: rgba(16,185,129,0.25); }
+
+        .btn-glass.btn-cancel { 
+          background: rgba(239,68,68,0.15); 
+          border-color: rgba(239,68,68,0.25); 
+          color: #FCA5A5; 
+        }
+        .btn-glass.btn-cancel:hover { background: rgba(239,68,68,0.25); }
+
+        .btn-glass.btn-add { 
+          background: rgba(245,158,11,0.14); 
+          border-color: rgba(245,158,11,0.3); 
+          color: #FCD34D; 
+        }
+        .btn-glass.btn-add:hover { background: rgba(124,58,237,0.28); border-color: rgba(167,139,250,0.55); color: #E9D5FF; }
+
+        .btn-glass.btn-danger { 
+          background: rgba(239,68,68,0.12); 
+          border-color: rgba(239,68,68,0.2); 
+          color: #FCA5A5; 
+        }
+        .btn-glass.btn-danger:hover { background: rgba(239,68,68,0.22); }
+
+        .btn-glass.btn-success { 
+          background: rgba(16,185,129,0.12); 
+          border-color: rgba(16,185,129,0.2); 
+          color: #6EE7B7; 
+        }
+        .btn-glass.btn-success:hover { background: rgba(16,185,129,0.22); }
+
+        .btn-glass.btn-refresh {
+          background: rgba(124,58,237,0.12);
+          border-color: rgba(124,58,237,0.2);
+          color: #A78BFA;
+          padding: 0.5rem 1rem;
+        }
+        .btn-glass.btn-refresh:hover { background: rgba(124,58,237,0.22); }
+        .btn-glass:focus-visible, .tab:focus-visible {
+          outline: 2px solid #A78BFA;
+          outline-offset: 2px;
+        }
+
+        /* ============================================
+           CARDS
+           ============================================ */
+        .glass-card {
+          background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(196,181,253,0.28);
+          border-radius: 16px;
+          padding: 1rem;
+          transition: all 0.4s ease;
+          margin-bottom: 0.75rem;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .glass-card:hover {
+          background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(124,58,237,0.08));
+          border-color: rgba(167,139,250,0.45);
+          box-shadow: 0 16px 38px rgba(0,0,0,0.22), 0 0 24px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+        .glass-card.editing {
+          border-color: rgba(124,58,237,0.4);
+          box-shadow: 0 0 30px rgba(124,58,237,0.1);
+        }
+
+        /* ============================================
+           SECTION HEADER
+           ============================================ */
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-bottom: 0.8rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .section-header h3 {
           font-size: 0.85rem;
-          font-weight: 500;
-          width: 100%;
-          outline: none;
-          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #D8C7FF;
+          text-shadow: 0 0 14px rgba(196,181,253,0.25);
+        }
+        .section-header h3 svg { filter: drop-shadow(0 0 6px currentColor); }
+        .section-actions {
+          display: flex;
+          gap: 0.3rem;
+        }
+
+        /* ============================================
+           GRID
+           ============================================ */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+        .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem; }
+
+        /* ============================================
+           NUMBER BOX
+           ============================================ */
+        .number-box {
+          background: rgba(255,255,255,0.08);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.14);
+          border-radius: 12px;
+          padding: 0.8rem;
+          text-align: center;
           transition: all 0.3s ease;
         }
-
-        .edit-input:focus {
-          border-color: rgba(124, 58, 237, 0.5);
-          box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
-          background: rgba(255, 255, 255, 0.08);
+        .number-box:hover {
+          background: rgba(124,58,237,0.16);
+          transform: translateY(-3px);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.2);
         }
-
-        .edit-input::placeholder {
-          color: rgba(255, 255, 255, 0.3);
+        .number-box .label {
+          font-size: 0.55rem;
+          color: rgba(255,255,255,0.72);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
+        .number-box .value {
+          font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+          font-weight: 800;
+          margin: 0.2rem 0;
+        }
+        .number-box .sub {
+          font-size: 0.5rem;
+          color: rgba(255,255,255,0.58);
+        }
+        .number-box .value.green { color: #6EE7B7; }
+        .number-box .value.red { color: #FCA5A5; }
+        .number-box .value.gold { color: #FCD34D; }
+        .number-box .value.purple { color: #A78BFA; }
+        .number-box .value.blue { color: #4F6BFF; }
+        .number-box .value.orange { color: #F59E0B; }
 
-        .progress-bar {
-          height: 4px;
-          background: rgba(255,255,255,0.05);
-          border-radius: 4px;
-          overflow: hidden;
+        /* ============================================
+           FORM
+           ============================================ */
+        .form-container {
+          position: relative;
+          z-index: 20;
+          background: rgba(255,255,255,0.03);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 1rem;
+          margin-bottom: 0.75rem;
+        }
+        .form-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 0.5rem;
+        }
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+        .form-group label {
+          font-size: 0.6rem;
+          font-weight: 600;
+          color: rgba(255,255,255,0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .form-group input, .form-group textarea {
+          background: rgba(255,255,255,0.06);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          padding: 0.4rem 0.6rem;
+          color: #fff;
+          font-size: 0.75rem;
+          font-family: inherit;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+        .form-group select, .month-selector select, .week-selector select {
+          background: #ffffff;
+          color: #111827;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          padding: 0.4rem 0.6rem;
+          font-size: 0.75rem;
+          font-family: inherit;
+          font-weight: 600;
+          cursor: pointer;
+          outline: none;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .form-group select:hover, .month-selector select:hover, .week-selector select:hover {
+          background: #f5f3ff;
+          border-color: #8b5cf6;
+        }
+        .form-group select:focus, .month-selector select:focus, .week-selector select:focus {
+          border-color: #7c3aed;
+          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+        }
+        .form-group select option, .month-selector select option, .week-selector select option {
+          background: #ffffff;
+          color: #111827;
+        }
+        .form-group select option:checked, .month-selector select option:checked, .week-selector select option:checked {
+          background: #7c3aed;
+          color: #ffffff;
+        }
+        .form-group select option:hover, .month-selector select option:hover, .week-selector select option:hover {
+          background: #ede9fe;
+          color: #5b21b6;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+          border-color: rgba(124,58,237,0.5);
+          box-shadow: 0 0 20px rgba(124,58,237,0.1);
+        }
+        .form-group input::placeholder, .form-group textarea::placeholder {
+          color: rgba(255,255,255,0.3);
+        }
+        .category-picker { position: relative; }
+        .category-picker > input { width: 100%; }
+        .category-options {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: calc(100% + 0.3rem);
+          z-index: 10;
+          max-height: min(280px, 45vh);
+          overflow-y: auto;
+          padding: 0.3rem;
+          background: rgba(22,22,40,0.98);
+          border: 1px solid rgba(167,139,250,0.35);
+          border-radius: 10px;
+          box-shadow: 0 14px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+        }
+        .category-option {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          padding: 0.5rem 0.6rem;
+          border: 1px solid transparent;
+          border-radius: 7px;
+          background: transparent;
+          color: rgba(255,255,255,0.78);
+          font-family: inherit;
+          font-size: 0.7rem;
+          font-weight: 600;
+          text-align: left;
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        .category-option:hover, .category-option:focus-visible {
+          background: rgba(124,58,237,0.28);
+          border-color: rgba(167,139,250,0.45);
+          color: #E9D5FF;
+          outline: none;
+        }
+        .category-new-option { color: #6EE7B7; border-top: 1px solid rgba(255,255,255,0.08); border-radius: 0 0 7px 7px; }
+        .form-group textarea {
+          resize: vertical;
+          min-height: 40px;
+        }
+        .form-actions {
+          display: flex;
+          gap: 0.5rem;
           margin-top: 0.5rem;
+          justify-content: flex-end;
         }
 
-        .progress-bar .fill {
-          height: 100%;
-          border-radius: 4px;
-          background: linear-gradient(90deg, #7C3AED, #A78BFA);
-          transition: width 0.6s ease;
+        /* ============================================
+           LIST ITEMS
+           ============================================ */
+        .list-item {
+          background: linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.055));
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.16);
+          border-radius: 14px;
+          padding: 0.75rem 0.9rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.75rem;
+          transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
+        .list-item:hover {
+          background: linear-gradient(135deg, rgba(124,58,237,0.14), rgba(79,107,255,0.07));
+          border-color: rgba(167,139,250,0.35);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+          transform: translateY(-2px);
+        }
+        .list-item .info { flex: 1; min-width: 0; }
+        .list-item .info .name { font-size: 0.82rem; font-weight: 700; color: #fff; letter-spacing: 0.01em; }
+        .list-item .info .detail { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; font-size: 0.65rem; color: rgba(255,255,255,0.74); }
+        .date-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.22rem 0.48rem;
+          border-radius: 999px;
+          background: rgba(79,107,255,0.16);
+          border: 1px solid rgba(125,160,255,0.24);
+          color: #BFDBFE;
+          font-size: 0.6rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        .list-note { color: rgba(255,255,255,0.76); overflow-wrap: anywhere; }
+        .list-item .amount { font-size: 0.9rem; font-weight: 800; white-space: nowrap; }
+        .list-item .actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
 
-        .error-message {
-          background: rgba(239, 68, 68, 0.15);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          border-radius: 10px;
-          padding: 0.6rem 0.9rem;
-          color: #fca5a5;
+        /* ============================================
+           BADGE / STATUS
+           ============================================ */
+        .badge {
+          padding: 0.15rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.55rem;
+          font-weight: 600;
+        }
+        .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
+        .badge-received { background: rgba(16,185,129,0.15); color: #6EE7B7; }
+        .badge-overdue { background: rgba(239,68,68,0.15); color: #FCA5A5; }
+        .badge-borrow { background: rgba(245,158,11,0.15); color: #FCD34D; }
+        .badge-loan { background: rgba(124,58,237,0.15); color: #A78BFA; }
+
+        /* ============================================
+           PIE CHART
+           ============================================ */
+        .pie-chart-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1.5rem;
+          align-items: center;
+          justify-content: center;
+        }
+        .pie-chart { flex-shrink: 0; }
+        .pie-legend { display: flex; flex-direction: column; gap: 0.3rem; min-width: 120px; }
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.65rem;
+        }
+        .legend-color {
+          width: 12px;
+          height: 12px;
+          border-radius: 3px;
+          flex-shrink: 0;
+        }
+        .legend-label { color: rgba(255,255,255,0.7); flex: 1; }
+        .legend-value { font-weight: 600; color: #fff; }
+        .legend-percentage { color: rgba(255,255,255,0.4); font-size: 0.6rem; }
+        .empty-chart {
+          text-align: center;
+          color: rgba(255,255,255,0.3);
+          padding: 1rem;
           font-size: 0.8rem;
-          margin-bottom: 1rem;
         }
 
-        .success-message {
-          background: rgba(16, 185, 129, 0.12);
-          border: 1px solid rgba(16, 185, 129, 0.25);
+        /* ============================================
+           NO DATA
+           ============================================ */
+        .no-data-container {
+          text-align: center;
+          padding: 2rem;
+          color: rgba(255,255,255,0.4);
+        }
+        .no-data-icon {
+          font-size: 3rem;
+          margin-bottom: 0.5rem;
+        }
+        .no-data-text {
+          font-size: 0.85rem;
+        }
+
+        /* ============================================
+           MONTH SELECTOR
+           ============================================ */
+        .month-selector {
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+          flex-wrap: wrap;
+          padding: 0.6rem 1rem;
+        }
+        .month-selector select {
+          outline: none;
+          flex: 1;
+          min-width: 140px;
+        }
+
+        /* ============================================
+           TABS
+           ============================================ */
+        .tabs {
+          display: flex;
+          gap: 0.3rem;
+          flex-wrap: wrap;
+          margin-bottom: 0.75rem;
+        }
+        .tab {
+          background: rgba(255,255,255,0.08);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.14);
           border-radius: 10px;
-          padding: 0.6rem 0.9rem;
+          padding: 0.4rem 1rem;
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: rgba(255,255,255,0.72);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-family: inherit;
+        }
+        .tab:hover { background: rgba(255,255,255,0.06); }
+        .tab.active {
+          background: linear-gradient(135deg, rgba(124,58,237,0.38), rgba(79,107,255,0.2));
+          border-color: rgba(167,139,250,0.7);
+          color: #FFFFFF;
+          box-shadow: 0 8px 22px rgba(124,58,237,0.2), inset 0 1px 0 rgba(255,255,255,0.12);
+        }
+        .tab.active svg { color: #C4B5FD; filter: drop-shadow(0 0 5px rgba(196,181,253,0.55)); }
+
+        /* ============================================
+           MESSAGES
+           ============================================ */
+        .error-message {
+          background: rgba(239,68,68,0.15);
+          border: 1px solid rgba(239,68,68,0.3);
+          border-radius: 10px;
+          padding: 0.5rem 0.8rem;
+          color: #FCA5A5;
+          font-size: 0.8rem;
+          margin-bottom: 0.75rem;
+        }
+        .success-message {
+          background: rgba(16,185,129,0.12);
+          border: 1px solid rgba(16,185,129,0.25);
+          border-radius: 10px;
+          padding: 0.5rem 0.8rem;
           color: #6EE7B7;
           font-size: 0.8rem;
-          margin-bottom: 1rem;
+          margin-bottom: 0.75rem;
           text-align: center;
           animation: slideDown 0.3s ease;
         }
-
+        .section-feedback {
+          width: min(92%, 420px);
+          margin: 0.6rem auto 0.8rem;
+          padding: 0.55rem 0.8rem;
+          border-radius: 10px;
+          text-align: center;
+          font-size: 0.75rem;
+          animation: slideDown 0.3s ease;
+        }
+        .section-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.55rem;
+          width: min(92%, 420px);
+          margin: 0.6rem auto 0.8rem;
+          padding: 0.6rem 0.8rem;
+          border: 1px solid rgba(167,139,250,0.28);
+          border-radius: 10px;
+          background: rgba(124,58,237,0.12);
+          color: #DDD6FE;
+          font-size: 0.72rem;
+        }
+        .section-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(196,181,253,0.28);
+          border-top-color: #C4B5FD;
+          border-radius: 50%;
+          animation: spin 0.75s linear infinite;
+          flex-shrink: 0;
+        }
+        .error-feedback {
+          background: rgba(239,68,68,0.15);
+          border: 1px solid rgba(239,68,68,0.3);
+          color: #FCA5A5;
+        }
+        .success-feedback {
+          background: rgba(16,185,129,0.12);
+          border: 1px solid rgba(16,185,129,0.25);
+          color: #6EE7B7;
+        }
+        .section-confirm-backdrop {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          padding: 0.8rem 0;
+          z-index: 2;
+        }
+        .section-confirm-dialog {
+          width: min(92%, 360px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.55rem;
+          padding: 1rem;
+          background: #202033;
+          border: 1px solid rgba(245,158,11,0.35);
+          border-radius: 12px;
+          box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+          text-align: center;
+        }
+        .section-confirm-dialog p {
+          margin: 0;
+          color: rgba(255,255,255,0.85);
+          font-size: 0.75rem;
+        }
+        .section-confirm-actions {
+          display: flex;
+          justify-content: center;
+          gap: 0.4rem;
+        }
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-in {
-          animation: fadeInUp 0.5s ease-out forwards;
-          opacity: 0;
-        }
-
-        .pie-segment { transition: all 0.3s ease; cursor: pointer; }
-        .pie-segment:hover { filter: brightness(1.3); }
-        .bar-rect { transition: all 0.3s ease; cursor: pointer; }
-        .bar-rect:hover { filter: brightness(1.3); }
-
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
         @media (max-width: 1024px) {
-          .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
-          .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
-          .overview-container { padding: 1rem; }
-          .chart-grid { grid-template-columns: 1fr !important; }
+          .grid-4 { grid-template-columns: repeat(2, 1fr); }
+          .grid-3 { grid-template-columns: repeat(2, 1fr); }
         }
-
         @media (max-width: 768px) {
-          .overview-container { padding: 0.75rem; }
-          .grid-4 { grid-template-columns: 1fr 1fr !important; }
-          .grid-3 { grid-template-columns: 1fr 1fr !important; }
-          .grid-2 { grid-template-columns: 1fr !important; }
-          .glass-card { padding: 0.75rem; }
-          .number-box .value { font-size: 1.6rem; }
-          .number-box { padding: 0.8rem; }
-          .chart-grid { grid-template-columns: 1fr !important; }
+          .overview-container { padding: 12px; }
+          .grid-4 { grid-template-columns: 1fr 1fr; }
+          .grid-3 { grid-template-columns: 1fr 1fr; }
+          .grid-2 { grid-template-columns: 1fr; }
+          .form-row { grid-template-columns: 1fr; }
+          .app-header h1 { font-size: 1.2rem; }
+          .pie-chart-container { flex-direction: column; align-items: center; }
+          .month-selector { flex-direction: column; align-items: stretch; }
+          .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .tab { width: 100%; padding: 0.55rem 0.35rem; }
+          .list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+          .list-item .amount { font-size: 0.8rem; }
         }
-
         @media (max-width: 480px) {
-          .overview-container { padding: 0.5rem; }
-          .grid-4 { grid-template-columns: 1fr 1fr !important; gap: 0.4rem !important; }
-          .grid-3 { grid-template-columns: 1fr !important; }
-          .glass-card { padding: 0.6rem; border-radius: 14px; }
-          .number-box { padding: 0.6rem; }
-          .number-box .value { font-size: 1.3rem; }
-          .status-badge { font-size: 0.5rem; padding: 0.15rem 0.4rem; }
-          .edit-input { font-size: 0.7rem; padding: 0.3rem 0.4rem; }
-          .chart-grid { grid-template-columns: 1fr !important; }
+          .overview-container { padding: 8px; }
+          .grid-4 { grid-template-columns: 1fr 1fr; gap: 0.3rem; }
+          .grid-3 { grid-template-columns: 1fr; }
+          .glass-card { padding: 0.6rem; border-radius: 12px; }
+          .number-box { padding: 0.5rem; }
+          .number-box .value { font-size: 1rem; }
+          .tabs { gap: 0.35rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .tab { padding: 0.5rem 0.25rem; font-size: 0.6rem; }
+          .section-header h3 { font-size: 0.7rem; }
+          .list-item { grid-template-columns: minmax(0, 1fr) auto; padding: 0.65rem 0.7rem; gap: 0.45rem; }
+          .list-item .info { grid-column: 1 / -1; }
+          .list-item .amount { grid-column: 1; grid-row: 2; }
+          .list-item .actions { grid-column: 2; grid-row: 2; }
+          .list-item .info .name { font-size: 0.75rem; }
+          .list-note { max-width: none; }
+          .section-actions { width: 100%; justify-content: flex-end; }
         }
       `}</style>
 
-      <div className="overview-container" style={{ maxWidth: '1500px', margin: '0 auto' }}>
-
-        {/* HEADER */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem'
-        }}>
-          <div>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: '800', background: 'linear-gradient(135deg, #FFFFFF, #A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Financial Overview
-            </h1>
-            <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.2rem' }}>
-              Track your business, expenses & performance • Click Edit on any section to modify
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button className="glass-btn" onClick={() => handleButtonClick('refresh')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <RefreshCw size={14} /> Refresh
-            </button>
-            <button className="glass-btn" onClick={() => handleButtonClick('download')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Download size={14} /> Export
-            </button>
-          </div>
+      {/* ============================================
+          HEADER
+          ============================================ */}
+      <header className="app-header">
+        <div>
+          <h1>📊 Financial Overview</h1>
+          <p>Track your business, expenses, loans & performance</p>
         </div>
-
-        {error && <div className="error-message">⚠️ {error}</div>}
-        {successMessage && <div className="success-message">{successMessage}</div>}
-
-        {/* =============================================
-            SECTION 1: FINANCIAL REVIEW
-            ✅ ADDED: id="financial-review"
-        ============================================= */}
-        <div 
-          id="financial-review"
-          ref={el => sectionRefs.current['Financial Review'] = el}
-          className={`glass-card ${editingSection === 'Financial Review' ? 'editing' : ''}`}
-          style={{ marginBottom: '0.75rem' }}
-        >
-          <SectionHeader
-            title="Financial Review"
-            icon={<PieChart size={16} />}
-            section="Financial Review"
-            isEditing={editingSection === 'Financial Review'}
-            onEdit={() => toggleSectionEdit('Financial Review')}
-            onSave={() => saveSectionData('Financial Review')}
-            onCancel={() => setEditingSection(null)}
-            saving={saving}
-          />
-          
-          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
-            <div className="number-box">
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)' }}>Total Business</div>
-              {editingSection === 'Financial Review' ? (
-                <input className="edit-input" type="number" value={financialReview.totalBusiness} onChange={(e) => handleFinancialReviewChange('totalBusiness', e.target.value)} style={{ fontSize: '1.5rem', fontWeight: '800', textAlign: 'center' }} />
-              ) : (
-                <div className="value">{formatNumber(financialReview.totalBusiness)}</div>
-              )}
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>Active Businesses</div>
-            </div>
-            <div className="number-box">
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)' }}>Total Works</div>
-              {editingSection === 'Financial Review' ? (
-                <input className="edit-input" type="number" value={financialReview.totalWorks} onChange={(e) => handleFinancialReviewChange('totalWorks', e.target.value)} style={{ fontSize: '1.5rem', fontWeight: '800', textAlign: 'center' }} />
-              ) : (
-                <div className="value">{formatNumber(financialReview.totalWorks)}</div>
-              )}
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>Ongoing Projects</div>
-            </div>
-            <div className="number-box">
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)' }}>Business Payment</div>
-              {editingSection === 'Financial Review' ? (
-                <input className="edit-input" type="number" value={financialReview.totalBusinessPayment} onChange={(e) => handleFinancialReviewChange('totalBusinessPayment', e.target.value)} style={{ fontSize: '1.5rem', fontWeight: '800', textAlign: 'center' }} />
-              ) : (
-                <div className="value" style={{ background: 'linear-gradient(135deg, #6EE7B7, #10B981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(financialReview.totalBusinessPayment)}</div>
-              )}
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>Total Received</div>
-            </div>
-            <div className="number-box">
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)' }}>Work Payment</div>
-              {editingSection === 'Financial Review' ? (
-                <input className="edit-input" type="number" value={financialReview.totalWorkPayment} onChange={(e) => handleFinancialReviewChange('totalWorkPayment', e.target.value)} style={{ fontSize: '1.5rem', fontWeight: '800', textAlign: 'center' }} />
-              ) : (
-                <div className="value" style={{ background: 'linear-gradient(135deg, #FCD34D, #F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(financialReview.totalWorkPayment)}</div>
-              )}
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>Total Earned</div>
-            </div>
-          </div>
+        <div className="header-actions">
+          <button className="btn-glass btn-refresh" onClick={() => { fetchAllData(); showSuccess('overview', 'Refreshed!'); }}>
+            <RefreshCw size={16} /> Refresh
+          </button>
         </div>
+      </header>
 
-        {/* =============================================
-            SECTION 2: PAYMENT & EXPENSES + BORROW & LOANS
-            ✅ ADDED: id="payment-expenses" and id="borrow-loans"
-        ============================================= */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
-          
-          {/* Payment & Expenses */}
-          <div 
-            id="payment-expenses"
-            ref={el => sectionRefs.current['Payment & Expenses'] = el}
-            className={`glass-card ${editingSection === 'Payment & Expenses' ? 'editing' : ''}`}
+      {noDataMessage && <div className="no-data-container"><div className="no-data-icon">📋</div><p className="no-data-text">{noDataMessage}</p></div>}
+
+      {/* ============================================
+          MONTH SELECTOR
+          ============================================ */}
+      <div className="glass-card" style={{ padding: '0.5rem' }}>
+        <div className="month-selector">
+          <Calendar size={18} color="#A78BFA" />
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Select Month:</span>
+          <select 
+            value={selectedMonth}
+            onChange={(e) => {
+              const month = e.target.value;
+              const isCurrentMonth = month === getCurrentMonth();
+              const weeks = getWeeksForMonth(month);
+              const currentWeek = getWeekRange(new Date());
+              const matchingCurrentWeek = weeks.find(week => week.key === currentWeek.key);
+
+              setSelectedMonth(month);
+              setSelectedYear(getYear(month));
+              setSelectedWeek(isCurrentMonth && matchingCurrentWeek ? matchingCurrentWeek : weeks[0]);
+            }}
           >
+            {['January', 'February', 'March', 'April', 'May', 'June', 
+              'July', 'August', 'September', 'October', 'November', 'December']
+              .map(month => {
+                const year = new Date().getFullYear();
+                const monthYearStr = `${month} ${year}`;
+                return <option key={monthYearStr} value={monthYearStr}>{monthYearStr}</option>;
+              })}
+          </select>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)' }}>
+            Showing data for {selectedMonth}
+          </span>
+        </div>
+      </div>
+
+      {/* ============================================
+          TABS
+          ============================================ */}
+      <div className="tabs">
+        <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+          <PieChart size={14} /> Overview
+        </button>
+        <button className={`tab ${activeTab === 'expenses' ? 'active' : ''}`} onClick={() => setActiveTab('expenses')}>
+          <CreditCard size={14} /> Expenses
+        </button>
+        <button className={`tab ${activeTab === 'loans' ? 'active' : ''}`} onClick={() => setActiveTab('loans')}>
+          <HandCoins size={14} /> Loans
+        </button>
+        <button className={`tab ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>
+          <Wallet size={14} /> Payments
+        </button>
+        <button className={`tab ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
+          <TrendingUp size={14} /> Performance
+        </button>
+        <button className={`tab ${activeTab === 'summary' ? 'active' : ''}`} onClick={() => setActiveTab('summary')}>
+          <BarChart3 size={14} /> Summary
+        </button>
+      </div>
+
+      {/* ============================================
+          OVERVIEW TAB
+          ============================================ */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Financial Review */}
+          <div className={`glass-card ${editingSection === 'Financial Review' ? 'editing' : ''}`}>
             <SectionHeader
-              title="Payment & Expenses"
-              icon={<CreditCard size={16} color="#7C3AED" />}
-              section="Payment & Expenses"
-              isEditing={editingSection === 'Payment & Expenses'}
-              onEdit={() => toggleSectionEdit('Payment & Expenses')}
-              onSave={() => saveSectionData('Payment & Expenses')}
+              title={`Financial Review (${selectedMonth})`}
+              icon={<Briefcase size={16} />}
+              isEditing={editingSection === 'Financial Review'}
+              onEdit={() => setEditingSection('Financial Review')}
+              onSave={saveFinancialReview}
               onCancel={() => setEditingSection(null)}
               saving={saving}
             />
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Payment</div>
-                {editingSection === 'Payment & Expenses' ? (
-                  <input className="edit-input" type="number" value={paymentExpenses.totalPayment} onChange={(e) => handlePaymentExpensesChange('totalPayment', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
+            {renderSectionFeedback('overview')}
+            <div className="grid-4">
+              <div className="number-box">
+                <div className="label">Total Business</div>
+                {editingSection === 'Financial Review' ? (
+                  <input className="edit-input" type="text" value={financialReview.total_business || ''} onChange={(e) => handleFinancialChange('total_business', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#6EE7B7' }}>{formatCurrency(paymentExpenses.totalPayment)}</div>
+                  <div className="value purple">{formatNumber(financialReview.total_business)}</div>
                 )}
+                <div className="sub">Active Businesses</div>
               </div>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Expenses</div>
-                {editingSection === 'Payment & Expenses' ? (
-                  <input className="edit-input" type="number" value={paymentExpenses.totalExpenses} onChange={(e) => handlePaymentExpensesChange('totalExpenses', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
+              <div className="number-box">
+                <div className="label">Total Works</div>
+                {editingSection === 'Financial Review' ? (
+                  <input className="edit-input" type="text" value={financialReview.total_works || ''} onChange={(e) => handleFinancialChange('total_works', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#FCA5A5' }}>{formatCurrency(paymentExpenses.totalExpenses)}</div>
+                  <div className="value blue">{formatNumber(financialReview.total_works)}</div>
                 )}
+                <div className="sub">Ongoing Projects</div>
               </div>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Petrol</div>
-                {editingSection === 'Payment & Expenses' ? (
-                  <input className="edit-input" type="number" value={paymentExpenses.petrolExpense} onChange={(e) => handlePaymentExpensesChange('petrolExpense', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
+              <div className="number-box">
+                <div className="label">Business Payment</div>
+                {editingSection === 'Financial Review' ? (
+                  <input className="edit-input" type="text" value={financialReview.business_payment || ''} onChange={(e) => handleFinancialChange('business_payment', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#FCD34D' }}>{formatCurrency(paymentExpenses.petrolExpense)}</div>
+                  <div className="value green">{formatCurrency(financialReview.business_payment)}</div>
                 )}
+                <div className="sub">Total Received</div>
               </div>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Other Expenses</div>
-                {editingSection === 'Payment & Expenses' ? (
-                  <input className="edit-input" type="number" value={paymentExpenses.otherExpense} onChange={(e) => handlePaymentExpensesChange('otherExpense', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
+              <div className="number-box">
+                <div className="label">Work Payment</div>
+                {editingSection === 'Financial Review' ? (
+                  <input className="edit-input" type="text" value={financialReview.work_payment || ''} onChange={(e) => handleFinancialChange('work_payment', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#A78BFA' }}>{formatCurrency(paymentExpenses.otherExpense)}</div>
+                  <div className="value gold">{formatCurrency(financialReview.work_payment)}</div>
                 )}
+                <div className="sub">Total Earned</div>
               </div>
             </div>
-            <div style={{ marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.2rem' }}>
-                <span>Expense Usage</span>
-                <span>{paymentExpenses.totalExpenses > 0 ? '85%' : '0%'}</span>
+            <div className="grid-4" style={{ marginTop: '0.5rem' }}>
+              <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.2)' }}>
+                <div className="label">Total Savings</div>
+                <div className="value green">{formatCurrency(selectedMonthSavings)}</div>
+                <div className="sub">Selected month only</div>
               </div>
-              <div className="progress-bar">
-                <div className="fill" style={{ width: paymentExpenses.totalExpenses > 0 ? '85%' : '0%' }} />
+              <div className="number-box" style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)' }}>
+                <div className="label">Total Expenses</div>
+                <div className="value red">{formatCurrency(selectedMonthExpenses)}</div>
+                <div className="sub">Selected month only</div>
+              </div>
+              <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)' }}>
+                <div className="label">Total Borrow</div>
+                <div className="value orange">{formatCurrency(selectedMonthBorrow)}</div>
+                <div className="sub">Selected month only</div>
+              </div>
+              <div className="number-box" style={{ background: 'rgba(124,58,237,0.05)', borderColor: 'rgba(124,58,237,0.2)' }}>
+                <div className="label">Total Loan EMI</div>
+                <div className="value purple">{formatCurrency(selectedMonthLoanEmi)}</div>
+                <div className="sub">Selected month only</div>
               </div>
             </div>
           </div>
 
-          {/* Borrow & Loans */}
-          <div 
-            id="borrow-loans"
-            ref={el => sectionRefs.current['Borrow & Loans'] = el}
-            className={`glass-card ${editingSection === 'Borrow & Loans' ? 'editing' : ''}`}
-          >
-            <SectionHeader
-              title="Borrow & Loans"
-              icon={<HandCoins size={16} color="#F43F5E" />}
-              section="Borrow & Loans"
-              isEditing={editingSection === 'Borrow & Loans'}
-              onEdit={() => toggleSectionEdit('Borrow & Loans')}
-              onSave={() => saveSectionData('Borrow & Loans')}
-              onCancel={() => setEditingSection(null)}
-              saving={saving}
-            />
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Borrow</div>
-                {editingSection === 'Borrow & Loans' ? (
-                  <input className="edit-input" type="number" value={borrowData.totalBorrow} onChange={(e) => handleBorrowDataChange('totalBorrow', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
-                ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#FCA5A5' }}>{formatCurrency(borrowData.totalBorrow)}</div>
-                )}
-              </div>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Loans</div>
-                {editingSection === 'Borrow & Loans' ? (
-                  <input className="edit-input" type="number" value={borrowData.totalLoans} onChange={(e) => handleBorrowDataChange('totalLoans', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
-                ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#FF5A6E' }}>{formatCurrency(borrowData.totalLoans)}</div>
-                )}
-              </div>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Savings</div>
-                {editingSection === 'Borrow & Loans' ? (
-                  <input className="edit-input" type="number" value={borrowData.totalSavings} onChange={(e) => handleBorrowDataChange('totalSavings', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
-                ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#6EE7B7' }}>{formatCurrency(borrowData.totalSavings)}</div>
-                )}
-              </div>
-              <div className="number-box" style={{ padding: '0.8rem' }}>
-                <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Remaining Payment</div>
-                {editingSection === 'Borrow & Loans' ? (
-                  <input className="edit-input" type="number" value={borrowData.totalRemainingPayment} onChange={(e) => handleBorrowDataChange('totalRemainingPayment', e.target.value)} style={{ fontSize: '1rem', fontWeight: '800', textAlign: 'center' }} />
-                ) : (
-                  <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#FCD34D' }}>{formatCurrency(borrowData.totalRemainingPayment)}</div>
-                )}
-              </div>
+          {/* Quick Stats */}
+          <div className="grid-4">
+            <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)' }}>
+              <div className="label">Total Income</div>
+              <div className="value green">{formatCurrency(selectedMonthIncome)}</div>
+            </div>
+            <div className="number-box" style={{ background: 'rgba(239,68,68,0.05)' }}>
+              <div className="label">Total Expenses</div>
+              <div className="value red">{formatCurrency(selectedMonthExpenses)}</div>
+            </div>
+            <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)' }}>
+              <div className="label">Pending Payments</div>
+              <div className="value orange">{formatCurrency(pendingPayments)}</div>
+            </div>
+            <div className="number-box" style={{ background: 'rgba(124,58,237,0.05)' }}>
+              <div className="label">Net Profit</div>
+              <div className="value purple">{formatCurrency(selectedMonthIncome - selectedMonthExpenses)}</div>
             </div>
           </div>
-        </div>
+        </>
+      )}
 
-        {/* =============================================
-            SECTION 3: MONTHLY EXPENSES
-            ✅ ADDED: id="monthly-expenses"
-        ============================================= */}
-        <div 
-          id="monthly-expenses"
-          ref={el => sectionRefs.current['Monthly Expenses'] = el}
-          className={`glass-card ${editingSection === 'Monthly Expenses' ? 'editing' : ''}`}
-          style={{ marginBottom: '0.75rem' }}
-        >
-          <SectionHeader
-            title="Monthly Expenses"
-            icon={<Calendar size={16} color="#2EA8FF" />}
-            section="Monthly Expenses"
-            isEditing={editingSection === 'Monthly Expenses'}
-            onEdit={() => toggleSectionEdit('Monthly Expenses')}
-            onSave={() => saveSectionData('Monthly Expenses')}
-            onCancel={() => setEditingSection(null)}
-            saving={saving}
-          />
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.8rem' }}>
-            <select 
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '10px',
-                color: 'white',
-                padding: '0.3rem 0.8rem',
-                fontSize: '0.7rem',
-                fontFamily: 'Plus Jakarta Sans, sans-serif',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              {months.map(month => (
-                <option key={month} value={month} style={{ background: '#0a0a1f' }}>{month}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.4rem' }}>
-            {expenseCategories.map((cat, i) => (
-              <div key={i} className="number-box" style={{ padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <cat.icon size={14} color={cat.color} />
-                  <div>
-                    <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.5)' }}>{cat.name}</div>
-                    {editingSection === 'Monthly Expenses' ? (
-                      <input className="edit-input" type="number" value={cat.amount} onChange={(e) => handleMonthlyExpenseChange(cat.name.toLowerCase(), e.target.value)} style={{ fontSize: '0.8rem', fontWeight: '700', textAlign: 'center', width: '70px' }} />
-                    ) : (
-                      <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'white' }}>{formatCurrency(cat.amount)}</div>
+      {/* ============================================
+          EXPENSES TAB
+          ============================================ */}
+      {activeTab === 'expenses' && (
+        <>
+          {showExpenseForm && (
+            <div className="form-container">
+              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingExpenseId !== null ? 'Edit Expense' : 'Add New Expense'}</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Category / New Category *</label>
+                  <div className="category-picker">
+                    <input
+                      type="text"
+                      value={newExpense.category}
+                      onFocus={() => setExpenseCategoryOpen(true)}
+                      onBlur={() => setTimeout(() => setExpenseCategoryOpen(false), 150)}
+                      onChange={(e) => handleExpenseChange('category', e.target.value)}
+                      placeholder="Select or type a category"
+                      aria-label="Expense category"
+                    />
+                    {expenseCategoryOpen && (
+                      <div className="category-options">
+                        {getExpenseCategoryOptions()
+                          .filter(category => category.toLowerCase().includes(newExpense.category.toLowerCase()))
+                          .map(category => (
+                            <button
+                              type="button"
+                              className="category-option"
+                              key={category}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                handleExpenseChange('category', category);
+                                setExpenseCategoryOpen(false);
+                              }}
+                            >
+                              <CreditCard size={13} /> {category}
+                            </button>
+                          ))}
+                        {newExpense.category.trim() && !getExpenseCategoryOptions().some(category => category.toLowerCase() === newExpense.category.trim().toLowerCase()) && (
+                          <button
+                            type="button"
+                            className="category-option category-new-option"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => setExpenseCategoryOpen(false)}
+                          >
+                            <Plus size={13} /> Use “{newExpense.category.trim()}”
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
-                <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.3)' }}>
-                  {Math.round((cat.amount / monthlyExpenses[selectedMonth]?.totalExpense || 1) * 100)}%
+                <div className="form-group">
+                  <label>Amount (₹) *</label>
+                  <input type="text" value={newExpense.amount} onChange={(e) => handleExpenseChange('amount', e.target.value)} placeholder="0" />
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" value={newExpense.expense_date} onChange={(e) => handleExpenseChange('expense_date', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <input type="text" value={newExpense.notes} onChange={(e) => handleExpenseChange('notes', e.target.value)} placeholder="Optional" />
                 </div>
               </div>
-            ))}
-          </div>
-          
-          <div style={{ marginTop: '0.6rem', padding: '0.6rem', background: 'rgba(124,58,237,0.08)', borderRadius: '10px', border: '1px solid rgba(124,58,237,0.15)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)' }}>Total Month Expense</span>
-              <span style={{ fontSize: '1rem', fontWeight: '800', color: '#A78BFA' }}>
-                {formatCurrency(monthlyExpenses[selectedMonth]?.totalExpense || 0)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* =============================================
-            SECTION 4: TOP PERFORMERS
-            ✅ ADDED: id="top-performers"
-        ============================================= */}
-        <div 
-          id="top-performers"
-          ref={el => sectionRefs.current['Top Performers'] = el}
-          className="glass-card"
-          style={{ marginBottom: '0.75rem' }}
-        >
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#FBBF24' }}>
-            <Trophy size={18} /> Top Performers
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
-            <div className="number-box" style={{ padding: '0.8rem', textAlign: 'left' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)' }}>💸 Biggest Expense</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FCA5A5', marginTop: '0.1rem' }}>{topPerformers.biggestExpense}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem', textAlign: 'left' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)' }}>💰 Biggest Saving</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#6EE7B7', marginTop: '0.1rem' }}>{topPerformers.biggestSaving}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem', textAlign: 'left' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)' }}>⏳ Pending Amount</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FCD34D', marginTop: '0.1rem' }}>{topPerformers.pendingAmount}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem', textAlign: 'left' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)' }}>📅 Due Payment</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FF5A6E', marginTop: '0.1rem' }}>{topPerformers.duePayment}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* =============================================
-            SECTION 5: PRODUCTS BOUGHT
-            ✅ ADDED: id="products-bought"
-        ============================================= */}
-        <div 
-          id="products-bought"
-          ref={el => sectionRefs.current['Products Bought'] = el}
-          className={`glass-card ${editingSection === 'Products Bought' ? 'editing' : ''}`}
-        >
-          <SectionHeader
-            title="Products Bought"
-            icon={<ShoppingBag size={16} color="#7C3AED" />}
-            section="Products Bought"
-            isEditing={editingSection === 'Products Bought'}
-            onEdit={() => toggleSectionEdit('Products Bought')}
-            onSave={() => saveSectionData('Products Bought')}
-            onCancel={() => setEditingSection(null)}
-            saving={saving}
-          />
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.4rem' }}>
-            {productsBought.map((product, index) => (
-              <div key={index} className="number-box" style={{ padding: '0.8rem', textAlign: 'left' }}>
-                {editingSection === 'Products Bought' ? (
-                  <>
-                    <input className="edit-input" value={product.name} onChange={(e) => handleProductChange(index, 'name', e.target.value)} style={{ fontSize: '0.65rem', marginBottom: '0.2rem' }} placeholder="Product" />
-                    <input className="edit-input" type="number" value={product.price} onChange={(e) => handleProductChange(index, 'price', parseFloat(e.target.value))} style={{ fontSize: '0.65rem', marginBottom: '0.2rem' }} placeholder="Price" />
-                    <input className="edit-input" value={product.date} onChange={(e) => handleProductChange(index, 'date', e.target.value)} style={{ fontSize: '0.65rem', marginBottom: '0.2rem' }} placeholder="Date" />
-                    <input className="edit-input" value={product.category} onChange={(e) => handleProductChange(index, 'category', e.target.value)} style={{ fontSize: '0.65rem' }} placeholder="Category" />
-                  </>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'white' }}>{product.name}</div>
-                      <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.4)' }}>{product.category}</div>
-                      <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.1rem' }}>📅 {product.date}</div>
-                    </div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FCD34D' }}>{formatCurrency(product.price)}</div>
-                  </div>
-                )}
+              <div className="form-actions">
+                <button className="btn-glass btn-save" onClick={saveExpense} disabled={saving}>
+                  <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button className="btn-glass btn-cancel" onClick={cancelExpenseForm}>
+                  <X size={14} /> Cancel
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* =============================================
-            CHART SECTION: PIE + BAR
-            ✅ ADDED: id="portfolio-distribution" and id="monthly-performance"
-        ============================================= */}
-        <div className="chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginTop: '0.75rem' }}>
-          
-          {/* Portfolio Distribution - Pie Chart (All Time) */}
-          <div 
-            id="portfolio-distribution"
-            className="glass-card"
-          >
-            <h3 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#7C3AED' }}>
-              <PieChart size={18} /> Portfolio Distribution (All Time)
-            </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-              <div style={{ flexShrink: 0 }}>
-                <svg width="140" height="140" viewBox="0 0 140 140">
-                  {pieSegments.map((seg, i) => (
-                    <path key={i} d={describeArc(70, 70, 60, seg.startAngle, seg.startAngle + seg.angle)} fill={seg.color} className="pie-segment" stroke="#06060f" strokeWidth="2" />
-                  ))}
-                  <circle cx="70" cy="70" r="35" fill="#06060f" />
-                  <text x="70" y="62" textAnchor="middle" fill="white" fontSize="12" fontWeight="800">{formatCurrency(totalPie)}</text>
-                  <text x="70" y="78" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="8" fontWeight="600">Total</text>
-                </svg>
+          <div className="glass-card">
+            <SectionHeader
+              title={`Expenses (${selectedMonth})`}
+              icon={<CreditCard size={16} color="#7C3AED" />}
+              onAdd={() => {
+                cancelExpenseForm();
+                setNewExpense({ category: '', amount: '', expense_date: new Date().toISOString().split('T')[0], notes: '' });
+                setShowExpenseForm(true);
+              }}
+            />
+            {renderSectionFeedback('expenses')}
+            
+            {expensePieData.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Category Breakdown</h4>
+                <PieChartComponent 
+                  data={expensePieData} 
+                  total={expensePieData.reduce((sum, d) => sum + d.amount, 0)}
+                  colors={['#F59E0B','#10B981','#7C3AED','#4F6BFF','#2EA8FF','#F43F5E','#8B5CF6']}
+                />
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                {pieChartData.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.3rem 0.5rem', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${item.color}20` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: item.color }} />
-                      <span style={{ fontSize: '0.6rem', fontWeight: '600', color: 'white' }}>{item.label}</span>
+            )}
+
+            <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Expense Records</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {expenses.length === 0 ? (
+                <NoDataMessage message="No expenses found. Click Add to create your first expense!" />
+              ) : (
+                expenses.map((exp, index) => (
+                  <div key={index} className="list-item">
+                    <div className="info">
+                      <div className="name">{exp.category}</div>
+                      <div className="detail">
+                        <span className="date-badge"><Calendar size={11} /> {formatDate(exp.expense_date)}</span>
+                        {exp.notes && <span className="list-note">{exp.notes}</span>}
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.6rem', fontWeight: '700', color: 'white' }}>{((item.value / totalPie) * 100).toFixed(1)}%</div>
-                      <div style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.4)' }}>{item.amount}</div>
+                    <div className="amount red">{formatCurrency(exp.amount)}</div>
+                    <div className="actions">
+                      <button className="btn-glass btn-edit" onClick={() => editExpense(exp)} style={{ padding: '0.15rem 0.4rem' }}>
+                        <Edit2 size={12} />
+                      </button>
+                      <button className="btn-glass btn-danger" onClick={() => deleteExpense(exp.id)} style={{ padding: '0.15rem 0.4rem' }}>
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ============================================
+          LOANS TAB
+          ============================================ */}
+      {activeTab === 'loans' && (
+        <>
+          {showLoanForm && (
+            <div className="form-container">
+              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingLoanId !== null ? 'Edit Loan/Borrow' : 'Add New Loan/Borrow'}</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Name *</label>
+                  <input type="text" value={newLoan.name} onChange={(e) => handleLoanChange('name', e.target.value)} placeholder="Person/Bank name" />
+                </div>
+                <div className="form-group">
+                  <label>Type *</label>
+                  <select value={newLoan.type} onChange={(e) => handleLoanChange('type', e.target.value)}>
+                    <option value="Borrow">Borrow</option>
+                    <option value="Loan">Loan</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Amount (₹) *</label>
+                  <input type="text" value={newLoan.amount} onChange={(e) => handleLoanChange('amount', e.target.value)} placeholder="0" />
+                </div>
+                <div className="form-group">
+                  <label>EMI</label>
+                  <input type="text" value={newLoan.emi} onChange={(e) => handleLoanChange('emi', e.target.value)} placeholder="0" />
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" value={newLoan.loan_date} onChange={(e) => handleLoanChange('loan_date', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <input type="text" value={newLoan.notes} onChange={(e) => handleLoanChange('notes', e.target.value)} placeholder="Optional" />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button className="btn-glass btn-save" onClick={saveLoan} disabled={saving}>
+                  <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button className="btn-glass btn-cancel" onClick={cancelLoanForm}>
+                  <X size={14} /> Cancel
+                </button>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Bar Chart - Monthly Performance */}
-          <div 
-            id="monthly-performance"
-            className="glass-card"
-          >
-            <h3 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#4F6BFF' }}>
-              <BarChart3 size={18} /> Monthly Performance
-            </h3>
-            <div style={{ overflowX: 'auto', paddingBottom: '0.5rem' }}>
-              <svg width="100%" height="200" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet">
-                {/* Grid lines */}
-                {[0, 25, 50, 75, 100].map((line, i) => (
-                  <line key={i} x1="40" y1={170 - (line / 100) * 140} x2="580" y2={170 - (line / 100) * 140} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                ))}
-                {/* Bars */}
-                {allMonthsData.map((item, i) => {
-                  const maxVal = Math.max(...allMonthsData.map(d => d.net));
-                  const barH = (item.net / maxVal) * 130;
-                  const x = 50 + i * 45;
-                  const y = 170 - barH;
-                  const color = item.net >= 0 ? '#10B981' : '#F43F5E';
-                  return (
-                    <g key={i}>
-                      <rect x={x} y={y} width="30" height={barH} rx="4" fill={color} className="bar-rect" opacity="0.85" />
-                      <text x={x + 15} y={168} textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="8" fontWeight="600">{item.month}</text>
-                      <text x={x + 15} y={y - 4} textAnchor="middle" fill="white" fontSize="7" fontWeight="700">{formatCurrency(item.net)}</text>
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '0.5rem', fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>
-              <span>📈 Net Profit/Loss by Month</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', background: '#10B981' }} /> Profit
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', background: '#F43F5E' }} /> Loss
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* =============================================
-            Monthly Performance Summary
-            ✅ ADDED: id="monthly-summary"
-        ============================================= */}
-        <div 
-          id="monthly-summary"
-          className="glass-card"
-          style={{ marginTop: '0.75rem' }}
-        >
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#A78BFA' }}>
-            <TrendingUp size={18} /> Monthly Performance Summary ({selectedMonth})
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
-            <div className="number-box" style={{ padding: '0.8rem' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Work</div>
-              <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#7C3AED' }}>{formatNumber(monthlyPerformance.totalWork)}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Business Payment</div>
-              <div style={{ fontSize: '1rem', fontWeight: '800', color: '#10B981' }}>{formatCurrency(monthlyPerformance.businessPayment)}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Expense</div>
-              <div style={{ fontSize: '1rem', fontWeight: '800', color: '#FCA5A5' }}>{formatCurrency(monthlyPerformance.totalExpense)}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Borrow</div>
-              <div style={{ fontSize: '1rem', fontWeight: '800', color: '#FCD34D' }}>{formatCurrency(monthlyPerformance.totalBorrow)}</div>
-            </div>
-            <div className="number-box" style={{ padding: '0.8rem' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Net Profit</div>
-              <div style={{ fontSize: '1rem', fontWeight: '800', color: monthlyPerformance.netProfit >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
-                {formatCurrency(monthlyPerformance.netProfit)}
-                <span style={{ fontSize: '0.65rem', marginLeft: '0.3rem', color: monthlyPerformance.netProfit >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
-                  {monthlyPerformance.profitLoss}
-                </span>
+          <div className="glass-card">
+            <SectionHeader
+              title={`Loans & Borrows (${selectedMonth})`}
+              icon={<HandCoins size={16} color="#F43F5E" />}
+              onAdd={() => {
+                cancelLoanForm();
+                setNewLoan({ name: '', amount: '', emi: '', loan_date: new Date().toISOString().split('T')[0], type: 'Borrow', notes: '' });
+                setShowLoanForm(true);
+              }}
+            />
+            {renderSectionFeedback('loans')}
+            
+            <div className="grid-3" style={{ marginBottom: '0.8rem' }}>
+              <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)' }}>
+                <div className="label">Total Borrow</div>
+                <div className="value orange">{formatCurrency(totalBorrow)}</div>
+              </div>
+              <div className="number-box" style={{ background: 'rgba(124,58,237,0.05)' }}>
+                <div className="label">Total Loans</div>
+                <div className="value purple">{formatCurrency(totalLoans)}</div>
+              </div>
+              <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)' }}>
+                <div className="label">Total</div>
+                <div className="value green">{formatCurrency(totalBorrow + totalLoans)}</div>
               </div>
             </div>
-            <div className="number-box" style={{ padding: '0.8rem' }}>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)' }}>Total Balance</div>
-              <div style={{ fontSize: '1rem', fontWeight: '800', color: '#6EE7B7' }}>{formatCurrency(monthlyPerformance.totalBalance)}</div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {loans.length === 0 ? (
+                <NoDataMessage message="No loans found. Click Add to create your first loan!" />
+              ) : (
+                loans.map((loan, index) => (
+                  <div key={index} className="list-item">
+                    <div className="info">
+                      <div className="name">{loan.name}</div>
+                      <div className="detail">
+                        <span className={`badge ${loan.type === 'Borrow' ? 'badge-borrow' : 'badge-loan'}`}>{loan.type}</span>
+                        {loan.emi > 0 && <span>EMI: {formatCurrency(loan.emi)}</span>}
+                        <span className="date-badge"><Calendar size={11} /> {formatDate(loan.loan_date)}</span>
+                      </div>
+                    </div>
+                    <div className="amount" style={{ color: loan.type === 'Borrow' ? '#FCD34D' : '#A78BFA' }}>
+                      {formatCurrency(loan.amount)}
+                    </div>
+                    <div className="actions">
+                      <button className="btn-glass btn-edit" onClick={() => editLoan(loan)} style={{ padding: '0.15rem 0.4rem' }}>
+                        <Edit2 size={12} />
+                      </button>
+                      <button className="btn-glass btn-danger" onClick={() => deleteLoan(loan.id)} style={{ padding: '0.15rem 0.4rem' }}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
-        </div>
+        </>
+      )}
 
-      </div>
-    </>
+      {/* ============================================
+          PAYMENTS TAB
+          ============================================ */}
+      {activeTab === 'payments' && (
+        <>
+          {showPaymentForm && (
+            <div className="form-container">
+              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingPaymentId !== null ? 'Edit Payment' : 'Add New Payment'}</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Person Name *</label>
+                  <input type="text" value={newPayment.person_name} onChange={(e) => handlePaymentChange('person_name', e.target.value)} placeholder="Name" />
+                </div>
+                <div className="form-group">
+                  <label>Amount (₹) *</label>
+                  <input type="text" value={newPayment.amount} onChange={(e) => handlePaymentChange('amount', e.target.value)} placeholder="0" />
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" value={newPayment.payment_date} onChange={(e) => handlePaymentChange('payment_date', e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <select value={newPayment.status} onChange={(e) => handlePaymentChange('status', e.target.value)}>
+                    <option value="pending">Pending</option>
+                    <option value="received">Received</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <input type="text" value={newPayment.notes} onChange={(e) => handlePaymentChange('notes', e.target.value)} placeholder="Optional" />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button className="btn-glass btn-save" onClick={savePayment} disabled={saving}>
+                  <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button className="btn-glass btn-cancel" onClick={cancelPaymentForm}>
+                  <X size={14} /> Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="glass-card">
+            <SectionHeader
+              title={`Remaining Payments (${selectedMonth})`}
+              icon={<Wallet size={16} color="#F59E0B" />}
+              onAdd={() => {
+                cancelPaymentForm();
+                setNewPayment({ person_name: '', amount: '', payment_date: new Date().toISOString().split('T')[0], notes: '', status: 'pending' });
+                setShowPaymentForm(true);
+              }}
+            />
+            {renderSectionFeedback('payments')}
+            
+            <div className="grid-3" style={{ marginBottom: '0.8rem' }}>
+              <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)' }}>
+                <div className="label">Total Pending</div>
+                <div className="value orange">{formatCurrency(pendingPayments)}</div>
+              </div>
+              <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)' }}>
+                <div className="label">Total Received</div>
+                <div className="value green">{formatCurrency(payments.filter(p => p.status === 'received').reduce((sum, p) => sum + parseFloat(p.amount), 0))}</div>
+              </div>
+              <div className="number-box" style={{ background: 'rgba(239,68,68,0.05)' }}>
+                <div className="label">Overdue</div>
+                <div className="value red">{formatCurrency(payments.filter(p => p.status === 'overdue').reduce((sum, p) => sum + parseFloat(p.amount), 0))}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {payments.length === 0 ? (
+                <NoDataMessage message="No payments found. Click Add to create your first payment!" />
+              ) : (
+                payments.map((payment, index) => (
+                  <div key={index} className="list-item">
+                    <div className="info">
+                      <div className="name">{payment.person_name}</div>
+                      <div className="detail">
+                        <span className={`badge badge-${payment.status}`}>{payment.status}</span>
+                        <span className="date-badge"><Calendar size={11} /> {formatDate(payment.payment_date)}</span>
+                        {payment.notes && <span className="list-note">{payment.notes}</span>}
+                      </div>
+                    </div>
+                    <div className="amount gold">{formatCurrency(payment.amount)}</div>
+                    <div className="actions">
+                      <button className="btn-glass btn-edit" onClick={() => editPayment(payment)} style={{ padding: '0.15rem 0.4rem' }}>
+                        <Edit2 size={12} />
+                      </button>
+                      {payment.status !== 'received' && (
+                        <button className="btn-glass btn-success" onClick={() => updatePaymentStatus(payment.id, 'received')} style={{ padding: '0.15rem 0.4rem', fontSize: '0.5rem' }}>
+                          <CheckCircle size={12} />
+                        </button>
+                      )}a
+                      <button className="btn-glass btn-danger" onClick={() => deletePayment(payment.id)} style={{ padding: '0.15rem 0.4rem' }}>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ============================================
+          PERFORMANCE TAB
+          ============================================ */}
+      {activeTab === 'performance' && (
+        <>
+          <div className="glass-card" style={{ padding: '0.5rem', marginBottom: '0.75rem' }}>
+            <div className="week-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.6rem 1rem' }}>
+              <Calendar size={18} color="#4F6BFF" />
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Select Week:</span>
+              <select
+                value={selectedWeek.key}
+                onChange={(e) => {
+                  const week = getWeeksForMonth(selectedMonth).find(item => item.key === e.target.value);
+                  if (week) setSelectedWeek(week);
+                }}
+              >
+                {getWeeksForMonth(selectedMonth).map((week, index) => (
+                  <option key={week.key} value={week.key}>Week {index + 1}: {week.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {weeklyPerformance ? (
+            <div className="glass-card">
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.8rem', color: '#4F6BFF' }}>
+                <Calendar size={16} /> Weekly Performance ({formatDate(weeklyPerformance.week_start)} to {formatDate(weeklyPerformance.week_end)})
+              </h3>
+              <div className="grid-4">
+                <div className="number-box"><div className="label">Total Income</div><div className="value green">{formatCurrency(weeklyPerformance.totalIncome)}</div></div>
+                <div className="number-box"><div className="label">Total Expenses</div><div className="value red">{formatCurrency(weeklyPerformance.totalExpenses)}</div></div>
+                <div className="number-box"><div className="label">Total Savings</div><div className="value purple">{formatCurrency(weeklyPerformance.totalSavings)}</div></div>
+                <div className="number-box"><div className="label">Highest Expense Day</div><div className="value orange">{weeklyPerformance.highestExpenseDay?.day || '-'}</div></div>
+              </div>
+              {weeklyPerformance.pieData && weeklyPerformance.pieData.length > 0 && (
+                <div style={{ marginTop: '0.8rem' }}>
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Weekly Expense Breakdown</h4>
+                  <PieChartComponent 
+                    data={weeklyPerformance.pieData.map(d => ({ category: d.category, amount: d.amount }))}
+                    total={weeklyPerformance.totalExpenses}
+                    colors={['#F59E0B','#10B981','#7C3AED','#4F6BFF','#2EA8FF','#F43F5E','#8B5CF6']}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <NoDataMessage message={`No details found for ${selectedWeek.label}`} />
+          )}
+
+          {monthlyPerformance ? (
+            <div className="glass-card">
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.8rem', color: '#7C3AED' }}>
+                <BarChart3 size={16} /> Monthly Performance ({monthlyPerformance.monthName} {monthlyPerformance.year})
+              </h3>
+              <div className="grid-4">
+                <div className="number-box"><div className="label">Total Income</div><div className="value green">{formatCurrency(monthlyPerformance.totalIncome)}</div></div>
+                <div className="number-box"><div className="label">Total Expenses</div><div className="value red">{formatCurrency(monthlyPerformance.totalExpenses)}</div></div>
+                <div className="number-box"><div className="label">Net Profit</div><div className="value purple">{formatCurrency(monthlyPerformance.netProfit)}</div></div>
+                <div className="number-box"><div className="label">Total Savings</div><div className="value gold">{formatCurrency(monthlyPerformance.totalSavings)}</div></div>
+              </div>
+              <div className="grid-3" style={{ marginTop: '0.5rem' }}>
+                <div className="number-box"><div className="label">Total Borrow</div><div className="value orange">{formatCurrency(monthlyPerformance.totalBorrow)}</div></div>
+                <div className="number-box"><div className="label">Total Loans</div><div className="value purple">{formatCurrency(monthlyPerformance.totalLoans)}</div></div>
+                <div className="number-box"><div className="label">Profit Margin</div><div className="value" style={{ color: monthlyPerformance.incomeVsExpense?.isProfitable ? '#6EE7B7' : '#FCA5A5' }}>
+                  {monthlyPerformance.incomeVsExpense?.profitMargin || 0}%
+                </div></div>
+              </div>
+              {monthlyPerformance.pieData && monthlyPerformance.pieData.length > 0 && (
+                <div style={{ marginTop: '0.8rem' }}>
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Monthly Expense Breakdown</h4>
+                  <PieChartComponent 
+                    data={monthlyPerformance.pieData}
+                    total={monthlyPerformance.totalExpenses}
+                    colors={['#F59E0B','#10B981','#7C3AED','#4F6BFF','#2EA8FF','#F43F5E','#8B5CF6']}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <NoDataMessage message="No monthly performance data available" />
+          )}
+        </>
+      )}
+
+      {/* ============================================
+          SUMMARY TAB
+          ============================================ */}
+      {activeTab === 'summary' && (
+        <>
+          {summary ? (
+            <>
+              <div className="glass-card">
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.8rem', color: '#FBBF24' }}>
+                  <Trophy size={16} /> All-Time Summary
+                </h3>
+                <div className="grid-3">
+                  <div className="number-box">
+                    <div className="label">All-Time Total Income</div>
+                    <div className="value green">{formatCurrency(allTimeIncome)}</div>
+                  </div>
+                  <div className="number-box">
+                    <div className="label">All-Time Total Expenses</div>
+                    <div className="value red">{formatCurrency(allTimeExpenses)}</div>
+                  </div>
+                  <div className="number-box" style={{ background: netTotalSavings >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)' }}>
+                    <div className="label">Net Total Savings</div>
+                    <div className={`value ${netTotalSavings >= 0 ? 'green' : 'red'}`}>
+                      {netTotalSavings >= 0 ? '+' : '−'}{formatCurrency(Math.abs(netTotalSavings))}
+                    </div>
+                    <div className="sub">Income − Expenses</div>
+                  </div>
+                </div>
+                <div className="grid-4" style={{ marginTop: '0.5rem' }}>
+                  <div className="number-box"><div className="label">Total Business</div><div className="value purple">{formatNumber(summary.summary?.totalBusiness)}</div></div>
+                  <div className="number-box"><div className="label">Total Works</div><div className="value blue">{formatNumber(summary.summary?.totalWorks)}</div></div>
+                  <div className="number-box"><div className="label">Total Borrow</div><div className="value orange">{formatCurrency(summary.summary?.totalBorrow)}</div></div>
+                  <div className="number-box"><div className="label">Total Loans</div><div className="value purple">{formatCurrency(summary.summary?.totalLoans)}</div></div>
+                </div>
+              </div>
+
+              {summaryPieData && summaryPieData.length > 0 && (
+                <div className="glass-card">
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Income vs Expenses vs Savings</h4>
+                  <PieChartComponent 
+                    data={summaryPieData}
+                    total={summaryPieData.reduce((sum, d) => sum + d.amount, 0)}
+                    colors={['#10B981','#F43F5E','#F59E0B']}
+                  />
+                </div>
+              )}
+
+              {summary.monthlyTrends && summary.monthlyTrends.length > 0 && (
+                <div className="glass-card">
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Monthly Trends</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.3rem' }}>
+                    {summary.monthlyTrends.map((trend, index) => (
+                      <div key={index} className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{trend.monthName} {trend.year}</span>
+                          <span style={{ fontSize: '0.6rem', color: trend.savings >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                            {trend.savings >= 0 ? '▲' : '▼'} {formatCurrency(trend.savings)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.6rem' }}>
+                          <span style={{ color: '#6EE7B7' }}>Income: {formatCurrency(trend.income)}</span>
+                          <span style={{ color: '#FCA5A5' }}>Exp: {formatCurrency(trend.expenses)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <NoDataMessage message="No summary data available. Start adding your financial records!" />
+          )}
+        </>
+      )}
+
+    </div>
   );
 };
 

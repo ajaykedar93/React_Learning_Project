@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Building2, Filter, Edit2, Save, X, Trash2, Plus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Building2, Filter, Edit2, Save, X, Trash2, Plus, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 const Loans = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -12,6 +12,8 @@ const Loans = () => {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [newLoan, setNewLoan] = useState({
     name: '',
     amount: 0,
@@ -21,14 +23,29 @@ const Loans = () => {
     totalEmi: 36
   });
 
+  useEffect(() => {
+    if (!feedback) return undefined;
+    const timer = setTimeout(() => setFeedback(null), 3000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  const showFeedback = (type, message) => {
+    setFeedback({ type, message });
+  };
+
   const handleEdit = (loan) => {
     setEditingId(loan.id);
     setEditData({ ...loan });
   };
 
   const handleSave = (id) => {
+    if (!editData.name?.trim()) {
+      showFeedback('error', 'Loan name is required.');
+      return;
+    }
     setLoans(loans.map(l => l.id === id ? editData : l));
     setEditingId(null);
+    showFeedback('success', 'Loan updated successfully.');
   };
 
   const handleCancel = () => {
@@ -40,6 +57,10 @@ const Loans = () => {
   };
 
   const handleAddLoan = () => {
+    if (!newLoan.name.trim()) {
+      showFeedback('error', 'Loan name is required.');
+      return;
+    }
     const loan = {
       id: Date.now(),
       ...newLoan,
@@ -58,12 +79,17 @@ const Loans = () => {
       remainingEmi: 36,
       totalEmi: 36
     });
+    showFeedback('success', 'Loan added successfully.');
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this loan?')) {
-      setLoans(loans.filter(l => l.id !== id));
-    }
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = () => {
+    setLoans(loans.filter(l => l.id !== confirmDeleteId));
+    setConfirmDeleteId(null);
+    showFeedback('success', 'Loan deleted successfully.');
   };
 
   const formatDate = (dateStr) => {
@@ -73,6 +99,7 @@ const Loans = () => {
 
   const totalLoans = loans.reduce((sum, l) => sum + l.amount, 0);
   const totalEmi = loans.reduce((sum, l) => sum + l.emi, 0);
+  const filteredLoans = loans.filter(loan => loan.name.toLowerCase().includes(searchQuery.toLowerCase().trim()));
 
   return (
     <>
@@ -82,25 +109,94 @@ const Loans = () => {
         }
 
         .glass-card {
-          background: rgba(255, 255, 255, 0.03);
+          background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(196,181,253,0.26);
           border-radius: 20px;
           transition: all 0.3s ease;
           padding: 1.25rem;
+          box-shadow: 0 14px 36px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
         }
 
         .glass-card:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.15);
+          background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(124,58,237,0.08));
+          border-color: rgba(196,181,253,0.5);
           transform: translateY(-2px);
           box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
 
+        .section-feedback {
+          width: min(100%, 420px);
+          margin: 0 auto 0.8rem;
+          padding: 0.55rem 0.8rem;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          text-align: center;
+          font-size: 0.72rem;
+          animation: fadeIn 0.25s ease;
+        }
+
+        .section-feedback.success {
+          background: rgba(16, 185, 129, 0.12);
+          border: 1px solid rgba(16, 185, 129, 0.28);
+          color: #6EE7B7;
+        }
+
+        .section-feedback.error {
+          background: rgba(239, 68, 68, 0.12);
+          border: 1px solid rgba(239, 68, 68, 0.28);
+          color: #FCA5A5;
+        }
+
+        .loan-confirm-dialog {
+          width: min(100%, 360px);
+          margin: 0 auto 0.8rem;
+          padding: 0.9rem;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          border-radius: 12px;
+          background: rgba(32, 32, 51, 0.98);
+          box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+          text-align: center;
+        }
+
+        .loan-confirm-dialog p {
+          margin: 0.5rem 0 0.75rem;
+          color: rgba(255, 255, 255, 0.85);
+          font-size: 0.75rem;
+        }
+
+        .loan-confirm-actions {
+          display: flex;
+          justify-content: center;
+          gap: 0.4rem;
+        }
+
+        .loan-table-wrap {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .loan-table-wrap table {
+          min-width: 720px;
+        }
+
+        .loans-table th {
+          color: rgba(255,255,255,0.72) !important;
+          border-bottom-color: rgba(196,181,253,0.22) !important;
+        }
+
+        .loans-table tbody tr:hover {
+          background: rgba(124,58,237,0.12) !important;
+        }
+
         .glass-btn {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 10px;
           color: white;
           cursor: pointer;
@@ -112,8 +208,8 @@ const Loans = () => {
         }
 
         .glass-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 255, 255, 0.25);
+          background: rgba(124, 58, 237, 0.3);
+          border-color: rgba(196, 181, 253, 0.6);
           transform: translateY(-2px);
         }
 
@@ -148,8 +244,8 @@ const Loans = () => {
         }
 
         .edit-input {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 8px;
           padding: 0.3rem 0.5rem;
           color: white;
@@ -162,9 +258,9 @@ const Loans = () => {
         }
 
         .edit-input:focus {
-          border-color: rgba(124, 58, 237, 0.5);
+          border-color: rgba(196, 181, 253, 0.72);
           box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
-          background: rgba(255, 255, 255, 0.08);
+          background: rgba(124, 58, 237, 0.16);
         }
 
         .modal-overlay {
@@ -186,8 +282,8 @@ const Loans = () => {
         }
 
         .modal-content {
-          background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-          border: 1px solid rgba(255,255,255,0.08);
+          background: linear-gradient(145deg, rgba(35,38,76,0.98), rgba(25,28,58,0.98));
+          border: 1px solid rgba(196,181,253,0.35);
           border-radius: 24px;
           padding: 24px;
           max-width: 500px;
@@ -240,7 +336,7 @@ const Loans = () => {
         .form-label {
           font-size: 0.65rem;
           font-weight: 600;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.7);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -346,7 +442,25 @@ const Loans = () => {
           </div>
 
           {/* Loans List */}
-          <div style={{ overflowX: 'auto' }}>
+          {feedback && (
+            <div className={`section-feedback ${feedback.type}`} role="status" aria-live="polite">
+              {feedback.type === 'success' ? <CheckCircle size={14} /> : <XCircle size={14} />}
+              {feedback.message}
+            </div>
+          )}
+
+          {confirmDeleteId !== null && (
+            <div className="loan-confirm-dialog" role="alertdialog" aria-live="assertive">
+              <AlertTriangle size={20} color="#FCD34D" />
+              <p>Are you sure you want to delete this loan?</p>
+              <div className="loan-confirm-actions">
+                <button className="glass-btn" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
+                <button className="glass-btn danger" onClick={confirmDelete}>Delete</button>
+              </div>
+            </div>
+          )}
+
+          <div className="loan-table-wrap">
             <table className="loans-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
@@ -359,7 +473,7 @@ const Loans = () => {
                 </tr>
               </thead>
               <tbody>
-                {loans.map((loan) => {
+                {filteredLoans.map((loan) => {
                   const isEditing = editingId === loan.id;
                   return (
                     <tr key={loan.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'all 0.2s ease' }}

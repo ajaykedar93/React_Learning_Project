@@ -10,7 +10,7 @@ export default function Login() {
   const API_BASE = useMemo(
     () =>
       import.meta?.env?.VITE_API_BASE?.trim() ||
-      "http://localhost:5000",
+      "http://localhost:5000" || "https://express-project-learning-new.onrender.com",
     []
   );
 

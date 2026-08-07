@@ -10,7 +10,7 @@ export default function Forgot() {
   const navigate = useNavigate();
 
   const API_BASE =
-    import.meta?.env?.VITE_API_BASE || "http://localhost:5000";
+    import.meta?.env?.VITE_API_BASE || "http://localhost:5000" || "https://express-project-learning-new.onrender.com";
 
   const [step, setStep] = useState("email"); // email -> otp -> reset
   const [emailLocked, setEmailLocked] = useState(false);

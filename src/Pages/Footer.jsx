@@ -325,83 +325,83 @@ const Footer = () => {
         /* Mobile Navigation Safe Space */
         @media (max-width: 768px) {
           .footer-container {
-            padding: 0.6rem 1rem;
-            padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
-            padding-bottom: calc(0.6rem + constant(safe-area-inset-bottom, 0px));
-          }
-          .footer-content {
-            gap: 1.2rem;
-          }
-          .footer-brand {
-            font-size: 0.9rem;
-          }
-          .code-icon-wrapper {
-            width: 38px;
-            height: 38px;
-          }
-          .code-icon {
-            width: 20px;
-            height: 20px;
-          }
-          .footer-text {
-            font-size: 0.85rem;
-          }
-          .footer-text .highlight {
-            font-size: 0.95rem;
-          }
-          .social-link {
-            padding: 0.35rem 0.8rem;
-            font-size: 0.8rem;
-          }
-          .social-link .icon-text {
-            font-size: 0.8rem;
-          }
-          .footer-divider {
-            display: none;
-          }
-          .footer-year {
-            font-size: 0.7rem;
-          }
-          .footer-heart {
-            transform: scale(0.9);
-          }
-        }
-
-        @media (max-width: 480px) {
-          .footer-container {
-            padding: 0.4rem 0.6rem;
+            padding: 0.4rem 0.75rem;
             padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
             padding-bottom: calc(0.4rem + constant(safe-area-inset-bottom, 0px));
           }
           .footer-content {
-            gap: 0.8rem;
+            gap: 0.75rem;
           }
           .footer-brand {
-            font-size: 0.75rem;
+            font-size: 0.78rem;
           }
           .code-icon-wrapper {
             width: 32px;
             height: 32px;
           }
           .code-icon {
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
           }
           .footer-text {
-            font-size: 0.7rem;
+            font-size: 0.72rem;
           }
           .footer-text .highlight {
             font-size: 0.8rem;
           }
           .social-link {
-            padding: 0.25rem 0.6rem;
+            padding: 0.25rem 0.55rem;
+            font-size: 0.72rem;
+          }
+          .social-link .icon-text {
+            font-size: 0.72rem;
+          }
+          .footer-divider {
+            display: none;
+          }
+          .footer-year {
+            font-size: 0.62rem;
+          }
+          .footer-heart {
+            transform: scale(0.78);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .footer-container {
+            padding: 0.25rem 0.5rem;
+            padding-bottom: calc(0.25rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.25rem + constant(safe-area-inset-bottom, 0px));
+          }
+          .footer-content {
+            gap: 0.45rem;
+          }
+          .footer-brand {
+            font-size: 0.68rem;
+          }
+          .code-icon-wrapper {
+            width: 27px;
+            height: 27px;
+          }
+          .code-icon {
+            width: 14px;
+            height: 14px;
+          }
+          .footer-text {
+            font-size: 0.62rem;
+          }
+          .footer-text .highlight {
             font-size: 0.7rem;
+          }
+          .social-link {
+            padding: 0.2rem 0.45rem;
+            font-size: 0.62rem;
           }
           .social-link .icon-text {
             display: none;
           }
           .social-link {
-            padding: 0.4rem 0.5rem;
+            padding: 0.25rem 0.4rem;
           }
           .footer-heart {
             transform: scale(0.7);

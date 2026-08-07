@@ -93,7 +93,7 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
 
         .navbar {
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-          position: sticky;
+          position: fixed;
           top: 0;
           z-index: 100;
           width: 100%;

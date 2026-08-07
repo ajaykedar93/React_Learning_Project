@@ -32,6 +32,7 @@ const Trading = ({ refreshTrigger }) => {
 
   const [trades, setTrades] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTradeId, setDeleteTradeId] = useState(null);
   const [editingTrade, setEditingTrade] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [userId] = useState(1);
@@ -487,7 +488,12 @@ const Trading = ({ refreshTrigger }) => {
   // DELETE TRADE
   // =============================================
   const deleteTrade = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this trade?')) return;
+    setDeleteTradeId(id);
+  };
+
+  const confirmDeleteTrade = async () => {
+    const id = deleteTradeId;
+    setDeleteTradeId(null);
 
     try {
       setLoading(true);
@@ -646,7 +652,12 @@ const Trading = ({ refreshTrigger }) => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; background: #06060f; color: white; }
 
-        .trading-container { background: transparent; padding: 0; }
+        .trading-container {
+          background: linear-gradient(145deg, rgba(17,21,43,0.92), rgba(24,27,58,0.76));
+          border: 1px solid rgba(196,181,253,0.2);
+          border-radius: 18px;
+          padding: 1rem;
+        }
 
         /* =============================================
            TOAST NOTIFICATION STYLES
@@ -743,25 +754,39 @@ const Trading = ({ refreshTrigger }) => {
           color: white;
         }
 
+        .trade-confirm-dialog {
+          width: min(92%, 360px);
+          margin: 0 auto 0.75rem;
+          padding: 0.9rem;
+          text-align: center;
+          background: rgba(32,32,51,0.98);
+          border: 1px solid rgba(245,158,11,0.3);
+          border-radius: 12px;
+          box-shadow: 0 14px 35px rgba(0,0,0,0.35);
+        }
+        .trade-confirm-dialog p { margin: 0.5rem 0 0.75rem; color: rgba(255,255,255,0.85); font-size: 0.75rem; }
+        .trade-confirm-actions { display: flex; justify-content: center; gap: 0.4rem; }
+
         .glass-card {
-          background: rgba(255, 255, 255, 0.03);
+          background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(196,181,253,0.24);
           border-radius: 20px;
           transition: all 0.3s ease;
           padding: 1.25rem;
+          box-shadow: 0 14px 36px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
         }
         .glass-card:hover {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.15);
+          background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(124,58,237,0.08));
+          border-color: rgba(196,181,253,0.52);
           transform: translateY(-2px);
           box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
 
         .glass-btn {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 10px;
           color: white;
           cursor: pointer;
@@ -775,8 +800,8 @@ const Trading = ({ refreshTrigger }) => {
           gap: 0.4rem;
         }
         .glass-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 255, 255, 0.25);
+          background: rgba(124, 58, 237, 0.3);
+          border-color: rgba(196, 181, 253, 0.62);
           transform: translateY(-2px);
         }
         .glass-btn:active { transform: scale(0.95); }
@@ -803,8 +828,8 @@ const Trading = ({ refreshTrigger }) => {
           display: inline-flex;
           align-items: center;
           gap: 0.4rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 10px;
           color: white;
           cursor: pointer;
@@ -815,8 +840,8 @@ const Trading = ({ refreshTrigger }) => {
           font-weight: 600;
         }
         .refresh-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          border-color: rgba(255, 255, 255, 0.25);
+          background: rgba(124, 58, 237, 0.3);
+          border-color: rgba(196, 181, 253, 0.62);
           transform: translateY(-2px);
         }
         .refresh-btn:active { transform: scale(0.95); }
@@ -828,22 +853,23 @@ const Trading = ({ refreshTrigger }) => {
         }
 
         .stat-box {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 12px;
           padding: 0.8rem;
           text-align: center;
           transition: all 0.3s ease;
         }
         .stat-box:hover {
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(124, 58, 237, 0.2);
+          background: rgba(124, 58, 237, 0.18);
+          border-color: rgba(167, 139, 250, 0.5);
           transform: translateY(-2px);
         }
         .stat-value { font-size: 1.4rem; font-weight: 800; }
+        .net-pnl-value { font-size: 1.55rem !important; font-weight: 900; letter-spacing: 0.01em; text-shadow: 0 0 16px currentColor; }
         .stat-label {
           font-size: 0.65rem;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.72);
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -851,8 +877,8 @@ const Trading = ({ refreshTrigger }) => {
         }
 
         .edit-input {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 10px;
           padding: 0.5rem 0.7rem;
           color: white;
@@ -864,9 +890,9 @@ const Trading = ({ refreshTrigger }) => {
           transition: all 0.3s ease;
         }
         .edit-input:focus {
-          border-color: rgba(124, 58, 237, 0.5);
+          border-color: rgba(196, 181, 253, 0.72);
           box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
-          background: rgba(255, 255, 255, 0.08);
+          background: rgba(124, 58, 237, 0.16);
         }
         .edit-input::placeholder { color: rgba(255, 255, 255, 0.3); }
 
@@ -951,7 +977,7 @@ const Trading = ({ refreshTrigger }) => {
         .form-label {
           font-size: 0.7rem;
           font-weight: 600;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.72);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -1047,9 +1073,8 @@ const Trading = ({ refreshTrigger }) => {
           margin-top: 2px;
           text-align: center;
           white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 40px;
+          overflow: visible;
+          max-width: none;
         }
         .bar-value {
           font-size: 0.45rem;
@@ -1058,30 +1083,30 @@ const Trading = ({ refreshTrigger }) => {
         }
 
         .segment-item {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 10px;
           padding: 0.5rem;
           text-align: center;
           transition: all 0.3s ease;
         }
         .segment-item:hover {
-          background: rgba(255, 255, 255, 0.06);
-          border-color: rgba(124, 58, 237, 0.2);
+          background: rgba(124, 58, 237, 0.18);
+          border-color: rgba(167, 139, 250, 0.5);
           transform: translateY(-2px);
         }
         .segment-name { font-size: 0.7rem; font-weight: 600; color: white; }
-        .segment-trades { font-size: 0.6rem; color: rgba(255, 255, 255, 0.4); }
+        .segment-trades { font-size: 0.6rem; color: rgba(255, 255, 255, 0.7); }
         .segment-pl { font-size: 0.75rem; font-weight: 700; }
 
         .market-card {
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(196,181,253,0.28);
           border-radius: 16px;
           padding: 1rem;
           transition: all 0.3s ease;
         }
         .market-card:hover {
-          border-color: rgba(255, 255, 255, 0.12);
+          border-color: rgba(196,181,253,0.62);
         }
         .market-card.indian { border-color: rgba(16, 185, 129, 0.2); }
         .market-card.forex { border-color: rgba(245, 158, 11, 0.2); }
@@ -1104,21 +1129,23 @@ const Trading = ({ refreshTrigger }) => {
           margin-bottom: 0.75rem;
         }
         .market-stat {
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.09);
+          border: 1px solid rgba(255,255,255,0.1);
           border-radius: 8px;
           padding: 0.4rem;
           text-align: center;
         }
         .market-stat-value { font-size: 0.9rem; font-weight: 700; }
+        .market-stat-value.net-pnl-value { font-size: 1.18rem; }
         .market-stat-label {
           font-size: 0.5rem;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.72);
           text-transform: uppercase;
         }
 
         .trade-card-mobile {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
+          border: 1px solid rgba(196,181,253,0.28);
           border-radius: 10px;
           padding: 0.6rem;
           margin-bottom: 0.4rem;
@@ -1126,30 +1153,45 @@ const Trading = ({ refreshTrigger }) => {
         .trade-card-mobile .row {
           display: flex;
           justify-content: space-between;
+          align-items: flex-start;
+          gap: 0.75rem;
+          flex-wrap: wrap;
           padding: 0.15rem 0;
         }
         .trade-card-mobile .label {
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.72);
           font-size: 0.6rem;
           font-weight: 600;
           text-transform: uppercase;
+          flex: 0 0 38%;
         }
         .trade-card-mobile .value {
           font-weight: 600;
           font-size: 0.65rem;
+          flex: 1 1 55%;
+          min-width: 0;
+          text-align: right;
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
+        .trade-card-mobile .net-pnl-inline { font-size: 0.82rem; font-weight: 900; text-shadow: 0 0 10px currentColor; }
+        .desktop-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .desktop-table-wrap table { min-width: 900px; }
+        .desktop-table-wrap th { color: rgba(255,255,255,0.72) !important; border-bottom-color: rgba(196,181,253,0.24) !important; }
+        .market-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem; }
 
         .filter-toggle {
           display: flex;
           gap: 0.3rem;
-          background: rgba(255, 255, 255, 0.03);
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255,255,255,0.12);
           border-radius: 10px;
           padding: 0.2rem;
         }
         .filter-toggle button {
           background: transparent;
           border: none;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.72);
           padding: 0.3rem 0.7rem;
           border-radius: 8px;
           font-size: 0.65rem;
@@ -1159,8 +1201,9 @@ const Trading = ({ refreshTrigger }) => {
           font-family: 'Plus Jakarta Sans', sans-serif;
         }
         .filter-toggle button.active {
-          background: rgba(124, 58, 237, 0.2);
-          color: #A78BFA;
+          background: rgba(124, 58, 237, 0.38);
+          color: #E9D5FF;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 14px rgba(124,58,237,0.18);
         }
         .filter-toggle button:hover {
           color: white;
@@ -1172,10 +1215,13 @@ const Trading = ({ refreshTrigger }) => {
           .mobile-show { display: block !important; }
           .desktop-table-wrap { display: none !important; }
           .market-stats { grid-template-columns: repeat(2, 1fr); }
+          .market-sections { grid-template-columns: 1fr; }
           .bar-chart-container { height: 80px; gap: 2px; }
           .bar-wrapper { min-width: 12px; }
-          .bar-label { font-size: 0.35rem; }
+          .bar-label { font-size: 0.4rem; }
           .bar-value { font-size: 0.35rem; }
+          .trade-card-mobile .label { flex-basis: 34%; }
+          .trade-card-mobile .value { font-size: 0.68rem; }
           .filter-toggle button { padding: 0.2rem 0.5rem; font-size: 0.55rem; }
         }
 
@@ -1250,6 +1296,16 @@ const Trading = ({ refreshTrigger }) => {
               <button className="toast-close" onClick={() => setToast(null)}>
                 <X size={16} />
               </button>
+            </div>
+          </div>
+        )}
+        {deleteTradeId !== null && (
+          <div className="trade-confirm-dialog" role="alertdialog" aria-live="assertive">
+            <AlertTriangle size={20} color="#FCD34D" style={{ margin: '0 auto' }} />
+            <p>Are you sure you want to delete this trade?</p>
+            <div className="trade-confirm-actions">
+              <button className="glass-btn" onClick={() => setDeleteTradeId(null)}>Cancel</button>
+              <button className="glass-btn danger" onClick={confirmDeleteTrade}>Delete</button>
             </div>
           </div>
         )}
@@ -1374,7 +1430,7 @@ const Trading = ({ refreshTrigger }) => {
             <div className="stat-label">Total Trades</div>
           </div>
           <div className="stat-box" style={{ padding: '0.5rem' }}>
-            <div className="stat-value" style={{ color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5', fontSize: '1.2rem' }}>
+            <div className="stat-value net-pnl-value" style={{ color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
               {formatCurrency(combinedStats.netPL)}
             </div>
             <div className="stat-label">Net P&L</div>
@@ -1392,7 +1448,7 @@ const Trading = ({ refreshTrigger }) => {
         </div>
 
         {/* INDIAN & FOREX MARKET SECTIONS */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.5rem' }}>
+        <div className="market-sections">
           
           {/* INDIAN MARKET */}
           <div className="glass-card market-card indian" style={{ padding: '0.75rem' }}>
@@ -1405,7 +1461,7 @@ const Trading = ({ refreshTrigger }) => {
             
             <div className="market-stats">
               <div className="market-stat">
-                <div className="market-stat-value" style={{ color: indianStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                <div className="market-stat-value net-pnl-value" style={{ color: indianStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
                   {formatCurrency(indianStats.netPL, false)}
                 </div>
                 <div className="market-stat-label">Net P&L</div>
@@ -1511,7 +1567,7 @@ const Trading = ({ refreshTrigger }) => {
             
             <div className="market-stats">
               <div className="market-stat">
-                <div className="market-stat-value" style={{ color: forexStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                <div className="market-stat-value net-pnl-value" style={{ color: forexStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
                   {formatCurrency(forexStats.netPL, true)}
                 </div>
                 <div className="market-stat-label">Net P&L</div>
@@ -1659,7 +1715,9 @@ const Trading = ({ refreshTrigger }) => {
                             {formatCurrency(trade.brokerage || 0, isForex)}
                           </td>
                           <td style={{ padding: '0.25rem 0.3rem', textAlign: 'right', fontWeight: '700', color: isProfit ? '#6EE7B7' : '#FCA5A5', fontSize: '0.65rem' }}>
-                            {formatCurrency(trade.profit_loss, isForex)}
+                            <span className="net-pnl-inline" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>
+                              {formatCurrency(trade.profit_loss, isForex)}
+                            </span>
                           </td>
                           <td style={{ padding: '0.25rem 0.3rem', textAlign: 'center' }}>
                             <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'center' }}>
@@ -1712,6 +1770,14 @@ const Trading = ({ refreshTrigger }) => {
                         <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.broker}</span>
                       </div>
                       <div className="row">
+                        <span className="label">Segment</span>
+                        <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.segment}</span>
+                      </div>
+                      <div className="row">
+                        <span className="label">Type</span>
+                        <span className="value" style={{ color: trade.type === 'Buy' ? '#6EE7B7' : '#FCA5A5' }}>{trade.type}</span>
+                      </div>
+                      <div className="row">
                         <span className="label">Lot / Entry / Exit</span>
                         <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>
                           {formatNumber(trade.quantity)} / {formatCurrency(trade.entry_price, isForex)} / {formatCurrency(trade.exit_price, isForex)}
@@ -1721,11 +1787,21 @@ const Trading = ({ refreshTrigger }) => {
                         <span className="label">Gross / Brokerage / Net</span>
                         <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>
                           {formatCurrency(trade.gross_profit_loss || trade.profit_loss, isForex)} / {formatCurrency(trade.brokerage || 0, isForex)} / 
-                          <span style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5', fontWeight: '700' }}>
+                          <span className="net-pnl-inline" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>
                             {formatCurrency(trade.profit_loss, isForex)}
                           </span>
                         </span>
                       </div>
+                      <div className="row">
+                        <span className="label">Status</span>
+                        <span className="value" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>{isProfit ? 'Profit' : 'Loss'}</span>
+                      </div>
+                      {trade.notes && (
+                        <div className="row">
+                          <span className="label">Notes</span>
+                          <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.notes}</span>
+                        </div>
+                      )}
                       <div className="row" style={{ marginTop: '0.2rem', paddingTop: '0.2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
                           <button 

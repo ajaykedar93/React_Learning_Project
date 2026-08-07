@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Phone, MapPin, Mail, Briefcase, Globe, Copy, Check, ExternalLink, Edit3, Save, X, Camera, Loader, Move, Maximize, ZoomIn, ZoomOut, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 
 const ProfileCard = () => {
@@ -610,8 +611,8 @@ const ProfileCard = () => {
         
         .profile-container {
           display: flex; justify-content: center; align-items: center;
-          min-height: 100vh; padding: 20px;
-          background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+          min-height: auto; padding: 0;
+          background: transparent;
           width: 100%;
         }
         
@@ -619,13 +620,15 @@ const ProfileCard = () => {
           animation: cardEntry 0.8s ease forwards;
           width: 100%; max-width: 520px; margin: 0 auto;
           position: relative; overflow: visible;
-          background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+          background: linear-gradient(145deg, rgba(42,54,110,0.92), rgba(43,72,130,0.72) 48%, rgba(79,55,135,0.72));
           backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 32px;
+          border: 1px solid rgba(125,211,252,0.42);
+          border-radius: 24px;
           padding: 28px;
-          box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+          box-shadow: 0 24px 60px rgba(0,0,0,0.42), 0 0 32px rgba(56,189,248,0.12), inset 0 1px 0 rgba(255,255,255,0.16);
+          transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
         }
+        .profile-card:hover { border-color: rgba(125,211,252,0.72); box-shadow: 0 28px 70px rgba(0,0,0,0.5), 0 0 38px rgba(56,189,248,0.18), inset 0 1px 0 rgba(255,255,255,0.2); transform: translateY(-2px); }
         
         .profile-card * { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
         
@@ -649,17 +652,20 @@ const ProfileCard = () => {
         
         .info-row-hover {
           transition: all 0.3s ease; cursor: pointer;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
         }
         
         .info-row-hover:hover {
           transform: translateX(5px);
-          background: rgba(124,58,237,0.08) !important;
-          border-color: rgba(124,58,237,0.15) !important;
+          background: rgba(124,58,237,0.2) !important;
+          border-color: rgba(196,181,253,0.45) !important;
+          box-shadow: 0 8px 22px rgba(124,58,237,0.12);
         }
         
         .edit-input {
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.11);
+          border: 1px solid rgba(255,255,255,0.2);
           border-radius: 10px; padding: 0.5rem 0.8rem;
           color: white; font-size: 0.85rem; font-weight: 500;
           width: 100%; outline: none;
@@ -667,12 +673,12 @@ const ProfileCard = () => {
           transition: all 0.3s ease;
         }
         
-        .edit-input::placeholder { color: rgba(255,255,255,0.3); }
+        .edit-input::placeholder { color: rgba(255,255,255,0.55); }
         
         .edit-input:focus {
-          border-color: rgba(124,58,237,0.5);
+          border-color: rgba(196,181,253,0.75);
           box-shadow: 0 0 20px rgba(124,58,237,0.1);
-          background: rgba(255,255,255,0.08);
+          background: rgba(124,58,237,0.16);
         }
         
         .error-message {
@@ -872,9 +878,9 @@ const ProfileCard = () => {
           align-items: center;
           gap: 6px;
           padding: 10px 12px;
-          background: rgba(255,255,255,0.03);
+          background: rgba(255,255,255,0.09);
           border-radius: 14px;
-          border: 1px solid rgba(255,255,255,0.06);
+          border: 1px solid rgba(196,181,253,0.22);
           width: 100%;
           flex-shrink: 0;
         }
@@ -890,9 +896,9 @@ const ProfileCard = () => {
           min-width: 40px;
           height: 40px;
           border-radius: 10px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.7);
+          border: 1px solid rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.88);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -904,8 +910,8 @@ const ProfileCard = () => {
         }
 
         .control-btn:hover {
-          background: rgba(255,255,255,0.1);
-          border-color: rgba(255,255,255,0.2);
+          background: rgba(124,58,237,0.3);
+          border-color: rgba(196,181,253,0.62);
           transform: scale(1.05);
           color: white;
         }
@@ -975,13 +981,14 @@ const ProfileCard = () => {
         }
 
         .modal-btn.cancel {
-          background: rgba(255,255,255,0.05);
-          color: rgba(255,255,255,0.6);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.85);
+          border: 1px solid rgba(255,255,255,0.2);
         }
 
         .modal-btn.cancel:hover {
-          background: rgba(255,255,255,0.08);
+          background: rgba(124,58,237,0.28);
+          border-color: rgba(196,181,253,0.55);
           color: white;
         }
 
@@ -1010,9 +1017,9 @@ const ProfileCard = () => {
         .logo-btn {
           padding: 5px 16px;
           border-radius: 10px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.7);
+          border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.09);
+          color: rgba(255,255,255,0.9);
           font-size: 0.7rem;
           font-weight: 600;
           cursor: pointer;
@@ -1023,7 +1030,8 @@ const ProfileCard = () => {
         }
 
         .logo-btn:hover {
-          background: rgba(255,255,255,0.1);
+          background: rgba(124,58,237,0.28);
+          border-color: rgba(196,181,253,0.55);
           transform: scale(1.05);
           color: white;
         }
@@ -1095,7 +1103,7 @@ const ProfileCard = () => {
         )}
 
         {/* Manage Modal - Buttons at bottom INSIDE card */}
-        {showManageModal && isEditing && (editData.avatar || userData.avatar) && (
+        {showManageModal && (editData.avatar || userData.avatar) && createPortal(
           <div className="modal-overlay">
             <div className="modal-content">
               <button className="modal-close-btn" onClick={() => setShowManageModal(false)}>
@@ -1190,10 +1198,10 @@ const ProfileCard = () => {
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* View Modal */}
-        {showImageModal && displayAvatar && !isEditing && (
+        {showImageModal && displayAvatar && !isEditing && createPortal(
           <div className="modal-overlay" onClick={closeImageModal}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close-btn" onClick={closeImageModal}>
@@ -1209,7 +1217,7 @@ const ProfileCard = () => {
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
 
         {/* Profile Card */}
         <div className="profile-card">
@@ -1259,10 +1267,10 @@ const ProfileCard = () => {
                   onClick={handleCancel} 
                   style={{
                     width: '40px', height: '40px', borderRadius: '12px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', color: 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer', color: 'rgba(255,255,255,0.88)',
                     transition: 'all 0.3s ease'
                   }}
                   disabled={saving}
@@ -1291,9 +1299,9 @@ const ProfileCard = () => {
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               marginBottom: '1.5rem',
               padding: '1.5rem',
-              background: 'rgba(255,255,255,0.02)',
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.1), rgba(124,58,237,0.08))',
               borderRadius: '24px',
-              border: '1px solid rgba(255,255,255,0.04)',
+              border: '1px solid rgba(196,181,253,0.2)',
             }}>
               <div className="avatar-wrapper" style={{ position: 'relative', marginBottom: '10px' }}>
                 <div style={{
@@ -1358,7 +1366,7 @@ const ProfileCard = () => {
                 .avatar-wrapper:hover div:last-child { opacity: 1 !important; }
               `}</style>
 
-              {/* Logo Buttons - Wrapper with spacing */}
+              {/* Logo controls are available only in edit mode. */}
               {isEditing && (
                 <div className="logo-buttons-wrapper">
                   <div className="logo-buttons">
@@ -1411,11 +1419,11 @@ const ProfileCard = () => {
 
             {/* Contact Information */}
             <h3 style={{
-              fontSize: '0.7rem', fontWeight: '700', color: 'rgba(255,255,255,0.3)',
+              fontSize: '0.7rem', fontWeight: '700', color: '#D8C7FF',
               textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1rem',
               display: 'flex', alignItems: 'center', gap: '0.6rem'
             }}>
-              <Globe size={14} color="rgba(255,255,255,0.2)" /> Contact Information
+              <Globe size={14} color="#C4B5FD" /> Contact Information
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1492,8 +1500,8 @@ const ProfileCard = () => {
 const InfoRow = ({ icon, iconBg, label, value, isEditing, onChange, children }) => (
   <div className="info-row-hover" style={{
     padding: '0.7rem 0.9rem', borderRadius: '14px',
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.04)',
+    background: 'rgba(255,255,255,0.12)',
+    border: '1px solid rgba(125,211,252,0.28)',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     gap: '0.5rem',
     transition: 'all 0.3s ease'
@@ -1501,11 +1509,11 @@ const InfoRow = ({ icon, iconBg, label, value, isEditing, onChange, children }) 
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: 0 }}>
       <div style={{ ...iconBoxStyle, background: iconBg, flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: '600', marginBottom: '0.15rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
+        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.68)', fontWeight: '600', marginBottom: '0.15rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
         {isEditing ? (
           <input className="edit-input" value={value} onChange={(e) => onChange(e.target.value)} placeholder={`Enter ${label}`} style={{ fontSize: '0.7rem', padding: '0.35rem 0.6rem' }} />
         ) : (
-          <div style={{ fontSize: '0.8rem', fontWeight: '600', color: 'white', letterSpacing: '0.01em' }}>{value || 'Not set'}</div>
+          <div style={{ fontSize: '0.8rem', fontWeight: '600', color: '#FFFFFF', letterSpacing: '0.01em' }}>{value || 'Not set'}</div>
         )}
       </div>
     </div>
@@ -1516,11 +1524,11 @@ const InfoRow = ({ icon, iconBg, label, value, isEditing, onChange, children }) 
 const CopyBtn = ({ onClick, copied }) => (
   <button onClick={onClick} style={{
     width: '28px', height: '28px', borderRadius: '8px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.14)',
+    border: '1px solid rgba(125,211,252,0.3)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', transition: 'all 0.2s ease',
-    color: 'rgba(255,255,255,0.3)'
+    color: 'rgba(255,255,255,0.82)'
   }}>
     {copied ? <Check size={13} color="#6EE7B7" /> : <Copy size={13} />}
   </button>
@@ -1533,11 +1541,11 @@ const iconBoxStyle = {
 
 const linkBtn = {
   width: '28px', height: '28px', borderRadius: '8px',
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'rgba(255,255,255,0.1)',
+  border: '1px solid rgba(255,255,255,0.18)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   textDecoration: 'none', transition: 'all 0.2s ease',
-  color: 'rgba(255,255,255,0.3)'
+  color: 'rgba(255,255,255,0.82)'
 };
 
 export default ProfileCard;

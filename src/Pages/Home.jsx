@@ -197,6 +197,8 @@ const Home = () => {
           min-height: 100vh;
           width: 100%;
           overflow-x: hidden;
+          padding-top: 70px;
+          padding-bottom: 72px;
         }
 
         .home-main {
@@ -398,13 +400,22 @@ const Home = () => {
         }
 
         .footer-wrapper {
-          margin-top: auto;
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
           width: 100%;
+          z-index: 100;
         }
 
         @media (max-width: 768px) {
           .home-main {
             padding: 0.5rem 0.75rem 1rem;
+          }
+
+          .home-container {
+            padding-top: 55px;
+            padding-bottom: 72px;
           }
 
           .desktop-layout {
