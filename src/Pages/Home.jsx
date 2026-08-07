@@ -330,7 +330,7 @@ const Home = () => {
         .content-wrapper > * {
           width: 100%;
           max-width: 100%;
-          overflow: hidden;
+          overflow: visible;
         }
 
         .profile-wrapper {
@@ -361,7 +361,7 @@ const Home = () => {
         .full-width-section > * {
           width: 100%;
           max-width: 100%;
-          overflow: hidden;
+          overflow: visible;
         }
 
         .mobile-layout {

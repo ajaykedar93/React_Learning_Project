@@ -398,7 +398,9 @@ const Footer = () => {
             font-size: 0.62rem;
           }
           .social-link .icon-text {
-            display: none;
+            display: inline;
+            font-size: 0.58rem;
+            overflow-wrap: anywhere;
           }
           .social-link {
             padding: 0.25rem 0.4rem;

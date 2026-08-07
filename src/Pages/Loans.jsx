@@ -288,6 +288,9 @@ const Loans = () => {
           padding: 24px;
           max-width: 500px;
           width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          overflow-x: hidden;
           display: flex;
           flex-direction: column;
           gap: 16px;

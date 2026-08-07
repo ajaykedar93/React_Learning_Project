@@ -1218,8 +1218,8 @@ const Trading = ({ refreshTrigger }) => {
           .market-sections { grid-template-columns: 1fr; }
           .bar-chart-container { height: 80px; gap: 2px; }
           .bar-wrapper { min-width: 12px; }
-          .bar-label { font-size: 0.4rem; }
-          .bar-value { font-size: 0.35rem; }
+          .bar-label { font-size: 0.5rem; }
+          .bar-value { font-size: 0.45rem; }
           .trade-card-mobile .label { flex-basis: 34%; }
           .trade-card-mobile .value { font-size: 0.68rem; }
           .filter-toggle button { padding: 0.2rem 0.5rem; font-size: 0.55rem; }

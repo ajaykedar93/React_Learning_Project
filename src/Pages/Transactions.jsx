@@ -574,6 +574,7 @@ const Transactions = () => {
 
         .summary-label {
           color: rgba(255,255,255,0.72) !important;
+          font-size: 0.62rem !important;
         }
 
         .transaction-filter-select {
