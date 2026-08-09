@@ -190,7 +190,12 @@ const Overview = () => {
   // =============================================
   // API BASE URL
   // =============================================
-  const API_BASE = 'http://localhost:5000/api/personal-overview';
+  const API_SERVER = (
+    import.meta.env.VITE_API_URL ||
+    'https://express-project-learning-new.onrender.com'
+).replace(/\/$/, '');
+
+  const API_BASE = `${API_SERVER}/api/personal-overview`;
 
   // =============================================
   // FETCH ALL DATA

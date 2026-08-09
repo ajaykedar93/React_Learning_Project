@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Phone, MapPin, Mail, Briefcase, Globe, Copy, Check, ExternalLink, Edit3, Save, X, Camera, Loader, Move, Maximize, ZoomIn, ZoomOut, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 
+// API base URL: localhost for local development, Render for deployed Vercel app.
+const API_BASE_URL =
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000'
+    : 'https://express-project-learning-new.onrender.com';
+
 const ProfileCard = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,7 +76,7 @@ const ProfileCard = () => {
       setError(null);
       setNoDataFound(false);
       
-      const response = await fetch('http://localhost:5000/api/personal-users/all');
+      const response = await fetch(`${API_BASE_URL}/api/personal-users/all`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -282,13 +289,13 @@ const ProfileCard = () => {
       let url;
       
       if (userData.id) {
-        url = `http://localhost:5000/api/personal-users/update-logo/${userData.id}`;
+        url = `${API_BASE_URL}/api/personal-users/update-logo/${userData.id}`;
         response = await fetch(url, {
           method: 'PUT',
           body: formData
         });
       } else {
-        url = 'http://localhost:5000/api/personal-users/add';
+        url = `${API_BASE_URL}/api/personal-users/add`;
         response = await fetch(url, {
           method: 'POST',
           body: formData
@@ -366,13 +373,13 @@ const ProfileCard = () => {
       let url;
       
       if (data.id) {
-        url = `http://localhost:5000/api/personal-users/update/${data.id}`;
+        url = `${API_BASE_URL}/api/personal-users/update/${data.id}`;
         response = await fetch(url, {
           method: 'PUT',
           body: formData
         });
       } else {
-        url = 'http://localhost:5000/api/personal-users/add';
+        url = `${API_BASE_URL}/api/personal-users/add`;
         response = await fetch(url, {
           method: 'POST',
           body: formData

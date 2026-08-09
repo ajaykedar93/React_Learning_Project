@@ -44,7 +44,7 @@ const Transactions = () => {
   // USER & API
   // =============================================
   const [userId] = useState(1);
-  const API_BASE = 'http://localhost:5000/api/personal-transactions';
+  const API_BASE = 'http://localhost:5000/api/personal-transactions' || " https://express-project-learning-new.onrender.com/api/personal-transactions";
   // =============================================
   // FORMAT FUNCTIONS
   // =============================================
@@ -302,7 +302,7 @@ const Transactions = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '300px',
-        color: '#A78BFA'
+        color: '#4338ca'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
@@ -316,10 +316,502 @@ const Transactions = () => {
           }}></div>
           <p>Loading transactions...</p>
           <style>{`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
+        * { box-sizing: border-box; }
+
+        .transactions-container {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          padding: 8px;
+          color: #172033;
+          font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .transactions-container button,
+        .transactions-container input,
+        .transactions-container select,
+        .transactions-container textarea {
+          font: inherit;
+        }
+
+        .glass-card {
+          background: linear-gradient(145deg, rgba(224,242,254,.92), rgba(237,233,254,.94), rgba(252,231,243,.88)) !important;
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          border: 1px solid rgba(99,102,241,0.14);
+          border-radius: 18px;
+          transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+          padding: 1.1rem;
+          margin-bottom: .8rem;
+          box-shadow: 0 10px 30px rgba(51,65,85,.10), inset 0 1px 0 rgba(255,255,255,.95);
+          overflow: hidden;
+        }
+
+        .glass-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(79,70,229,.24);
+          box-shadow: 0 16px 36px rgba(51,65,85,.14), inset 0 1px 0 #fff;
+        }
+
+        .glass-btn {
+          appearance: none;
+          -webkit-appearance: none;
+          background: rgba(255,255,255,.82) !important;
+          border: 1px solid rgba(79,70,229,.16) !important;
+          border-radius: 10px;
+          color: #26324a !important;
+          cursor: pointer;
+          transition: transform .14s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+          padding: .42rem .72rem;
+          font-size: .72rem;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: .32rem;
+          min-height: 34px;
+          box-shadow: 0 4px 12px rgba(51,65,85,.08);
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-btn:hover {
+          background: #eef2ff !important;
+          border-color: rgba(79,70,229,.35) !important;
+          transform: translateY(-1px);
+          box-shadow: 0 7px 16px rgba(79,70,229,.14);
+        }
+
+        .glass-btn:active {
+          transform: translateY(1px) scale(.96) !important;
+          box-shadow: 0 2px 6px rgba(51,65,85,.12);
+        }
+
+        .glass-btn:disabled {
+          opacity: .58;
+          cursor: not-allowed;
+          transform: none !important;
+        }
+
+        .glass-btn.success {
+          background: linear-gradient(135deg,#ecfdf5,#d1fae5) !important;
+          border-color: #86efac !important;
+          color: #047857 !important;
+        }
+
+        .glass-btn.danger {
+          background: linear-gradient(135deg,#fff1f2,#ffe4e6) !important;
+          border-color: #fda4af !important;
+          color: #be123c !important;
+        }
+
+        .glass-btn.primary {
+          background: linear-gradient(135deg,#eef2ff,#e0e7ff) !important;
+          border-color: #a5b4fc !important;
+          color: #4338ca !important;
+        }
+
+        .edit-input,
+        .modal-select,
+        .edit-select {
+          width: 100%;
+          min-width: 0;
+          background: rgba(255,255,255,.94) !important;
+          border: 1px solid #dbe3f0 !important;
+          border-radius: 9px;
+          padding: .42rem .58rem;
+          color: #172033 !important;
+          -webkit-text-fill-color: #172033 !important;
+          font-size: .74rem;
+          font-weight: 600;
+          outline: none;
+          transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+          box-shadow: inset 0 1px 2px rgba(15,23,42,.03);
+        }
+
+        .edit-input::placeholder,
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+          color: #94a3b8 !important;
+          -webkit-text-fill-color: #94a3b8 !important;
+        }
+
+        .edit-input:focus,
+        .modal-select:focus,
+        .edit-select:focus,
+        .form-group input:focus,
+        .form-group textarea:focus {
+          border-color: #818cf8 !important;
+          box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+          background: #fff !important;
+        }
+
+        .edit-select option,
+        .modal-select option {
+          background: #fff !important;
+          color: #172033 !important;
+        }
+
+        .transactions-table-wrap {
+          width: 100%;
+          overflow-x: auto;
+          overflow-y: visible;
+          -webkit-overflow-scrolling: touch;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          background: rgba(255,255,255,.72);
+        }
+
+        .transactions-table {
+          width: 100%;
+          min-width: 820px;
+          border-collapse: separate;
+          border-spacing: 0;
+          color: #172033;
+        }
+
+        .transactions-table th {
+          color: #64748b !important;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0 !important;
+          white-space: nowrap;
+          position: sticky;
+          top: 0;
+          z-index: 1;
+        }
+
+        .transactions-table td {
+          vertical-align: middle;
+          color: #334155 !important;
+          font-size: .72rem !important;
+          line-height: 1.4;
+          border-bottom: 1px solid #edf2f7;
+        }
+
+        .transactions-table tbody tr {
+          transition: background .16s ease, transform .16s ease;
+        }
+
+        .transactions-table tbody tr:hover {
+          background: #f8faff !important;
+        }
+
+        .transactions-table td:last-child {
+          min-width: 170px;
+        }
+
+        .transactions-table td .edit-input,
+        .transactions-table td .edit-select {
+          min-height: 36px;
+        }
+
+        .transactions-table td span {
+          color: #334155 !important;
+        }
+
+        .transactions-table td .type-badge,
+        .transactions-table td .status-badge {
+          color: inherit !important;
+        }
+
+        .transaction-notes-cell {
+          min-width: 160px;
+          max-width: 280px;
+          overflow-wrap: anywhere;
+          color: #64748b !important;
+        }
+
+        .summary-label {
+          color: #64748b !important;
+          font-size: .62rem !important;
+          font-weight: 700;
+        }
+
+        .status-badge,
+        .type-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: .22rem .52rem;
+          border-radius: 999px;
+          font-size: .62rem;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .status-pending {
+          background: #fff7ed !important;
+          color: #c2410c !important;
+          border: 1px solid #fed7aa;
+        }
+
+        .status-received {
+          background: #ecfdf5 !important;
+          color: #047857 !important;
+          border: 1px solid #a7f3d0;
+        }
+
+        .type-give {
+          background: #fff1f2 !important;
+          color: #be123c !important;
+          border: 1px solid #fecdd3;
+        }
+
+        .type-take {
+          background: #ecfdf5 !important;
+          color: #047857 !important;
+          border: 1px solid #a7f3d0;
+        }
+
+        .error-message {
+          background: #fff1f2;
+          border: 1px solid #fecdd3;
+          border-radius: 11px;
+          padding: .65rem .85rem;
+          color: #be123c;
+          font-size: .78rem;
+          margin-bottom: .75rem;
+          width: min(100%, 520px);
+          margin-inline: auto;
+          text-align: center;
+        }
+
+        .success-message {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          border-radius: 11px;
+          padding: .65rem .85rem;
+          color: #047857;
+          font-size: .78rem;
+          margin-bottom: .75rem;
+          text-align: center;
+          width: min(100%, 520px);
+          margin-inline: auto;
+          animation: slideDown .25s ease;
+        }
+
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Centered, mobile-safe modal */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding:
+            max(16px, env(safe-area-inset-top))
+            max(16px, env(safe-area-inset-right))
+            max(16px, env(safe-area-inset-bottom))
+            max(16px, env(safe-area-inset-left));
+          background: rgba(15,23,42,.42);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          animation: fadeIn .2s ease;
+          overscroll-behavior: contain;
+        }
+
+        .modal-content {
+          width: min(520px, 100%);
+          max-width: 520px;
+          max-height: min(88dvh, 720px);
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          background: linear-gradient(145deg,#e0f2fe 0%,#ede9fe 55%,#fce7f3 100%) !important;
+          border: 1px solid #dbe5f1;
+          border-radius: 20px;
+          padding: 1.25rem;
+          box-shadow: 0 24px 70px rgba(15,23,42,.22), 0 4px 18px rgba(79,70,229,.10);
+          animation: modalIn .22s ease;
+          color: #172033;
+          scrollbar-width: thin;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes modalIn {
+          from { opacity: 0; transform: translateY(12px) scale(.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-title {
+          font-size: 1.05rem;
+          font-weight: 800;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: .45rem;
+          color: #4338ca !important;
+        }
+
+        .modal-close {
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          border-radius: 50%;
+          border: 1px solid #fecdd3;
+          background: #fff1f2;
+          color: #be123c;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform .14s ease, background .18s ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .modal-close:hover { background: #ffe4e6; }
+        .modal-close:active { transform: scale(.92); }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0,1fr));
+          gap: .7rem;
+          margin-bottom: .7rem;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: .3rem;
+          min-width: 0;
+        }
+
+        .form-group label {
+          font-size: .64rem;
+          font-weight: 800;
+          color: #64748b !important;
+          text-transform: uppercase;
+          letter-spacing: .45px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+          width: 100%;
+          min-width: 0;
+          background: #fff !important;
+          border: 1px solid #dbe3f0 !important;
+          border-radius: 9px;
+          padding: .52rem .65rem;
+          color: #172033 !important;
+          -webkit-text-fill-color: #172033 !important;
+          font-size: .76rem;
+          outline: none;
+        }
+
+        .form-group textarea {
+          resize: vertical;
+          min-height: 70px;
+        }
+
+        .form-actions {
+          display: flex;
+          gap: .55rem;
+          margin-top: 1rem;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+        }
+
+        .detail-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 1rem;
+          padding: .62rem 0;
+          border-bottom: 1px solid #edf2f7;
+        }
+
+        .detail-label {
+          color: #64748b !important;
+          font-size: .7rem;
+          flex: 0 0 38%;
+          font-weight: 700;
+        }
+
+        .detail-value {
+          font-weight: 700;
+          font-size: .8rem;
+          color: #172033 !important;
+          flex: 1;
+          min-width: 0;
+          text-align: right;
+          overflow-wrap: anywhere;
+        }
+
+        .view-modal-actions,
+        .delete-modal-actions {
+          justify-content: center;
+        }
+
+        /* Keep all summary text readable on the fresh light cards */
+        .transactions-container .summary-label + div {
+          text-shadow: none;
+        }
+
+        @media (max-width: 900px) {
+          .transactions-container { padding: 6px; }
+          .glass-card { padding: .85rem; }
+        }
+
+        @media (max-width: 768px) {
+          .transactions-container { padding: 4px; }
+          .glass-card { border-radius: 15px; padding: .72rem; }
+          .form-row { grid-template-columns: 1fr; }
+          .transactions-table-wrap { border-radius: 12px; }
+          .modal-content {
+            width: min(94vw, 520px);
+            max-height: 84dvh;
+            padding: 1rem;
+            border-radius: 17px;
+          }
+          .form-actions {
+            justify-content: stretch;
+          }
+          .form-actions .glass-btn {
+            flex: 1 1 120px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .transactions-container { padding: 2px; }
+          .glass-card { padding: .58rem; border-radius: 13px; }
+          .glass-btn { min-height: 34px; padding: .38rem .58rem; font-size: .68rem; }
+          .transaction-filter-select { width: 100% !important; max-width: none !important; }
+          .modal-overlay {
+            padding:
+              max(12px, env(safe-area-inset-top))
+              max(12px, env(safe-area-inset-right))
+              max(12px, env(safe-area-inset-bottom))
+              max(12px, env(safe-area-inset-left));
+          }
+          .modal-content {
+            width: 100%;
+            max-height: 82dvh;
+            padding: .85rem;
+            border-radius: 15px;
+          }
+          .modal-title { font-size: .95rem; }
+          .detail-row { gap: .7rem; }
+          .detail-label { flex-basis: 42%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .glass-card,
+          .glass-btn,
+          .modal-content,
+          .modal-overlay {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
+`}</style>
         </div>
       </div>
     );
@@ -835,6 +1327,722 @@ const Transactions = () => {
           .modal-content { padding: 0.8rem; }
           .glass-btn { min-height: 32px; }
         }
+
+        /* FINAL LIGHT THEME OVERRIDES
+           Scoped strongly so parent/global dark CSS cannot override this page. */
+        #transactions.transactions-container {
+          background: transparent !important;
+          color: #172033 !important;
+        }
+
+        #transactions.transactions-container .glass-card {
+          background: linear-gradient(145deg, #e0f2fe 0%, #ede9fe 48%, #fce7f3 100%) !important;
+          color: #172033 !important;
+          border-color: rgba(99,102,241,.28) !important;
+          box-shadow: 0 14px 35px rgba(79,70,229,.13), inset 0 1px 0 rgba(255,255,255,.75) !important;
+        }
+
+        #transactions.transactions-container .glass-card:hover {
+          background: linear-gradient(145deg, #dbeafe 0%, #e9d5ff 52%, #fbcfe8 100%) !important;
+          border-color: #818cf8 !important;
+        }
+
+        #transactions.transactions-container .transactions-table-wrap {
+          background: rgba(255,255,255,.48) !important;
+          border-color: rgba(99,102,241,.20) !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.65) !important;
+        }
+
+        #transactions.transactions-container .transactions-table th {
+          background: linear-gradient(135deg,#dbeafe,#ede9fe) !important;
+          color: #3730a3 !important;
+          border-bottom-color: rgba(79,70,229,.20) !important;
+        }
+
+        #transactions.transactions-container .transactions-table td {
+          color: #334155 !important;
+        }
+
+        #transactions.transactions-container .transactions-table tbody tr:hover {
+          background: linear-gradient(90deg,rgba(219,234,254,.72),rgba(237,233,254,.72)) !important;
+        }
+
+        #transactions.transactions-container .edit-input,
+        #transactions.transactions-container .edit-select {
+          background: #ffffff !important;
+          color: #172033 !important;
+          -webkit-text-fill-color: #172033 !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        #transactions.transactions-container .edit-input:focus,
+        #transactions.transactions-container .edit-select:focus {
+          background: #ffffff !important;
+          border-color: #6366f1 !important;
+        }
+
+        #transactions.transactions-container .glass-btn {
+          color: #3730a3 !important;
+          background: linear-gradient(135deg,#ffffffcc,#e0e7ffcc) !important;
+          border-color: rgba(79,70,229,.24) !important;
+        }
+
+        #transactions.transactions-container .glass-btn.primary {
+          background: linear-gradient(135deg,#c4b5fd,#93c5fd) !important;
+          color: #312e81 !important;
+          border-color: #818cf8 !important;
+          box-shadow: 0 6px 16px rgba(79,70,229,.20) !important;
+        }
+
+        #transactions.transactions-container .glass-btn.success {
+          background: linear-gradient(135deg,#bbf7d0,#99f6e4) !important;
+          color: #065f46 !important;
+          border-color: #34d399 !important;
+        }
+
+        #transactions.transactions-container .glass-btn.danger {
+          background: linear-gradient(135deg,#fecdd3,#fda4af) !important;
+          color: #9f1239 !important;
+          border-color: #fb7185 !important;
+        }
+
+        #transactions.transactions-container .summary-label {
+          color: #64748b !important;
+        }
+
+        #transactions.transactions-container h3,
+        #transactions.transactions-container h3 * {
+          color: #4338ca !important;
+        }
+
+        /* Summary values */
+        #transactions.transactions-container .summary-value-pending {
+          color: #c2410c !important;
+        }
+
+        #transactions.transactions-container .summary-value-received {
+          color: #047857 !important;
+        }
+
+        #transactions.transactions-container .summary-value-give {
+          color: #be123c !important;
+        }
+
+        #transactions.transactions-container .summary-value-take {
+          color: #4338ca !important;
+        }
+
+        /* Modal always stays bright and readable */
+        .transactions-container + .modal-overlay,
+        .modal-overlay {
+          background: rgba(15, 23, 42, .42) !important;
+        }
+
+        .modal-overlay .modal-content {
+          background: linear-gradient(145deg, #e0f2fe 0%, #ede9fe 55%, #fce7f3 100%) !important;
+          color: #172033 !important;
+          border-color: #dbe5f1 !important;
+        }
+
+        .modal-overlay .modal-title {
+          color: #4338ca !important;
+        }
+
+        .modal-overlay .form-group label,
+        .modal-overlay .detail-label {
+          color: #64748b !important;
+        }
+
+        .modal-overlay .form-group input,
+        .modal-overlay .form-group textarea,
+        .modal-overlay .modal-select {
+          background: #ffffff !important;
+          color: #172033 !important;
+          -webkit-text-fill-color: #172033 !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        .modal-overlay .detail-value {
+          color: #172033 !important;
+        }
+
+
+        /* =====================================================
+           SINGLE-COLOR THEME
+           One blue family only. Green/red are reserved for
+           transaction/status meaning.
+        ===================================================== */
+
+        #transactions.transactions-container {
+          background: transparent !important;
+          color: #111827 !important;
+        }
+
+        #transactions.transactions-container .glass-card {
+          background: #dbeafe !important;
+          color: #111827 !important;
+          border: 1px solid #93c5fd !important;
+          box-shadow: 0 12px 30px rgba(30,64,175,.12) !important;
+        }
+
+        #transactions.transactions-container .glass-card:hover {
+          background: #bfdbfe !important;
+          border-color: #60a5fa !important;
+        }
+
+        #transactions.transactions-container .transactions-table-wrap {
+          background: #eff6ff !important;
+          border: 1px solid #93c5fd !important;
+        }
+
+        #transactions.transactions-container .transactions-table th {
+          background: #bfdbfe !important;
+          color: #111827 !important;
+          border-bottom: 1px solid #93c5fd !important;
+        }
+
+        #transactions.transactions-container .transactions-table td,
+        #transactions.transactions-container .transactions-table td span,
+        #transactions.transactions-container .transactions-table td div {
+          color: #111827 !important;
+        }
+
+        #transactions.transactions-container .transactions-table tbody tr:hover {
+          background: #dbeafe !important;
+        }
+
+        #transactions.transactions-container .summary-label {
+          color: #111827 !important;
+        }
+
+        #transactions.transactions-container .edit-input,
+        #transactions.transactions-container .edit-select,
+        #transactions.transactions-container input,
+        #transactions.transactions-container select,
+        #transactions.transactions-container textarea {
+          background: #eff6ff !important;
+          color: #111827 !important;
+          -webkit-text-fill-color: #111827 !important;
+          border: 1px solid #93c5fd !important;
+        }
+
+        #transactions.transactions-container .edit-input:focus,
+        #transactions.transactions-container .edit-select:focus,
+        #transactions.transactions-container input:focus,
+        #transactions.transactions-container select:focus,
+        #transactions.transactions-container textarea:focus {
+          background: #ffffff !important;
+          color: #111827 !important;
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 3px rgba(37,99,235,.22) !important;
+          outline: none !important;
+        }
+
+        #transactions.transactions-container input::placeholder,
+        #transactions.transactions-container textarea::placeholder {
+          color: #475569 !important;
+          -webkit-text-fill-color: #475569 !important;
+          opacity: 1 !important;
+        }
+
+        #transactions.transactions-container .glass-btn {
+          background: #bfdbfe !important;
+          color: #111827 !important;
+          border: 1px solid #60a5fa !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+        }
+
+        #transactions.transactions-container .glass-btn:hover {
+          background: #93c5fd !important;
+          color: #111827 !important;
+          border-color: #2563eb !important;
+        }
+
+        #transactions.transactions-container .glass-btn:focus-visible {
+          outline: 3px solid rgba(37,99,235,.30) !important;
+          outline-offset: 2px !important;
+        }
+
+        #transactions.transactions-container .glass-btn.primary {
+          background: #93c5fd !important;
+          color: #111827 !important;
+          border-color: #2563eb !important;
+        }
+
+        #transactions.transactions-container .glass-btn.success {
+          background: #bbf7d0 !important;
+          color: #166534 !important;
+          border-color: #4ade80 !important;
+        }
+
+        #transactions.transactions-container .glass-btn.danger {
+          background: #fecaca !important;
+          color: #991b1b !important;
+          border-color: #f87171 !important;
+        }
+
+        /* Meaning/status colors */
+        #transactions.transactions-container .type-give {
+          background: #fecaca !important;
+          color: #991b1b !important;
+          border-color: #f87171 !important;
+        }
+
+        #transactions.transactions-container .type-take {
+          background: #bbf7d0 !important;
+          color: #166534 !important;
+          border-color: #4ade80 !important;
+        }
+
+        #transactions.transactions-container .status-pending {
+          background: #fecaca !important;
+          color: #991b1b !important;
+          border-color: #f87171 !important;
+        }
+
+        #transactions.transactions-container .status-received {
+          background: #bbf7d0 !important;
+          color: #166534 !important;
+          border-color: #4ade80 !important;
+        }
+
+        /* Error/success messages */
+        #transactions.transactions-container .error-message {
+          background: #fecaca !important;
+          color: #991b1b !important;
+          border-color: #f87171 !important;
+        }
+
+        #transactions.transactions-container .success-message {
+          background: #bbf7d0 !important;
+          color: #166534 !important;
+          border-color: #4ade80 !important;
+        }
+
+        /* =====================================================
+           POPUPS
+        ===================================================== */
+
+        .modal-overlay {
+          background: rgba(15,23,42,.48) !important;
+          backdrop-filter: blur(8px) !important;
+          -webkit-backdrop-filter: blur(8px) !important;
+        }
+
+        .modal-overlay .modal-content {
+          background: #dbeafe !important;
+          color: #111827 !important;
+          border: 1px solid #93c5fd !important;
+          box-shadow: 0 24px 65px rgba(30,64,175,.24) !important;
+        }
+
+        .modal-overlay .modal-title,
+        .modal-overlay .detail-value {
+          color: #111827 !important;
+        }
+
+        .modal-overlay .detail-label,
+        .modal-overlay .form-group label {
+          color: #1e293b !important;
+        }
+
+        .modal-overlay .form-group input,
+        .modal-overlay .form-group textarea,
+        .modal-overlay .modal-select {
+          background: #eff6ff !important;
+          color: #111827 !important;
+          -webkit-text-fill-color: #111827 !important;
+          border: 1px solid #93c5fd !important;
+        }
+
+        .modal-overlay .form-group input:focus,
+        .modal-overlay .form-group textarea:focus,
+        .modal-overlay .modal-select:focus {
+          background: #ffffff !important;
+          color: #111827 !important;
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 3px rgba(37,99,235,.22) !important;
+          outline: none !important;
+        }
+
+        .modal-overlay .glass-btn {
+          opacity: 1 !important;
+          visibility: visible !important;
+        }
+
+        .modal-overlay .modal-close {
+          background: #bfdbfe !important;
+          color: #111827 !important;
+          border-color: #60a5fa !important;
+        }
+
+        .modal-overlay .modal-close:hover {
+          background: #93c5fd !important;
+          color: #111827 !important;
+        }
+
+        /* Select dropdown text */
+        #transactions.transactions-container option,
+        .modal-overlay option {
+          background: #eff6ff !important;
+          color: #111827 !important;
+        }
+
+        /* All focus states stay visible */
+        #transactions.transactions-container button:focus-visible,
+        #transactions.transactions-container input:focus-visible,
+        #transactions.transactions-container select:focus-visible,
+        #transactions.transactions-container textarea:focus-visible,
+        .modal-overlay button:focus-visible,
+        .modal-overlay input:focus-visible,
+        .modal-overlay select:focus-visible,
+        .modal-overlay textarea:focus-visible {
+          outline: 3px solid rgba(37,99,235,.30) !important;
+          outline-offset: 2px !important;
+        }
+
+
+        /* =====================================================
+           FINAL PROFESSIONAL MODALS
+        ===================================================== */
+
+        .modal-overlay {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 99999 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding:
+            max(20px, env(safe-area-inset-top))
+            max(20px, env(safe-area-inset-right))
+            max(20px, env(safe-area-inset-bottom))
+            max(20px, env(safe-area-inset-left)) !important;
+          background: rgba(15,23,42,.58) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          overflow: auto !important;
+          box-sizing: border-box !important;
+        }
+
+        .modal-content {
+          position: relative !important;
+          width: min(560px, 100%) !important;
+          max-width: 560px !important;
+          max-height: min(86dvh, 720px) !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          box-sizing: border-box !important;
+          margin: auto !important;
+          padding: 26px !important;
+          border-radius: 22px !important;
+          background: #dbeafe !important;
+          border: 1px solid #60a5fa !important;
+          color: #111827 !important;
+          box-shadow:
+            0 28px 80px rgba(15,23,42,.30),
+            0 8px 24px rgba(37,99,235,.16) !important;
+        }
+
+        /* Every popup child remains readable */
+        .modal-content,
+        .modal-content * {
+          box-sizing: border-box;
+        }
+
+        .modal-content h2,
+        .modal-content h3,
+        .modal-content .modal-title {
+          color: #111827 !important;
+        }
+
+        .modal-content .form-group label,
+        .modal-content .detail-label {
+          color: #334155 !important;
+          font-weight: 800 !important;
+        }
+
+        .modal-content .detail-row {
+          display: grid !important;
+          grid-template-columns: minmax(105px, 35%) minmax(0, 65%) !important;
+          align-items: center !important;
+          gap: 16px !important;
+          padding: 13px 4px !important;
+          border-bottom: 1px solid rgba(37,99,235,.13) !important;
+        }
+
+        .modal-content .detail-value {
+          color: #111827 !important;
+          font-weight: 800 !important;
+          text-align: right !important;
+          min-width: 0 !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+          line-height: 1.45 !important;
+        }
+
+        .modal-content .detail-value .type-badge,
+        .modal-content .detail-value .status-badge {
+          display: inline-flex !important;
+          float: right !important;
+        }
+
+        .modal-content input,
+        .modal-content textarea,
+        .modal-content select {
+          min-height: 42px !important;
+          background: #eff6ff !important;
+          color: #111827 !important;
+          -webkit-text-fill-color: #111827 !important;
+          border: 1px solid #60a5fa !important;
+          border-radius: 10px !important;
+          padding: 9px 11px !important;
+          outline: none !important;
+        }
+
+        .modal-content input:focus,
+        .modal-content textarea:focus,
+        .modal-content select:focus {
+          background: #ffffff !important;
+          color: #111827 !important;
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 3px rgba(37,99,235,.22) !important;
+        }
+
+        /* Reliable visible close icon */
+        .modal-content .modal-close,
+        .modal-content button[aria-label="Close"],
+        .modal-content button[title="Close"] {
+          position: absolute !important;
+          top: 16px !important;
+          right: 16px !important;
+          width: 40px !important;
+          height: 40px !important;
+          min-width: 40px !important;
+          min-height: 40px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 50% !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          z-index: 20 !important;
+          background: #bfdbfe !important;
+          border: 1px solid #3b82f6 !important;
+          color: #111827 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          cursor: pointer !important;
+        }
+
+        .modal-content .modal-close svg,
+        .modal-content button[aria-label="Close"] svg,
+        .modal-content button[title="Close"] svg {
+          width: 20px !important;
+          height: 20px !important;
+          min-width: 20px !important;
+          min-height: 20px !important;
+          display: block !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          color: #111827 !important;
+          stroke: #111827 !important;
+          stroke-width: 2.5 !important;
+        }
+
+        .modal-content .modal-close:hover,
+        .modal-content button[aria-label="Close"]:hover,
+        .modal-content button[title="Close"]:hover {
+          background: #93c5fd !important;
+          transform: scale(1.04);
+        }
+
+        .modal-content .modal-close:active,
+        .modal-content button[aria-label="Close"]:active,
+        .modal-content button[title="Close"]:active {
+          transform: scale(.92);
+        }
+
+        .modal-content .form-actions {
+          display: flex !important;
+          justify-content: flex-end !important;
+          gap: 10px !important;
+          margin-top: 18px !important;
+          padding-top: 14px !important;
+          border-top: 1px solid rgba(37,99,235,.13) !important;
+        }
+
+        .modal-content .form-actions .glass-btn {
+          min-width: 112px !important;
+          min-height: 42px !important;
+        }
+
+        /* Mobile: centered, safe top/bottom, fully scrollable */
+        @media (max-width: 600px) {
+          .modal-overlay {
+            align-items: center !important;
+            padding:
+              max(12px, env(safe-area-inset-top))
+              max(12px, env(safe-area-inset-right))
+              max(12px, env(safe-area-inset-bottom))
+              max(12px, env(safe-area-inset-left)) !important;
+          }
+
+          .modal-content {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 88dvh !important;
+            padding: 22px 16px !important;
+            border-radius: 18px !important;
+          }
+
+          .modal-content .modal-close {
+            top: 12px !important;
+            right: 12px !important;
+            width: 38px !important;
+            height: 38px !important;
+            min-width: 38px !important;
+            min-height: 38px !important;
+          }
+
+          .modal-content .modal-title {
+            padding-right: 48px !important;
+            font-size: .98rem !important;
+          }
+
+          .modal-content .detail-row {
+            grid-template-columns: minmax(90px, 38%) minmax(0, 62%) !important;
+            gap: 10px !important;
+            padding: 11px 2px !important;
+          }
+
+          .modal-content .detail-value {
+            text-align: right !important;
+          }
+
+          .modal-content .form-actions {
+            position: sticky !important;
+            bottom: 0 !important;
+            background: #dbeafe !important;
+            padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
+            z-index: 10 !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .modal-content .detail-row {
+            grid-template-columns: 1fr !important;
+            gap: 4px !important;
+          }
+
+          .modal-content .detail-value {
+            text-align: left !important;
+          }
+
+          .modal-content .detail-value .type-badge,
+          .modal-content .detail-value .status-badge {
+            float: none !important;
+          }
+
+          .modal-content .form-actions {
+            flex-direction: column !important;
+          }
+
+          .modal-content .form-actions .glass-btn {
+            width: 100% !important;
+          }
+        }
+
+
+        /* =====================================================
+           POPUP TYPOGRAPHY + BUTTONS
+           All popup text and button text: bold + black.
+        ===================================================== */
+
+        .modal-overlay .modal-content,
+        .modal-overlay .modal-content * {
+          font-weight: 700 !important;
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+        }
+
+        .modal-overlay .modal-title,
+        .modal-overlay .modal-content h1,
+        .modal-overlay .modal-content h2,
+        .modal-overlay .modal-content h3,
+        .modal-overlay .modal-content h4,
+        .modal-overlay .modal-content h5,
+        .modal-overlay .modal-content h6 {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          font-weight: 800 !important;
+        }
+
+        .modal-overlay .modal-content label,
+        .modal-overlay .modal-content p,
+        .modal-overlay .modal-content span,
+        .modal-overlay .modal-content div,
+        .modal-overlay .modal-content td,
+        .modal-overlay .modal-content th,
+        .modal-overlay .modal-content input,
+        .modal-overlay .modal-content textarea,
+        .modal-overlay .modal-content select,
+        .modal-overlay .modal-content option {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          font-weight: 700 !important;
+        }
+
+        .modal-overlay .modal-content input::placeholder,
+        .modal-overlay .modal-content textarea::placeholder {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          opacity: .65 !important;
+          font-weight: 700 !important;
+        }
+
+        /* Every popup button */
+        .modal-overlay .modal-content button,
+        .modal-overlay .modal-content .glass-btn,
+        .modal-overlay .modal-content .modal-close {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          font-weight: 800 !important;
+          text-shadow: none !important;
+        }
+
+        .modal-overlay .modal-content button svg,
+        .modal-overlay .modal-content .glass-btn svg,
+        .modal-overlay .modal-content .modal-close svg {
+          color: #000000 !important;
+          stroke: #000000 !important;
+          fill: none !important;
+          opacity: 1 !important;
+        }
+
+        .modal-overlay .modal-content button:hover {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+        }
+
+        .modal-overlay .modal-content button:focus-visible {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          outline: 3px solid rgba(37,99,235,.35) !important;
+          outline-offset: 2px !important;
+        }
+
+        /* Keep status/type backgrounds, but text remains black + bold */
+        .modal-overlay .modal-content .type-give,
+        .modal-overlay .modal-content .type-take,
+        .modal-overlay .modal-content .status-pending,
+        .modal-overlay .modal-content .status-received {
+          color: #000000 !important;
+          -webkit-text-fill-color: #000000 !important;
+          font-weight: 800 !important;
+        }
+
       `}</style>
 
       <div id="transactions" className="transactions-container">
@@ -848,25 +2056,25 @@ const Transactions = () => {
             }}>
               <div className="glass-card" style={{ padding: '0.6rem', textAlign: 'center', background: 'rgba(245,158,11,0.05)' }}>
                 <div className="summary-label" style={{ fontSize: '0.5rem' }}>Pending</div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#FCD34D' }}>
+                <div className="summary-value-pending" style={{ fontSize: '1rem', fontWeight: 800 }}>
                   {formatCurrency(summary.summary?.totalPending || 0)}
                 </div>
               </div>
               <div className="glass-card" style={{ padding: '0.6rem', textAlign: 'center', background: 'rgba(16,185,129,0.05)' }}>
                 <div className="summary-label" style={{ fontSize: '0.5rem' }}>Received</div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#6EE7B7' }}>
+                <div className="summary-value-received" style={{ fontSize: '1rem', fontWeight: 800 }}>
                   {formatCurrency(summary.summary?.totalReceived || 0)}
                 </div>
               </div>
               <div className="glass-card" style={{ padding: '0.6rem', textAlign: 'center', background: 'rgba(239,68,68,0.05)' }}>
                 <div className="summary-label" style={{ fontSize: '0.5rem' }}>Give</div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#FCA5A5' }}>
+                <div className="summary-value-give" style={{ fontSize: '1rem', fontWeight: 800 }}>
                   {formatCurrency(summary.summary?.totalGive || 0)}
                 </div>
               </div>
               <div className="glass-card" style={{ padding: '0.6rem', textAlign: 'center', background: 'rgba(124,58,237,0.05)' }}>
                 <div className="summary-label" style={{ fontSize: '0.5rem' }}>Take</div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#A78BFA' }}>
+                <div className="summary-value-take" style={{ fontSize: '1rem', fontWeight: 800 }}>
                   {formatCurrency(summary.summary?.totalTake || 0)}
                 </div>
               </div>
@@ -896,7 +2104,7 @@ const Transactions = () => {
               gap: '0.5rem',
               color: '#F59E0B'
             }}>
-              <ClockIcon size={18} /> Transactions
+              <ClockIcon size={18} color="#4f46e5" /> Transactions
             </h3>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button className="glass-btn primary" onClick={() => setShowAddModal(true)}>
@@ -1269,7 +2477,7 @@ const Transactions = () => {
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem' }}>
-              <h4 className="modal-title" style={{ color: '#FCA5A5' }}>
+              <h4 className="modal-title" style={{ color: '#be123c' }}>
                 <AlertCircle size={18} /> Delete Transaction
               </h4>
             </div>
