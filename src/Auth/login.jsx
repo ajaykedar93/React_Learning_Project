@@ -7,12 +7,21 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const API_BASE = useMemo(
-    () =>
-      import.meta?.env?.VITE_API_BASE?.trim() ||
-      "http://localhost:5000" || "https://express-project-learning-new.onrender.com",
-    []
-  );
+  const API_BASE = useMemo(() => {
+    const envBase = import.meta?.env?.VITE_API_BASE?.trim();
+
+    if (envBase) {
+      return envBase.replace(/\/$/, "");
+    }
+
+    const hostname = window.location.hostname;
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:5000";
+    }
+
+    return "https://express-project-learning-new.onrender.com";
+  }, []);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -60,7 +69,7 @@ export default function Login() {
       setStateSafe("checking", 0);
 
       try {
-        const r1 = await fetch(`${API_BASE}/health`, {
+        const r1 = await fetch(`${API_BASE}/api/health`, {
           method: "GET",
           cache: "no-store",
         });
