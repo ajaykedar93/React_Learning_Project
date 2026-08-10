@@ -44,7 +44,7 @@ const Transactions = () => {
   // USER & API
   // =============================================
   const [userId] = useState(1);
-  const API_BASE = 'http://localhost:5000/api/personal-transactions' || " https://express-project-learning-new.onrender.com/api/personal-transactions";
+  const API_BASE =  " https://express-project-learning-new.onrender.com/api/personal-transactions";
   // =============================================
   // FORMAT FUNCTIONS
   // =============================================

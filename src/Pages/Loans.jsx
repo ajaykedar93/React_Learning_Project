@@ -16,7 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const API_ROOT =
   import.meta.env.VITE_API_BASE?.trim() ||
-  'http://localhost:5000' || "https://express-project-learning-new.onrender.com";
+ "https://express-project-learning-new.onrender.com";
 
 const API_BASE = `${API_ROOT.replace(/\/$/, '')}/api/personal-loans`;
 
