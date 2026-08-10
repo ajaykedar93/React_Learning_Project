@@ -44,7 +44,7 @@ const Transactions = () => {
   // USER & API
   // =============================================
   const [userId] = useState(1);
-  const API_BASE =  " https://express-project-learning-new.onrender.com/api/personal-transactions";
+  const API_BASE = "https://express-project-learning-new.onrender.com/api/personal-transactions";
   // =============================================
   // FORMAT FUNCTIONS
   // =============================================
@@ -819,6 +819,343 @@ const Transactions = () => {
 
   return (
     <>
+      <style>{`
+        /* FINAL MOBILE READABILITY + RESPONSIVE FIX */
+        #transactions.transactions-container {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          padding-bottom: 145px !important;
+          overflow: visible !important;
+        }
+        #transactions.transactions-container .transactions-table tbody tr {
+          color: #172033 !important;
+        }
+        #transactions.transactions-container .transactions-table tbody tr td {
+          color: #172033 !important;
+          -webkit-text-fill-color: #172033 !important;
+        }
+        #transactions.transactions-container .transactions-table tbody tr td:nth-child(2) span {
+          -webkit-text-fill-color: currentColor !important;
+        }
+        #transactions.transactions-container .transactions-table tbody tr td:nth-child(3) span,
+        #transactions.transactions-container .transaction-notes-cell {
+          color: #475569 !important;
+          -webkit-text-fill-color: #475569 !important;
+        }
+        @media (max-width: 768px) {
+          #transactions.transactions-container { padding: 6px 6px 150px !important; }
+          #transactions.transactions-container .transactions-table-wrap {
+            overflow: visible !important;
+            border: 0 !important;
+            background: transparent !important;
+          }
+          #transactions.transactions-container .transactions-table {
+            display: block !important; width: 100% !important; min-width: 0 !important;
+          }
+          #transactions.transactions-container .transactions-table thead { display: none !important; }
+          #transactions.transactions-container .transactions-table tbody { display: block !important; width: 100% !important; }
+          #transactions.transactions-container .transactions-table tbody tr {
+            display: block !important; width: 100% !important;
+            margin: 0 0 12px !important; padding: 8px 10px !important;
+            border: 1px solid rgba(99,102,241,.20) !important;
+            border-radius: 16px !important;
+            background: linear-gradient(145deg,#ffffff,#eef2ff) !important;
+            box-shadow: 0 8px 24px rgba(30,41,59,.10) !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td {
+            display: grid !important;
+            grid-template-columns: 72px minmax(0,1fr) !important;
+            align-items: center !important;
+            width: 100% !important; min-width: 0 !important; max-width: none !important;
+            min-height: 38px !important; padding: 7px 2px !important; gap: 8px !important;
+            text-align: right !important;
+            border-bottom: 1px solid rgba(148,163,184,.16) !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td:last-child { border-bottom: 0 !important; }
+          #transactions.transactions-container .transactions-table tbody tr td::before {
+            display: block !important; width: auto !important; min-width: 0 !important;
+            color: #64748b !important; -webkit-text-fill-color: #64748b !important;
+            font-size: 10px !important; font-weight: 800 !important;
+            text-transform: uppercase !important; letter-spacing: .35px !important;
+            text-align: left !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(1)::before { content: 'Name'; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(2)::before { content: 'Amount'; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(3)::before { content: 'Date'; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(4)::before { content: 'Status'; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(5)::before { content: 'Type'; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(6)::before { content: 'Notes'; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(7)::before { content: 'Actions'; }
+          #transactions.transactions-container .transactions-table tbody tr td > div {
+            min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(1) span {
+            color: #172033 !important; -webkit-text-fill-color: #172033 !important; font-weight: 800 !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(7) > div {
+            display: flex !important; justify-content: flex-end !important; flex-wrap: wrap !important; gap: 6px !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(7) .glass-btn {
+            width: 38px !important; min-width: 38px !important; height: 36px !important; padding: 0 !important;
+          }
+          #transactions.transactions-container .status-badge,
+          #transactions.transactions-container .type-badge {
+            justify-self: end !important; min-width: 78px !important; min-height: 28px !important;
+            padding: 5px 10px !important; font-size: 11px !important; font-weight: 800 !important;
+            border-radius: 999px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          #transactions.transactions-container { padding: 4px 4px 155px !important; }
+          #transactions.transactions-container .transactions-table tbody tr { padding: 8px !important; border-radius: 15px !important; }
+          #transactions.transactions-container .transactions-table tbody tr td {
+            grid-template-columns: 62px minmax(0,1fr) !important; min-height: 40px !important; gap: 7px !important;
+          }
+          #transactions.transactions-container .transactions-table tbody tr td::before { font-size: 9px !important; }
+          #transactions.transactions-container .status-badge,
+          #transactions.transactions-container .type-badge { min-width: 72px !important; min-height: 27px !important; font-size: 10px !important; }
+        }
+        @media (max-width: 360px) {
+          #transactions.transactions-container .transactions-table tbody tr td { grid-template-columns: 58px minmax(0,1fr) !important; }
+        }
+      `}</style>
+      <style>{`
+        /* =====================================================
+           SITE-MATCHING DARK GLASS THEME
+           Matches Dashboard / Overview / Loans / Trading
+        ===================================================== */
+        #transactions.transactions-container {
+          background: transparent !important;
+          color: #F8FAFC !important;
+          font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif !important;
+        }
+
+        #transactions.transactions-container .glass-card {
+          background: linear-gradient(145deg, rgba(39,39,70,.92), rgba(28,29,58,.88)) !important;
+          border: 1px solid rgba(167,139,250,.24) !important;
+          color: #F8FAFC !important;
+          box-shadow: 0 14px 35px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.06) !important;
+          backdrop-filter: blur(18px) !important;
+          -webkit-backdrop-filter: blur(18px) !important;
+        }
+
+        #transactions.transactions-container .glass-card:hover {
+          background: linear-gradient(145deg, rgba(48,47,82,.96), rgba(31,32,64,.92)) !important;
+          border-color: rgba(167,139,250,.42) !important;
+          box-shadow: 0 18px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08) !important;
+        }
+
+        #transactions.transactions-container h1,
+        #transactions.transactions-container h2,
+        #transactions.transactions-container h3,
+        #transactions.transactions-container h4,
+        #transactions.transactions-container strong {
+          color: #F8FAFC !important;
+        }
+
+        #transactions.transactions-container h3 {
+          color: #C4B5FD !important;
+        }
+
+        #transactions.transactions-container .summary-label {
+          color: rgba(226,232,240,.68) !important;
+        }
+
+        #transactions.transactions-container .summary-value-pending {
+          color: #FBBF24 !important;
+        }
+        #transactions.transactions-container .summary-value-received {
+          color: #6EE7B7 !important;
+        }
+        #transactions.transactions-container .summary-value-give {
+          color: #FDA4AF !important;
+        }
+        #transactions.transactions-container .summary-value-take {
+          color: #93C5FD !important;
+        }
+
+        #transactions.transactions-container .transactions-table-wrap {
+          background: rgba(18,19,40,.72) !important;
+          border: 1px solid rgba(167,139,250,.18) !important;
+          border-radius: 14px !important;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+        }
+
+        #transactions.transactions-container .transactions-table {
+          color: #F8FAFC !important;
+        }
+
+        #transactions.transactions-container .transactions-table th {
+          background: linear-gradient(135deg, rgba(67,56,202,.28), rgba(124,58,237,.20)) !important;
+          color: #DDD6FE !important;
+          border-bottom: 1px solid rgba(167,139,250,.20) !important;
+        }
+
+        #transactions.transactions-container .transactions-table td,
+        #transactions.transactions-container .transactions-table td span,
+        #transactions.transactions-container .transactions-table td div {
+          color: rgba(248,250,252,.88) !important;
+          border-bottom-color: rgba(148,163,184,.10) !important;
+        }
+
+        #transactions.transactions-container .transactions-table tbody tr:hover {
+          background: rgba(124,58,237,.10) !important;
+        }
+
+        #transactions.transactions-container .transaction-notes-cell {
+          color: rgba(226,232,240,.62) !important;
+        }
+
+        #transactions.transactions-container input,
+        #transactions.transactions-container textarea,
+        #transactions.transactions-container select,
+        #transactions.transactions-container .edit-input,
+        #transactions.transactions-container .edit-select {
+          background: rgba(255,255,255,.075) !important;
+          color: #F8FAFC !important;
+          -webkit-text-fill-color: #F8FAFC !important;
+          border: 1px solid rgba(196,181,253,.22) !important;
+          box-shadow: none !important;
+        }
+
+        #transactions.transactions-container input::placeholder,
+        #transactions.transactions-container textarea::placeholder {
+          color: rgba(226,232,240,.48) !important;
+          -webkit-text-fill-color: rgba(226,232,240,.48) !important;
+        }
+
+        #transactions.transactions-container input:focus,
+        #transactions.transactions-container textarea:focus,
+        #transactions.transactions-container select:focus,
+        #transactions.transactions-container .edit-input:focus,
+        #transactions.transactions-container .edit-select:focus {
+          background: rgba(124,58,237,.12) !important;
+          border-color: #8B5CF6 !important;
+          box-shadow: 0 0 0 3px rgba(124,58,237,.14) !important;
+        }
+
+        #transactions.transactions-container option {
+          background: #20213F !important;
+          color: #F8FAFC !important;
+        }
+
+        #transactions.transactions-container .glass-btn {
+          background: rgba(255,255,255,.075) !important;
+          color: #EDE9FE !important;
+          border: 1px solid rgba(196,181,253,.22) !important;
+          box-shadow: 0 5px 16px rgba(0,0,0,.16) !important;
+        }
+
+        #transactions.transactions-container .glass-btn:hover {
+          background: rgba(124,58,237,.24) !important;
+          color: #FFFFFF !important;
+          border-color: rgba(167,139,250,.50) !important;
+        }
+
+        #transactions.transactions-container .glass-btn.primary {
+          background: linear-gradient(135deg,#7C3AED,#4F46E5) !important;
+          color: #FFFFFF !important;
+          border-color: rgba(196,181,253,.38) !important;
+          box-shadow: 0 7px 18px rgba(79,70,229,.28) !important;
+        }
+
+        #transactions.transactions-container .glass-btn.success {
+          background: rgba(16,185,129,.14) !important;
+          color: #6EE7B7 !important;
+          border-color: rgba(16,185,129,.32) !important;
+        }
+
+        #transactions.transactions-container .glass-btn.danger {
+          background: rgba(239,68,68,.14) !important;
+          color: #FCA5A5 !important;
+          border-color: rgba(239,68,68,.32) !important;
+        }
+
+        #transactions.transactions-container .type-give {
+          background: rgba(239,68,68,.14) !important;
+          color: #FDA4AF !important;
+          border-color: rgba(239,68,68,.28) !important;
+        }
+        #transactions.transactions-container .type-take {
+          background: rgba(16,185,129,.14) !important;
+          color: #6EE7B7 !important;
+          border-color: rgba(16,185,129,.28) !important;
+        }
+        #transactions.transactions-container .status-pending {
+          background: rgba(245,158,11,.14) !important;
+          color: #FCD34D !important;
+          border-color: rgba(245,158,11,.28) !important;
+        }
+        #transactions.transactions-container .status-received {
+          background: rgba(16,185,129,.14) !important;
+          color: #6EE7B7 !important;
+          border-color: rgba(16,185,129,.28) !important;
+        }
+
+        #transactions.transactions-container .error-message {
+          background: rgba(239,68,68,.13) !important;
+          color: #FCA5A5 !important;
+          border-color: rgba(239,68,68,.30) !important;
+        }
+        #transactions.transactions-container .success-message {
+          background: rgba(16,185,129,.12) !important;
+          color: #6EE7B7 !important;
+          border-color: rgba(16,185,129,.28) !important;
+        }
+
+        /* Modals */
+        .transactions-container + .modal-overlay,
+        .modal-overlay {
+          background: rgba(4,5,16,.70) !important;
+          backdrop-filter: blur(10px) !important;
+          -webkit-backdrop-filter: blur(10px) !important;
+        }
+
+        .modal-overlay .modal-content {
+          background: linear-gradient(145deg,#292947,#1E1F3A) !important;
+          color: #F8FAFC !important;
+          border: 1px solid rgba(167,139,250,.30) !important;
+          box-shadow: 0 24px 70px rgba(0,0,0,.42) !important;
+        }
+
+        .modal-overlay .modal-title,
+        .modal-overlay .detail-value {
+          color: #F8FAFC !important;
+        }
+
+        .modal-overlay .detail-label,
+        .modal-overlay .form-group label {
+          color: rgba(226,232,240,.68) !important;
+        }
+
+        .modal-overlay .form-group input,
+        .modal-overlay .form-group textarea,
+        .modal-overlay .modal-select {
+          background: rgba(255,255,255,.075) !important;
+          color: #F8FAFC !important;
+          -webkit-text-fill-color: #F8FAFC !important;
+          border-color: rgba(196,181,253,.22) !important;
+        }
+
+        .modal-overlay .form-group input::placeholder,
+        .modal-overlay .form-group textarea::placeholder {
+          color: rgba(226,232,240,.45) !important;
+          -webkit-text-fill-color: rgba(226,232,240,.45) !important;
+        }
+
+        .modal-overlay .modal-close {
+          background: rgba(239,68,68,.14) !important;
+          color: #FCA5A5 !important;
+          border-color: rgba(239,68,68,.25) !important;
+        }
+
+        @media (max-width: 768px) {
+          #transactions.transactions-container .glass-card {
+            border-radius: 15px !important;
+          }
+        }
+      `}</style>
       <style>{`
         .transactions-container {
           width: 100%;
@@ -2043,6 +2380,476 @@ const Transactions = () => {
           font-weight: 800 !important;
         }
 
+      `}</style>
+
+      <style>{`
+        /* =========================================================
+           FINAL RESPONSIVE + PROFESSIONAL UI LAYER
+           Keeps the existing design, but makes every control,
+           badge, status, action and modal mobile-safe.
+        ========================================================= */
+
+        #transactions.transactions-container {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          overflow: visible;
+          padding:
+            8px
+            max(8px, env(safe-area-inset-right))
+            calc(8px + env(safe-area-inset-bottom))
+            max(8px, env(safe-area-inset-left));
+        }
+
+        #transactions.transactions-container *,
+        #transactions.transactions-container *::before,
+        #transactions.transactions-container *::after {
+          box-sizing: border-box;
+        }
+
+        #transactions.transactions-container .glass-card {
+          min-width: 0;
+          overflow: visible;
+        }
+
+        #transactions.transactions-container .glass-btn {
+          min-height: 36px;
+          min-width: 38px;
+          padding: 7px 11px;
+          line-height: 1;
+          white-space: nowrap;
+          touch-action: manipulation;
+        }
+
+        #transactions.transactions-container .status-badge,
+        #transactions.transactions-container .type-badge {
+          min-height: 24px;
+          min-width: 62px;
+          padding: 4px 9px;
+          border-radius: 999px;
+          font-size: 11px;
+          line-height: 1.15;
+          text-align: center;
+          vertical-align: middle;
+        }
+
+        #transactions.transactions-container .summary-label {
+          line-height: 1.25;
+          white-space: normal;
+        }
+
+        #transactions.transactions-container .transaction-filter-select {
+          min-width: 120px;
+          max-width: 150px !important;
+        }
+
+        #transactions.transactions-container .transactions-table-wrap {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: auto;
+          overflow-y: visible;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
+        }
+
+        #transactions.transactions-container .transactions-table {
+          width: 100%;
+          min-width: 820px;
+        }
+
+        /* Better desktop action spacing */
+        #transactions.transactions-container .transactions-table td:last-child > div {
+          flex-wrap: wrap;
+          align-items: center;
+        }
+
+        /* ------------------------- Tablet ------------------------- */
+        @media (max-width: 900px) {
+          #transactions.transactions-container {
+            padding: 7px;
+          }
+
+          #transactions.transactions-container .glass-card {
+            border-radius: 16px;
+            padding: 0.9rem;
+          }
+
+          #transactions.transactions-container .transactions-table {
+            min-width: 760px;
+          }
+
+          #transactions.transactions-container .transactions-table td:last-child {
+            min-width: 165px;
+          }
+        }
+
+        /* ------------------------- Mobile ------------------------- */
+        @media (max-width: 768px) {
+          #transactions.transactions-container {
+            padding: 5px;
+          }
+
+          #transactions.transactions-container .glass-card {
+            border-radius: 14px;
+            padding: 0.75rem;
+            margin-bottom: 0.6rem;
+          }
+
+          /* Summary cards */
+          #transactions.transactions-container .glass-card > div[style*="gridTemplateColumns"] {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+
+          #transactions.transactions-container .glass-card > div[style*="gridTemplateColumns"] .glass-card {
+            min-height: 66px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+          }
+
+          /* Main header */
+          #transactions.transactions-container .glass-card > div[style*="justify-content: space-between"] {
+            align-items: stretch !important;
+          }
+
+          #transactions.transactions-container .glass-card > div[style*="justify-content: space-between"] > div {
+            width: 100%;
+            justify-content: flex-start !important;
+          }
+
+          #transactions.transactions-container .glass-card > div[style*="justify-content: space-between"] > div .glass-btn {
+            flex: 1 1 0;
+          }
+
+          /* Filters */
+          #transactions.transactions-container .transaction-filter-select {
+            width: calc(50% - 4px) !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            flex: 1 1 0;
+          }
+
+          #transactions.transactions-container .edit-input[placeholder="Search by name or notes..."] {
+            width: 100%;
+            max-width: none !important;
+            min-width: 0 !important;
+            flex: 1 1 100% !important;
+          }
+
+          /* Mobile table becomes stacked transaction cards.
+             No horizontal scrolling is required. */
+          #transactions.transactions-container .transactions-table-wrap {
+            overflow: visible;
+            border: 0 !important;
+            background: transparent !important;
+          }
+
+          #transactions.transactions-container .transactions-table {
+            width: 100% !important;
+            min-width: 0 !important;
+            display: block;
+            border-spacing: 0;
+          }
+
+          #transactions.transactions-container .transactions-table thead {
+            display: none;
+          }
+
+          #transactions.transactions-container .transactions-table tbody {
+            display: block;
+            width: 100%;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr {
+            display: block;
+            width: 100%;
+            margin: 0 0 10px;
+            padding: 8px;
+            border: 1px solid rgba(167,139,250,.22) !important;
+            border-radius: 13px;
+            background: rgba(255,255,255,.045) !important;
+            box-shadow: 0 8px 22px rgba(0,0,0,.14);
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr:hover {
+            background: rgba(124,58,237,.10) !important;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td {
+            display: flex !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            padding: 7px 4px !important;
+            margin: 0;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            text-align: right !important;
+            border-bottom: 1px solid rgba(148,163,184,.10) !important;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td:last-child {
+            border-bottom: 0 !important;
+            min-width: 0 !important;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td::before {
+            flex: 0 0 76px;
+            width: 76px;
+            color: rgba(226,232,240,.56) !important;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .35px;
+            text-align: left;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(1)::before { content: "Name"; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(2)::before { content: "Amount"; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(3)::before { content: "Date"; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(4)::before { content: "Status"; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(5)::before { content: "Type"; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(6)::before { content: "Notes"; }
+          #transactions.transactions-container .transactions-table tbody tr td:nth-child(7)::before { content: "Actions"; }
+
+          #transactions.transactions-container .transactions-table tbody tr td > div {
+            min-width: 0;
+            max-width: calc(100% - 86px);
+          }
+
+          #transactions.transactions-container .transaction-notes-cell {
+            min-width: 0 !important;
+            max-width: none !important;
+            overflow-wrap: anywhere;
+          }
+
+          #transactions.transactions-container .transactions-table td .edit-input,
+          #transactions.transactions-container .transactions-table td .edit-select {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            min-height: 36px;
+            font-size: 12px !important;
+          }
+
+          #transactions.transactions-container .transactions-table td:last-child > div {
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 6px !important;
+          }
+
+          #transactions.transactions-container .transactions-table td:last-child .glass-btn {
+            min-width: 42px !important;
+            min-height: 36px;
+            padding: 7px 9px !important;
+          }
+
+          #transactions.transactions-container .transactions-table td:last-child .glass-btn svg {
+            width: 14px;
+            height: 14px;
+          }
+
+          /* Badges stay readable and never clip */
+          #transactions.transactions-container .status-badge,
+          #transactions.transactions-container .type-badge {
+            flex: 0 0 auto;
+            min-width: 72px;
+            max-width: 100%;
+            min-height: 26px;
+            padding: 5px 10px;
+            font-size: 10px;
+          }
+
+          /* Footer line */
+          #transactions.transactions-container .transactions-table-wrap + div {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            font-size: 10px !important;
+          }
+
+          /* Modals */
+          #transactions.transactions-container ~ .modal-overlay,
+          .modal-overlay {
+            padding:
+              max(10px, env(safe-area-inset-top))
+              max(10px, env(safe-area-inset-right))
+              max(10px, env(safe-area-inset-bottom))
+              max(10px, env(safe-area-inset-left));
+          }
+
+          .modal-overlay .modal-content {
+            width: 100% !important;
+            max-width: 560px !important;
+            max-height: min(88dvh, 760px) !important;
+            padding: 1rem !important;
+            border-radius: 17px !important;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+          }
+
+          .modal-overlay .form-row {
+            grid-template-columns: 1fr !important;
+            gap: 9px !important;
+          }
+
+          .modal-overlay .form-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px !important;
+          }
+
+          .modal-overlay .form-actions .glass-btn {
+            width: 100% !important;
+            min-height: 42px;
+          }
+
+          .modal-overlay .detail-row {
+            display: grid !important;
+            grid-template-columns: minmax(82px, 34%) minmax(0, 66%) !important;
+            gap: 8px !important;
+            align-items: start !important;
+          }
+
+          .modal-overlay .detail-value {
+            min-width: 0;
+            overflow-wrap: anywhere;
+          }
+        }
+
+        /* ------------------------- Small phones ------------------------- */
+        @media (max-width: 480px) {
+          #transactions.transactions-container {
+            padding: 3px;
+          }
+
+          #transactions.transactions-container .glass-card {
+            padding: 0.6rem;
+            border-radius: 12px;
+          }
+
+          #transactions.transactions-container .glass-card > div[style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 5px !important;
+          }
+
+          #transactions.transactions-container .summary-label {
+            font-size: 9px !important;
+          }
+
+          #transactions.transactions-container .summary-value-pending,
+          #transactions.transactions-container .summary-value-received,
+          #transactions.transactions-container .summary-value-give,
+          #transactions.transactions-container .summary-value-take {
+            font-size: 14px !important;
+          }
+
+          #transactions.transactions-container .glass-btn {
+            min-height: 38px;
+            padding: 7px 9px;
+            font-size: 11px;
+          }
+
+          #transactions.transactions-container .glass-btn svg {
+            width: 13px;
+            height: 13px;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr {
+            padding: 6px;
+            border-radius: 11px;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td {
+            padding: 6px 2px !important;
+            gap: 7px;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td::before {
+            flex-basis: 64px;
+            width: 64px;
+            font-size: 9px;
+          }
+
+          #transactions.transactions-container .transactions-table tbody tr td > div {
+            max-width: calc(100% - 71px);
+          }
+
+          #transactions.transactions-container .status-badge,
+          #transactions.transactions-container .type-badge {
+            min-width: 62px;
+            min-height: 24px;
+            padding: 4px 7px;
+            font-size: 9px;
+          }
+
+          #transactions.transactions-container .transactions-table td:last-child > div {
+            gap: 4px !important;
+          }
+
+          #transactions.transactions-container .transactions-table td:last-child .glass-btn {
+            min-width: 38px !important;
+            min-height: 36px;
+            padding: 7px !important;
+          }
+
+          .modal-overlay .modal-content {
+            padding: .85rem !important;
+            border-radius: 14px !important;
+          }
+
+          .modal-overlay .form-actions {
+            grid-template-columns: 1fr !important;
+          }
+
+          .modal-overlay .detail-row {
+            grid-template-columns: 1fr !important;
+          }
+
+          .modal-overlay .detail-label,
+          .modal-overlay .detail-value {
+            text-align: left !important;
+          }
+
+          .modal-overlay .detail-value {
+            margin-top: -2px;
+          }
+        }
+
+        @media (max-width: 360px) {
+          #transactions.transactions-container .glass-card > div[style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          #transactions.transactions-container .glass-card > div[style*="justify-content: space-between"] > div {
+            flex-direction: column;
+          }
+
+          #transactions.transactions-container .glass-card > div[style*="justify-content: space-between"] > div .glass-btn {
+            width: 100%;
+            flex: 1 1 auto;
+          }
+
+          #transactions.transactions-container .transaction-filter-select {
+            width: 100% !important;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          #transactions.transactions-container *,
+          #transactions.transactions-container *::before,
+          #transactions.transactions-container *::after,
+          .modal-overlay,
+          .modal-overlay .modal-content {
+            animation: none !important;
+            transition: none !important;
+          }
+        }
       `}</style>
 
       <div id="transactions" className="transactions-container">

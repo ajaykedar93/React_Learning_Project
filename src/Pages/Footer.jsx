@@ -1,29 +1,11 @@
 import React from 'react';
 import { Heart } from 'lucide-react';
+import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
-  // Instagram SVG Icon - Real Instagram Logo
-  const InstagramIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-    </svg>
-  );
-
-  // WhatsApp SVG Icon - Real WhatsApp Logo
-  const WhatsAppIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-      <circle cx="8.5" cy="12.5" r="0.5" fill="currentColor" />
-      <circle cx="12" cy="12.5" r="0.5" fill="currentColor" />
-      <circle cx="15.5" cy="12.5" r="0.5" fill="currentColor" />
-    </svg>
-  );
-
-  // Code Icon `</>` using SVG
+    // Code Icon `</>` using SVG
   const CodeIcon = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 18L22 12L16 6" />
@@ -37,11 +19,19 @@ const Footer = () => {
       <style>{`
         .footer-container {
           width: 100%;
-          background: rgba(6, 6, 15, 0.95);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid rgba(124, 58, 237, 0.15);
-          padding: 0.8rem 2rem;
+          background:
+            linear-gradient(
+              180deg,
+              rgba(15, 15, 30, 0.98) 0%,
+              rgba(7, 7, 16, 0.99) 100%
+            );
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
+          border-top: 1px solid rgba(139, 92, 246, 0.22);
+          box-shadow:
+            0 -8px 30px rgba(0, 0, 0, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.025);
+          padding: 0.95rem 2rem;
           display: flex;
           justify-content: center;
           align-items: center;
@@ -51,8 +41,8 @@ const Footer = () => {
           bottom: 0;
           z-index: 100;
           /* Safe area for mobile navigation */
-          padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
-          padding-bottom: calc(0.8rem + constant(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(0.95rem + env(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(0.95rem + constant(safe-area-inset-bottom, 0px));
         }
 
         .footer-container:hover {
@@ -62,10 +52,10 @@ const Footer = () => {
         .footer-content {
           display: flex;
           align-items: center;
-          gap: 2.5rem;
+          gap: 2.2rem;
           flex-wrap: wrap;
           justify-content: center;
-          max-width: 1200px;
+          max-width: 1280px;
           width: 100%;
         }
 
@@ -73,14 +63,14 @@ const Footer = () => {
           display: flex;
           align-items: center;
           gap: 0.8rem;
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.9);
+          font-size: 1.18rem;
+          font-weight: 750;
+          color: rgba(255, 255, 255, 0.94);
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           text-decoration: none;
           transition: all 0.3s ease;
           cursor: pointer;
-          padding: 0.3rem 0.6rem;
+          padding: 0.35rem 0.7rem;
           border-radius: 10px;
           position: relative;
         }
@@ -114,14 +104,14 @@ const Footer = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 46px;
+          height: 46px;
+          border-radius: 13px;
           background: rgba(239, 68, 68, 0.12);
           border: 1.5px solid rgba(239, 68, 68, 0.25);
           transition: all 0.3s ease;
           font-weight: 800;
-          font-size: 0.9rem;
+          font-size: 0.92rem;
           color: #EF4444;
           font-family: 'Courier New', monospace;
           position: relative;
@@ -144,7 +134,7 @@ const Footer = () => {
           content: '';
           position: absolute;
           inset: 0;
-          border-radius: 12px;
+          border-radius: 13px;
           background: rgba(239, 68, 68, 0.15);
           opacity: 0;
           transition: all 0.3s ease;
@@ -156,8 +146,8 @@ const Footer = () => {
         }
 
         .code-icon {
-          width: 24px;
-          height: 24px;
+          width: 25px;
+          height: 25px;
           color: #EF4444;
           transition: all 0.3s ease;
         }
@@ -167,19 +157,21 @@ const Footer = () => {
         }
 
         .footer-text {
-          font-size: 1.05rem;
+          font-size: 1.12rem;
           font-weight: 600;
           color: rgba(255, 255, 255, 0.7);
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
         }
 
         .footer-text .highlight {
-          background: linear-gradient(135deg, #A78BFA, #7C3AED);
+          background: linear-gradient(135deg, #C4B5FD, #8B5CF6, #6366F1);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          font-weight: 800;
-          font-size: 1.15rem;
+          font-weight: 850;
+          font-size: 1.26rem;
+          letter-spacing: 0.01em;
+          text-shadow: 0 0 22px rgba(139, 92, 246, 0.18);
         }
 
         .footer-heart {
@@ -217,51 +209,60 @@ const Footer = () => {
         .footer-socials {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 1.1rem;
         }
 
         .social-link {
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 0.6rem;
-          padding: 0.5rem 1.2rem;
+          gap: 0.65rem;
+          padding: 0.2rem 0.25rem;
           border-radius: 12px;
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(255, 255, 255, 0.78);
           transition: all 0.3s ease;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(255, 255, 255, 0.03);
+          border: none;
+          background: transparent;
+          box-shadow: none;
           text-decoration: none;
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           cursor: pointer;
-          font-weight: 600;
-          font-size: 0.95rem;
+          font-weight: 650;
+          font-size: 0.98rem;
           position: relative;
-          overflow: hidden;
+          overflow: visible;
+        }
+
+        .social-logo {
+          width: 34px;
+          height: 34px;
+          display: block;
+          object-fit: contain;
+          flex: 0 0 34px;
+          background: transparent;
+          border: none;
+          border-radius: 50%;
+          transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        .social-link:hover .social-logo {
+          transform: scale(1.1);
+        }
+
+        .social-link.instagram:hover .social-logo {
+          filter: drop-shadow(0 0 9px rgba(225, 48, 108, 0.45));
+        }
+
+        .social-link.whatsapp:hover .social-logo {
+          filter: drop-shadow(0 0 9px rgba(37, 211, 102, 0.45));
         }
 
         /* Social Link Hover Effects */
         .social-link:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 6px 25px rgba(124, 58, 237, 0.15);
+          transform: translateY(-2px);
         }
 
         .social-link:active {
-          transform: scale(0.93);
-        }
-
-        /* Social Link Click Ripple */
-        .social-link::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 12px;
-          opacity: 0;
-          transition: all 0.3s ease;
-        }
-
-        .social-link:active::after {
-          opacity: 1;
-          transform: scale(1.05);
+          transform: scale(0.97);
         }
 
         .social-link.instagram {
@@ -276,10 +277,6 @@ const Footer = () => {
           color: #E1306C;
         }
 
-        .social-link.instagram:active::after {
-          background: linear-gradient(45deg, rgba(225, 48, 108, 0.2), rgba(252, 175, 69, 0.15));
-        }
-
         .social-link.whatsapp {
           color: #25D366;
           border-color: rgba(37, 211, 102, 0.2);
@@ -292,12 +289,8 @@ const Footer = () => {
           color: #25D366;
         }
 
-        .social-link.whatsapp:active::after {
-          background: rgba(37, 211, 102, 0.15);
-        }
-
         .social-link .icon-text {
-          font-size: 0.95rem;
+          font-size: 0.98rem;
           font-weight: 600;
           color: rgba(255, 255, 255, 0.7);
           transition: all 0.3s ease;
@@ -333,7 +326,7 @@ const Footer = () => {
             gap: 0.75rem;
           }
           .footer-brand {
-            font-size: 0.78rem;
+            font-size: 0.84rem;
           }
           .code-icon-wrapper {
             width: 32px;
@@ -344,14 +337,19 @@ const Footer = () => {
             height: 17px;
           }
           .footer-text {
-            font-size: 0.72rem;
+            font-size: 0.76rem;
           }
           .footer-text .highlight {
-            font-size: 0.8rem;
+            font-size: 0.86rem;
           }
           .social-link {
-            padding: 0.25rem 0.55rem;
+            padding: 0.18rem 0.2rem;
             font-size: 0.72rem;
+          }
+          .social-logo {
+            width: 30px;
+            height: 30px;
+            flex-basis: 30px;
           }
           .social-link .icon-text {
             font-size: 0.72rem;
@@ -377,7 +375,7 @@ const Footer = () => {
             gap: 0.45rem;
           }
           .footer-brand {
-            font-size: 0.68rem;
+            font-size: 0.72rem;
           }
           .code-icon-wrapper {
             width: 27px;
@@ -388,14 +386,19 @@ const Footer = () => {
             height: 14px;
           }
           .footer-text {
-            font-size: 0.62rem;
+            font-size: 0.66rem;
           }
           .footer-text .highlight {
-            font-size: 0.7rem;
+            font-size: 0.74rem;
           }
           .social-link {
-            padding: 0.2rem 0.45rem;
+            padding: 0.15rem 0.18rem;
             font-size: 0.62rem;
+          }
+          .social-logo {
+            width: 27px;
+            height: 27px;
+            flex-basis: 27px;
           }
           .social-link .icon-text {
             display: inline;
@@ -403,7 +406,7 @@ const Footer = () => {
             overflow-wrap: anywhere;
           }
           .social-link {
-            padding: 0.25rem 0.4rem;
+            padding: 0.15rem 0.18rem;
           }
           .footer-heart {
             transform: scale(0.7);
@@ -419,7 +422,7 @@ const Footer = () => {
         /* Special handling for devices with bottom navigation */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
           .footer-container {
-            padding-bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.95rem + env(safe-area-inset-bottom, 0px));
           }
         }
       `}</style>
@@ -456,7 +459,7 @@ const Footer = () => {
               aria-label="Instagram"
               title="Instagram: @ajay_kedar_1"
             >
-              <InstagramIcon />
+              <FaInstagram className="social-logo" aria-hidden="true" />
               <span className="icon-text">@ajay_kedar_1</span>
             </a>
 
@@ -469,7 +472,7 @@ const Footer = () => {
               aria-label="WhatsApp"
               title="WhatsApp: 9370470095"
             >
-              <WhatsAppIcon />
+              <FaWhatsapp className="social-logo" aria-hidden="true" />
               <span className="icon-text">9370470095</span>
             </a>
           </div>

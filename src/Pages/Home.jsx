@@ -15,6 +15,7 @@ const Home = () => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [navigationTarget, setNavigationTarget] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshTimerRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -38,82 +39,88 @@ const Home = () => {
   };
 
   // =============================================
-  // NAVIGATION HANDLER - GUARANTEED SCROLL ON MOBILE & BROWSER
+  // SECTION NAVIGATION
   // =============================================
   const handleNavigate = (sectionId) => {
     console.log(`📍 Navigating to: ${sectionId}`);
-    
-    // Close dropdown
-    const dropdownBtn = document.querySelector('.nav-dropdown-btn');
-    if (dropdownBtn) {
-      document.body.click();
+    setNavigationTarget(sectionId);
+
+    const overviewTabs = {
+      'financial-review': 'overview',
+      'expenses': 'expenses',
+      'loans': 'loans',
+      'payments': 'payments',
+      'performance': 'performance',
+      'summary': 'summary'
+    };
+
+    // Overview controls its own tab and scroll.
+    if (overviewTabs[sectionId]) {
+      return;
     }
-    
-    // Function to scroll to element with multiple attempts
-    const scrollToElement = (id, attempt = 0) => {
-      const element = document.getElementById(id);
-      
-      if (element) {
-        // Get navbar height dynamically
-        const navbar = document.querySelector('.navbar');
-        const navbarHeight = navbar ? navbar.offsetHeight : 70;
-        
-        // Check if mobile
-        const isMobile = window.innerWidth <= 768;
-        const extraPadding = isMobile ? 25 : 15;
-        
-        // Get element position
-        const rect = element.getBoundingClientRect();
-        const scrollY = window.scrollY || window.pageYOffset || 0;
-        const elementTop = rect.top + scrollY;
-        const offsetPosition = Math.max(0, elementTop - navbarHeight - extraPadding);
-        
-        // Scroll with smooth behavior
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-        
-        console.log(`✅ Scrolled to: ${id}, offset: ${offsetPosition}, attempt: ${attempt}`);
-        
-        // For mobile, do a second scroll after a small delay for accuracy
-        if (isMobile && attempt === 0) {
-          setTimeout(() => {
-            const newRect = element.getBoundingClientRect();
-            const newScrollY = window.scrollY || window.pageYOffset || 0;
-            const newElementTop = newRect.top + newScrollY;
-            const newOffset = Math.max(0, newElementTop - navbarHeight - extraPadding);
-            
-            window.scrollTo({
-              top: newOffset,
+
+    const scrollToVisibleSection = (attempt = 0) => {
+      const elements = Array.from(
+        document.querySelectorAll(`[data-section="${sectionId}"]`)
+      );
+
+      const element = elements.find((item) => {
+        const style = window.getComputedStyle(item);
+        return style.display !== 'none' &&
+               style.visibility !== 'hidden' &&
+               item.getBoundingClientRect().height > 0;
+      });
+
+      if (!element) {
+        // Backward compatibility with any existing unique id.
+        const fallback = document.getElementById(sectionId);
+        if (fallback && fallback.getBoundingClientRect().height > 0) {
+          scrollToElement(fallback);
+          return;
+        }
+
+        if (attempt < 10) {
+          setTimeout(() => scrollToVisibleSection(attempt + 1), 100 + attempt * 80);
+        }
+        return;
+      }
+
+      scrollToElement(element);
+    };
+
+    const scrollToElement = (element) => {
+      const navbar = document.querySelector('.navbar');
+      const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 70;
+      const footer = document.querySelector('.footer-wrapper');
+      const footerHeight = footer ? footer.getBoundingClientRect().height : 0;
+      const extra = window.innerWidth <= 480 ? 18 : window.innerWidth <= 768 ? 22 : 24;
+
+      const rect = element.getBoundingClientRect();
+      const top = Math.max(
+        0,
+        rect.top + window.scrollY - navbarHeight - extra
+      );
+
+      window.scrollTo({ top, behavior: 'smooth' });
+
+      element.classList.add('section-nav-highlight');
+      setTimeout(() => element.classList.remove('section-nav-highlight'), 1200);
+
+      // Keep the target above the fixed footer on short screens.
+      if (footerHeight > 0 && window.innerHeight < 650) {
+        setTimeout(() => {
+          const current = element.getBoundingClientRect();
+          if (current.bottom > window.innerHeight - footerHeight - 10) {
+            window.scrollBy({
+              top: current.bottom - (window.innerHeight - footerHeight - 10),
               behavior: 'smooth'
             });
-            console.log(`✅ Mobile adjustment scroll to: ${id}, offset: ${newOffset}`);
-          }, 300);
-        }
-        
-        return true;
-      } else {
-        console.warn(`⚠️ Element not found: ${id}, attempt ${attempt}`);
-        
-        // Retry up to 5 times with increasing delays
-        if (attempt < 5) {
-          const delay = 300 + (attempt * 200);
-          setTimeout(() => {
-            scrollToElement(id, attempt + 1);
-          }, delay);
-        }
-        return false;
+          }
+        }, 450);
       }
     };
-    
-    // Start scrolling after a small delay (allow dropdown to close)
-    const isMobile = window.innerWidth <= 768;
-    const delay = isMobile ? 400 : 250;
-    
-    setTimeout(() => {
-      scrollToElement(sectionId);
-    }, delay);
+
+    setTimeout(() => scrollToVisibleSection(), 80);
   };
 
   // =============================================
@@ -219,6 +226,16 @@ const Home = () => {
           position: relative;
           scroll-margin-top: 80px;
           min-height: 10px;
+        }
+
+        .section-nav-highlight {
+          animation: sectionNavHighlight 1.2s ease;
+        }
+
+        @keyframes sectionNavHighlight {
+          0% { outline: 2px solid rgba(167,139,250,0); outline-offset: 8px; }
+          25% { outline: 2px solid rgba(167,139,250,0.9); outline-offset: 8px; }
+          100% { outline: 2px solid rgba(167,139,250,0); outline-offset: 8px; }
         }
 
         @media (max-width: 768px) {
@@ -709,9 +726,9 @@ const Home = () => {
           <div className="desktop-layout">
             <div className="content-wrapper">
               {/* Overview contains many sections with IDs */}
-              <Overview refreshTrigger={refreshTrigger} />
+              <Overview refreshTrigger={refreshTrigger} navigationTarget={navigationTarget} />
             </div>
-            <div className="profile-wrapper">
+            <div className="profile-wrapper" data-section="profile-card">
               {/* Profile Card with id="profile-card" */}
               <ProfileCard refreshTrigger={refreshTrigger} />
             </div>
@@ -722,13 +739,13 @@ const Home = () => {
               Each has its own ID for scrolling
           ============================================= */}
           <div className="full-width-sections">
-            <div id="transactions" className="section-anchor">
+            <div data-section="transactions" className="section-anchor">
               <Transactions refreshTrigger={refreshTrigger} />
             </div>
-            <div id="loan-details" className="section-anchor">
+            <div data-section="loan-details" className="section-anchor">
               <Loans refreshTrigger={refreshTrigger} />
             </div>
-            <div id="trading-journal" className="section-anchor">
+            <div data-section="trading-journal" className="section-anchor">
               <Trading refreshTrigger={refreshTrigger} />
             </div>
           </div>
@@ -737,18 +754,18 @@ const Home = () => {
               MOBILE LAYOUT - Profile on TOP
           ============================================= */}
           <div className="mobile-layout">
-            <div className="mobile-profile-wrapper">
+            <div className="mobile-profile-wrapper" data-section="profile-card">
               <ProfileCard refreshTrigger={refreshTrigger} />
             </div>
             <div className="mobile-content-wrapper">
-              <Overview refreshTrigger={refreshTrigger} />
-              <div id="transactions" className="section-anchor">
+              <Overview refreshTrigger={refreshTrigger} navigationTarget={navigationTarget} />
+              <div data-section="transactions" className="section-anchor">
                 <Transactions refreshTrigger={refreshTrigger} />
               </div>
-              <div id="loan-details" className="section-anchor">
+              <div data-section="loan-details" className="section-anchor">
                 <Loans refreshTrigger={refreshTrigger} />
               </div>
-              <div id="trading-journal" className="section-anchor">
+              <div data-section="trading-journal" className="section-anchor">
                 <Trading refreshTrigger={refreshTrigger} />
               </div>
             </div>

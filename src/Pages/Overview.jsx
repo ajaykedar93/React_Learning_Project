@@ -9,14 +9,14 @@ import {
   CheckCircle, XCircle, Users, Wallet, Landmark, Receipt
 } from 'lucide-react';
 
-const Overview = () => {
+const Overview = ({ navigationTarget }) => {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [messageSection, setMessageSection] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
-  const [sectionLoading, setSectionLoading] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [noDataMessage, setNoDataMessage] = useState(null);
   
@@ -91,6 +91,64 @@ const Overview = () => {
   const [overviewId, setOverviewId] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
   const sectionRefs = useRef({});
+
+  // =============================================
+  // NAVBAR SECTION NAVIGATION
+  // =============================================
+  useEffect(() => {
+    if (!navigationTarget) return;
+
+    const tabMap = {
+      'financial-review': 'overview',
+      'expenses': 'expenses',
+      'loans': 'loans',
+      'payments': 'payments',
+      'performance': 'performance',
+      'summary': 'summary'
+    };
+
+    const targetTab = tabMap[navigationTarget];
+    if (!targetTab) return;
+
+    setActiveTab(targetTab);
+
+    let attempts = 0;
+    const findAndScroll = () => {
+      attempts += 1;
+
+      const targets = Array.from(
+        document.querySelectorAll(`[data-overview-section="${navigationTarget}"]`)
+      );
+
+      const target = targets.find((element) => {
+        const style = window.getComputedStyle(element);
+        return style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          element.getBoundingClientRect().height > 0;
+      });
+
+      if (!target) {
+        if (attempts < 15) setTimeout(findAndScroll, 80);
+        return;
+      }
+
+      const navbar = document.querySelector('.navbar');
+      const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 70;
+      const extra = window.innerWidth <= 480 ? 18 : window.innerWidth <= 768 ? 22 : 24;
+
+      const top = Math.max(
+        0,
+        target.getBoundingClientRect().top + window.scrollY - navbarHeight - extra
+      );
+
+      window.scrollTo({ top, behavior: 'smooth' });
+      target.classList.add('section-nav-highlight');
+      setTimeout(() => target.classList.remove('section-nav-highlight'), 1200);
+    };
+
+    const timer = setTimeout(findAndScroll, 60);
+    return () => clearTimeout(timer);
+  }, [navigationTarget, activeTab]);
 
   // =============================================
   // FORMAT FUNCTIONS
@@ -227,8 +285,15 @@ const Overview = () => {
     setConfirmDialog({ section, message, onConfirm });
   };
 
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = async ({ silent = false } = {}) => {
+    // Initial page load shows the full-page loader.
+    // Any refresh after add/update/delete keeps the current UI visible.
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
     setNoDataMessage(null);
 
@@ -236,21 +301,26 @@ const Overview = () => {
       const monthNum = getMonthNumber(selectedMonth);
       const year = getYear(selectedMonth);
 
-      await fetchFinancialReview();
-      await fetchExpenses(monthNum, year);
-      await fetchExpensePie(monthNum, year);
-      await fetchLoans(monthNum, year);
-      await fetchPayments(monthNum, year);
-      await fetchMonthlyPerformance(monthNum, year);
-      await fetchWeeklyPerformance(selectedWeek);
-      await fetchSummary();
-      await fetchSummaryPie();
-
+      await Promise.all([
+        fetchFinancialReview(),
+        fetchExpenses(monthNum, year),
+        fetchExpensePie(monthNum, year),
+        fetchLoans(monthNum, year),
+        fetchPayments(monthNum, year),
+        fetchMonthlyPerformance(monthNum, year),
+        fetchWeeklyPerformance(selectedWeek),
+        fetchSummary(),
+        fetchSummaryPie()
+      ]);
     } catch (err) {
       console.error('Error fetching data:', err);
-      showError('overview', 'Failed to load data. Please refresh.');
+      showError('overview', 'Failed to refresh data. Please try again.');
     } finally {
-      setLoading(false);
+      if (silent) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -279,7 +349,6 @@ const Overview = () => {
   const saveFinancialReview = async () => {
     try {
       setSaving(true);
-      setSectionLoading('overview');
       const payload = {
         user_id: userId,
         total_business: financialReview.total_business || 0,
@@ -298,13 +367,12 @@ const Overview = () => {
       if (result.success) {
         showSuccess('overview', 'Financial review saved!');
         setEditingSection(null);
-        await fetchAllData();
+        await fetchAllData({ silent: true });
       }
     } catch (err) {
       showError('overview', 'Failed to save review');
     } finally {
       setSaving(false);
-      setSectionLoading(null);
     }
   };
 
@@ -350,7 +418,6 @@ const Overview = () => {
 
     try {
       setSaving(true);
-      setSectionLoading('expenses');
       const payload = {
         user_id: userId,
         category: newExpense.category,
@@ -371,13 +438,12 @@ const Overview = () => {
         setShowExpenseForm(false);
         setEditingExpenseId(null);
         setNewExpense({ category: '', amount: '', expense_date: new Date().toISOString().split('T')[0], notes: '' });
-        await fetchAllData();
+        await fetchAllData({ silent: true });
       }
     } catch (err) {
       showError('expenses', isEditing ? 'Failed to update expense' : 'Failed to add expense');
     } finally {
       setSaving(false);
-      setSectionLoading(null);
     }
   };
 
@@ -395,18 +461,16 @@ const Overview = () => {
   const deleteExpense = async (id) => {
     askForConfirmation('expenses', 'Delete this expense?', async () => {
       try {
-        setSectionLoading('expenses');
-        const response = await fetch(`${API_BASE}/expenses/delete/${id}`, { method: 'DELETE' });
+          const response = await fetch(`${API_BASE}/expenses/delete/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
           showSuccess('expenses', 'Expense deleted!');
-          await fetchAllData();
+          await fetchAllData({ silent: true });
         }
       } catch (err) {
         showError('expenses', 'Failed to delete expense');
       } finally {
-        setSectionLoading(null);
-      }
+        }
     });
   };
 
@@ -439,7 +503,6 @@ const Overview = () => {
 
     try {
       setSaving(true);
-      setSectionLoading('loans');
       const payload = {
         user_id: userId,
         name: newLoan.name,
@@ -462,13 +525,12 @@ const Overview = () => {
         setShowLoanForm(false);
         setEditingLoanId(null);
         setNewLoan({ name: '', amount: '', emi: '', loan_date: new Date().toISOString().split('T')[0], type: 'Borrow', notes: '' });
-        await fetchAllData();
+        await fetchAllData({ silent: true });
       }
     } catch (err) {
       showError('loans', isEditing ? 'Failed to update loan' : 'Failed to add loan');
     } finally {
       setSaving(false);
-      setSectionLoading(null);
     }
   };
 
@@ -486,18 +548,16 @@ const Overview = () => {
   const deleteLoan = async (id) => {
     askForConfirmation('loans', 'Delete this loan record?', async () => {
       try {
-        setSectionLoading('loans');
-        const response = await fetch(`${API_BASE}/loans/delete/${id}`, { method: 'DELETE' });
+          const response = await fetch(`${API_BASE}/loans/delete/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
           showSuccess('loans', 'Loan deleted!');
-          await fetchAllData();
+          await fetchAllData({ silent: true });
         }
       } catch (err) {
         showError('loans', 'Failed to delete loan');
       } finally {
-        setSectionLoading(null);
-      }
+        }
     });
   };
 
@@ -529,7 +589,6 @@ const Overview = () => {
 
     try {
       setSaving(true);
-      setSectionLoading('payments');
       const payload = {
         user_id: userId,
         person_name: newPayment.person_name,
@@ -551,13 +610,12 @@ const Overview = () => {
         setShowPaymentForm(false);
         setEditingPaymentId(null);
         setNewPayment({ person_name: '', amount: '', payment_date: new Date().toISOString().split('T')[0], notes: '', status: 'pending' });
-        await fetchAllData();
+        await fetchAllData({ silent: true });
       }
     } catch (err) {
       showError('payments', isEditing ? 'Failed to update payment' : 'Failed to add payment');
     } finally {
       setSaving(false);
-      setSectionLoading(null);
     }
   };
 
@@ -574,7 +632,6 @@ const Overview = () => {
 
   const updatePaymentStatus = async (id, status) => {
     try {
-      setSectionLoading('payments');
       const response = await fetch(`${API_BASE}/payments/status/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -583,30 +640,27 @@ const Overview = () => {
       const result = await response.json();
       if (result.success) {
         showSuccess('payments', 'Payment status updated!');
-        await fetchAllData();
+        await fetchAllData({ silent: true });
       }
     } catch (err) {
       showError('payments', 'Failed to update payment status');
     } finally {
-      setSectionLoading(null);
     }
   };
 
   const deletePayment = async (id) => {
     askForConfirmation('payments', 'Delete this payment record?', async () => {
       try {
-        setSectionLoading('payments');
-        const response = await fetch(`${API_BASE}/payments/delete/${id}`, { method: 'DELETE' });
+          const response = await fetch(`${API_BASE}/payments/delete/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
           showSuccess('payments', 'Payment deleted!');
-          await fetchAllData();
+          await fetchAllData({ silent: true });
         }
       } catch (err) {
         showError('payments', 'Failed to delete payment');
       } finally {
-        setSectionLoading(null);
-      }
+        }
     });
   };
 
@@ -737,12 +791,7 @@ const Overview = () => {
 
   const renderSectionFeedback = (section) => (
     <>
-      {sectionLoading === section && (
-        <div className="section-loading" role="status" aria-live="polite">
-          <span className="section-spinner"></span>
-          <span>Processing...</span>
-        </div>
-      )}
+
       {messageSection === section && error && <div className="section-feedback error-feedback">⚠️ {error}</div>}
       {messageSection === section && successMessage && <div className="section-feedback success-feedback">✅ {successMessage}</div>}
       {confirmDialog?.section === section && (
@@ -874,6 +923,12 @@ const Overview = () => {
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        .section-nav-highlight { animation: sectionNavHighlight 1.2s ease; }
+        @keyframes sectionNavHighlight {
+          0% { outline: 2px solid rgba(167,139,250,0); outline-offset: 8px; }
+          25% { outline: 2px solid rgba(167,139,250,0.9); outline-offset: 8px; }
+          100% { outline: 2px solid rgba(167,139,250,0); outline-offset: 8px; }
+        }
         .overview-container {
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           min-height: 100vh;
@@ -1015,6 +1070,29 @@ const Overview = () => {
           padding: 0.5rem 1rem;
         }
         .btn-glass.btn-refresh:hover { background: rgba(124,58,237,0.22); }
+        .btn-glass.btn-refresh:disabled {
+          opacity: 0.9;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .refresh-spinner {
+          width: 16px;
+          height: 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          animation: refreshSpin 0.8s linear infinite;
+        }
+        .refresh-icon {
+          width: 16px;
+          height: 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        @keyframes refreshSpin {
+          to { transform: rotate(360deg); }
+        }
         .btn-glass:focus-visible, .tab:focus-visible {
           outline: 2px solid #A78BFA;
           outline-offset: 2px;
@@ -1211,7 +1289,7 @@ const Overview = () => {
           left: 0;
           right: 0;
           top: calc(100% + 0.3rem);
-          z-index: 10;
+          z-index: 9999;
           max-height: min(280px, 45vh);
           overflow-y: auto;
           padding: 0.3rem;
@@ -1562,8 +1640,19 @@ const Overview = () => {
           <p>Track your business, expenses, loans & performance</p>
         </div>
         <div className="header-actions">
-          <button className="btn-glass btn-refresh" onClick={() => { fetchAllData(); showSuccess('overview', 'Refreshed!'); }}>
-            <RefreshCw size={16} /> Refresh
+          <button
+            className="btn-glass btn-refresh"
+            onClick={() => {
+              if (refreshing) return;
+              fetchAllData({ silent: true }).then(() => showSuccess('overview', 'Refreshed!'));
+            }}
+            disabled={refreshing}
+            aria-label={refreshing ? 'Refreshing data' : 'Refresh data'}
+          >
+            <span className={refreshing ? 'refresh-spinner' : 'refresh-icon'}>
+              <RefreshCw size={16} />
+            </span>
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </header>
@@ -1633,7 +1722,7 @@ const Overview = () => {
           OVERVIEW TAB
           ============================================ */}
       {activeTab === 'overview' && (
-        <>
+        <div data-overview-section="financial-review">
           {/* Financial Review */}
           <div className={`glass-card ${editingSection === 'Financial Review' ? 'editing' : ''}`}>
             <SectionHeader
@@ -1727,14 +1816,14 @@ const Overview = () => {
               <div className="value purple">{formatCurrency(selectedMonthIncome - selectedMonthExpenses)}</div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ============================================
           EXPENSES TAB
           ============================================ */}
       {activeTab === 'expenses' && (
-        <>
+        <div data-overview-section="expenses">
           {showExpenseForm && (
             <div className="form-container">
               <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingExpenseId !== null ? 'Edit Expense' : 'Add New Expense'}</h4>
@@ -1858,14 +1947,14 @@ const Overview = () => {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ============================================
           LOANS TAB
           ============================================ */}
       {activeTab === 'loans' && (
-        <>
+        <div data-overview-section="loans">
           {showLoanForm && (
             <div className="form-container">
               <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingLoanId !== null ? 'Edit Loan/Borrow' : 'Add New Loan/Borrow'}</h4>
@@ -1966,14 +2055,14 @@ const Overview = () => {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ============================================
           PAYMENTS TAB
           ============================================ */}
       {activeTab === 'payments' && (
-        <>
+        <div data-overview-section="payments">
           {showPaymentForm && (
             <div className="form-container">
               <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingPaymentId !== null ? 'Edit Payment' : 'Add New Payment'}</h4>
@@ -2064,7 +2153,7 @@ const Overview = () => {
                         <button className="btn-glass btn-success" onClick={() => updatePaymentStatus(payment.id, 'received')} style={{ padding: '0.15rem 0.4rem', fontSize: '0.5rem' }}>
                           <CheckCircle size={12} />
                         </button>
-                      )}a
+                      )}
                       <button className="btn-glass btn-danger" onClick={() => deletePayment(payment.id)} style={{ padding: '0.15rem 0.4rem' }}>
                         <Trash2 size={12} />
                       </button>
@@ -2074,14 +2163,14 @@ const Overview = () => {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ============================================
           PERFORMANCE TAB
           ============================================ */}
       {activeTab === 'performance' && (
-        <>
+        <div data-overview-section="performance">
           <div className="glass-card" style={{ padding: '0.5rem', marginBottom: '0.75rem' }}>
             <div className="week-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.6rem 1rem' }}>
               <Calendar size={18} color="#4F6BFF" />
@@ -2158,14 +2247,14 @@ const Overview = () => {
           ) : (
             <NoDataMessage message="No monthly performance data available" />
           )}
-        </>
+        </div>
       )}
 
       {/* ============================================
           SUMMARY TAB
           ============================================ */}
       {activeTab === 'summary' && (
-        <>
+        <div data-overview-section="summary">
           {summary ? (
             <>
               <div className="glass-card">
@@ -2233,7 +2322,7 @@ const Overview = () => {
           ) : (
             <NoDataMessage message="No summary data available. Start adding your financial records!" />
           )}
-        </>
+        </div>
       )}
 
     </div>

@@ -7,17 +7,15 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Sections for navigation
+  // Sections that actually exist on the Home page.
+  // Every item uses the same id for dropdown + search navigation.
   const sections = [
-    { id: 'financial-review', label: 'Financial Overview' },
-    { id: 'payment-expenses', label: 'Payment & Expenses' },
-    { id: 'borrow-loans', label: 'Borrow & Loans' },
-    { id: 'monthly-expenses', label: 'Monthly Expenses' },
-    { id: 'top-performers', label: 'Top Performers' },
-    { id: 'products-bought', label: 'Products Bought' },
-    { id: 'portfolio-distribution', label: 'Portfolio Distribution (All Time)' },
-    { id: 'monthly-performance', label: 'Monthly Performance' },
-    { id: 'monthly-summary', label: 'Monthly Performance Summary' },
+    { id: 'financial-review', label: 'Financial Overview', tab: 'overview' },
+    { id: 'expenses', label: 'Expenses', tab: 'expenses' },
+    { id: 'loans', label: 'Loans & Borrows', tab: 'loans' },
+    { id: 'payments', label: 'Payments', tab: 'payments' },
+    { id: 'performance', label: 'Performance', tab: 'performance' },
+    { id: 'summary', label: 'Summary', tab: 'summary' },
     { id: 'transactions', label: 'Transactions (Give / Take)' },
     { id: 'loan-details', label: 'Loan Details' },
     { id: 'trading-journal', label: 'Trading Journal' },
@@ -43,6 +41,21 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
     const value = e.target.value;
     setSearchText(value);
     if (onSearch) onSearch(value);
+  };
+
+  const searchResults = searchText.trim()
+    ? sections.filter((section) =>
+        section.label.toLowerCase().includes(searchText.trim().toLowerCase())
+      )
+    : [];
+
+  const handleSearchResult = (sectionId) => {
+    setSearchText('');
+    setShowMobileSearch(false);
+    setShowDropdown(false);
+    if (onNavigate) {
+      onNavigate(sectionId);
+    }
   };
 
   const handleLogout = () => {
@@ -256,6 +269,7 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
            SEARCH BOX
         ============================================= */
         .search-box {
+          position: relative;
           display: flex;
           align-items: center;
           background: rgba(255, 255, 255, 0.18);
@@ -291,6 +305,59 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
         .search-box input::placeholder {
           color: rgba(255, 255, 255, 0.7);
         }
+
+        .section-search-results {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          max-height: 320px;
+          overflow-y: auto;
+          padding: 0.4rem;
+          background: rgba(20, 20, 40, 0.98);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 14px;
+          box-shadow: 0 20px 55px rgba(0,0,0,0.45);
+          z-index: 500;
+        }
+
+        .section-search-item {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          border: 0;
+          background: transparent;
+          color: rgba(255,255,255,0.88);
+          padding: 0.65rem 0.7rem;
+          border-radius: 9px;
+          cursor: pointer;
+          text-align: left;
+          font: 600 0.78rem 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .section-search-item:hover,
+        .section-search-item:focus-visible {
+          background: rgba(124,58,237,0.28);
+          color: #fff;
+          outline: none;
+        }
+
+        .search-dot {
+          width: 7px;
+          height: 7px;
+          min-width: 7px;
+          border-radius: 50%;
+          background: #A78BFA;
+        }
+
+        .section-search-empty {
+          padding: 0.75rem;
+          text-align: center;
+          color: rgba(255,255,255,0.6);
+          font: 500 0.75rem 'Plus Jakarta Sans', sans-serif;
+        }
+
 
         /* =============================================
            ICON & LOGOUT BUTTONS
@@ -379,6 +446,13 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           to { opacity: 1; transform: translateY(0); }
         }
 
+        .mobile-search-row {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
         .mobile-search-dropdown .search-box-mobile {
           display: flex;
           align-items: center;
@@ -427,6 +501,17 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
         .close-search-btn:hover {
           background: rgba(255, 255, 255, 0.28);
           border-color: rgba(255, 255, 255, 0.45);
+        }
+
+        .mobile-section-search-results {
+          width: 100%;
+          max-height: 280px;
+          overflow-y: auto;
+          margin-top: 0.6rem;
+          padding: 0.4rem;
+          background: rgba(20, 20, 40, 0.98);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 12px;
         }
 
         /* =============================================
@@ -491,10 +576,32 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
             <Search size={18} color="#FFFFFF" />
             <input
               type="text"
-              placeholder="Search anything..."
+              placeholder="Search sections..."
               value={searchText}
               onChange={handleSearchChange}
+              aria-label="Search dashboard sections"
             />
+            {searchText.trim() && (
+              <div className="section-search-results">
+                {searchResults.length > 0 ? (
+                  searchResults.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className="section-search-item"
+                      onClick={() => handleSearchResult(section.id)}
+                    >
+                      <span className="search-dot" />
+                      <span>{section.label}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="section-search-empty">
+                    No matching section
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -549,19 +656,47 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
         {/* Mobile Search Dropdown */}
         {showMobileSearch && (
           <div className="mobile-search-dropdown">
-            <div className="search-box-mobile">
-              <Search size={18} color="#FFFFFF" />
-              <input
-                type="text"
-                placeholder="Search anything..."
-                value={searchText}
-                onChange={handleSearchChange}
-                autoFocus
-              />
+            <div className="mobile-search-row">
+              <div className="search-box-mobile">
+                <Search size={18} color="#FFFFFF" />
+                <input
+                  type="text"
+                  placeholder="Search sections..."
+                  value={searchText}
+                  onChange={handleSearchChange}
+                  autoFocus
+                  aria-label="Search dashboard sections"
+                />
+              </div>
+              <button className="close-search-btn" onClick={() => {
+                setShowMobileSearch(false);
+                setSearchText('');
+              }} aria-label="Close search">
+                <X size={18} color="#FFFFFF" />
+              </button>
             </div>
-            <button className="close-search-btn" onClick={() => setShowMobileSearch(false)} aria-label="Close search">
-              <X size={18} color="#FFFFFF" />
-            </button>
+
+            {searchText.trim() && (
+              <div className="mobile-section-search-results">
+                {searchResults.length > 0 ? (
+                  searchResults.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className="section-search-item"
+                      onClick={() => handleSearchResult(section.id)}
+                    >
+                      <span className="search-dot" />
+                      <span>{section.label}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="section-search-empty">
+                    No matching section
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </nav>
