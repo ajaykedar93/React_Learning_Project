@@ -197,6 +197,7 @@ const Home = () => {
         }
 
         .home-container {
+          --footer-space: 58px;
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -205,7 +206,8 @@ const Home = () => {
           width: 100%;
           overflow-x: hidden;
           padding-top: calc(70px + env(safe-area-inset-top, 0px));
-          padding-bottom: 0;
+          /* Keep page content above the fixed footer. */
+          padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
         }
 
         .home-main {
@@ -418,20 +420,31 @@ const Home = () => {
 
         .home-end-safe-space {
           width: 100%;
-          height: calc(18px + env(safe-area-inset-bottom, 0px));
+          height: 4px;
           flex-shrink: 0;
         }
 
+        /* =============================================
+           FIXED FOOTER
+           Always visible at the bottom without covering
+           page content or mobile navigation controls.
+        ============================================= */
         .footer-wrapper {
-          position: relative;
-          left: auto;
-          right: auto;
-          bottom: auto;
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
           width: 100%;
-          z-index: 100;
-          flex-shrink: 0;
-          margin-top: 0;
-          padding-bottom: env(safe-area-inset-bottom, 0px);
+          min-height: var(--footer-space);
+          z-index: 5000;
+          margin: 0;
+          padding: 0 0 env(safe-area-inset-bottom, 0px);
+          background: #06060f;
+        }
+
+        .footer-wrapper > * {
+          width: 100%;
+          max-width: 100%;
         }
 
         @media (max-width: 768px) {
@@ -440,8 +453,9 @@ const Home = () => {
           }
 
           .home-container {
+            --footer-space: 64px;
             padding-top: calc(55px + env(safe-area-inset-top, 0px));
-            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
           }
 
           .desktop-layout {
@@ -461,7 +475,7 @@ const Home = () => {
           }
 
           .refresh-indicator {
-            bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            bottom: calc(var(--footer-space) + 8px + env(safe-area-inset-bottom, 0px));
             right: 10px;
             padding: 0.15rem 0.5rem;
             font-size: 0.45rem;
@@ -475,7 +489,12 @@ const Home = () => {
 
         @media (max-width: 480px) {
           .home-main {
-            padding: 0.3rem 0.5rem 0.8rem;
+            padding: 0.3rem 0.5rem 1rem;
+          }
+
+          .home-container {
+            --footer-space: 64px;
+            padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
           }
 
           .mobile-layout {
@@ -487,7 +506,7 @@ const Home = () => {
           }
 
           .refresh-indicator {
-            bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+            bottom: calc(var(--footer-space) + 6px + env(safe-area-inset-bottom, 0px));
             right: 8px;
             padding: 0.1rem 0.4rem;
             font-size: 0.4rem;
