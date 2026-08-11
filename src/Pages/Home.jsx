@@ -204,8 +204,8 @@ const Home = () => {
           min-height: 100vh;
           width: 100%;
           overflow-x: hidden;
-          padding-top: 70px;
-          padding-bottom: 72px;
+          padding-top: calc(70px + env(safe-area-inset-top, 0px));
+          padding-bottom: 0;
         }
 
         .home-main {
@@ -240,14 +240,14 @@ const Home = () => {
 
         @media (max-width: 768px) {
           .section-anchor {
-            scroll-margin-top: 65px;
+            scroll-margin-top: calc(65px + env(safe-area-inset-top, 0px));
             min-height: 5px;
           }
         }
 
         @media (max-width: 480px) {
           .section-anchor {
-            scroll-margin-top: 55px;
+            scroll-margin-top: calc(55px + env(safe-area-inset-top, 0px));
             min-height: 5px;
           }
         }
@@ -416,13 +416,22 @@ const Home = () => {
           max-width: 100%;
         }
 
+        .home-end-safe-space {
+          width: 100%;
+          height: calc(18px + env(safe-area-inset-bottom, 0px));
+          flex-shrink: 0;
+        }
+
         .footer-wrapper {
-          position: fixed;
-          left: 0;
-          right: 0;
-          bottom: 0;
+          position: relative;
+          left: auto;
+          right: auto;
+          bottom: auto;
           width: 100%;
           z-index: 100;
+          flex-shrink: 0;
+          margin-top: 0;
+          padding-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         @media (max-width: 768px) {
@@ -431,8 +440,8 @@ const Home = () => {
           }
 
           .home-container {
-            padding-top: 55px;
-            padding-bottom: 72px;
+            padding-top: calc(55px + env(safe-area-inset-top, 0px));
+            padding-bottom: env(safe-area-inset-bottom, 0px);
           }
 
           .desktop-layout {
@@ -452,7 +461,7 @@ const Home = () => {
           }
 
           .refresh-indicator {
-            bottom: 70px;
+            bottom: calc(12px + env(safe-area-inset-bottom, 0px));
             right: 10px;
             padding: 0.15rem 0.5rem;
             font-size: 0.45rem;
@@ -478,7 +487,7 @@ const Home = () => {
           }
 
           .refresh-indicator {
-            bottom: 55px;
+            bottom: calc(10px + env(safe-area-inset-bottom, 0px));
             right: 8px;
             padding: 0.1rem 0.4rem;
             font-size: 0.4rem;
@@ -775,6 +784,11 @@ const Home = () => {
         <div className="footer-wrapper">
           <Footer />
         </div>
+
+        <div
+          className="home-end-safe-space"
+          aria-hidden="true"
+        />
 
         {/* Refresh Indicator */}
         <div className={`refresh-indicator ${isRefreshing ? 'active' : ''}`}>
