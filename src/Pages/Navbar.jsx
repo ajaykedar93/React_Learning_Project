@@ -108,14 +108,17 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           position: fixed;
           top: 0;
-          z-index: 100;
+          left: 0;
+          z-index: 1000;
           width: 100%;
+          box-sizing: border-box;
           background: linear-gradient(90deg, #7C3AED 0%, #4F6BFF 50%, #2EA8FF 100%);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-          padding: 0 2rem;
-          height: 70px;
+          padding: env(safe-area-inset-top, 0px) 2rem 0;
+          height: calc(70px + env(safe-area-inset-top, 0px));
+          min-height: calc(70px + env(safe-area-inset-top, 0px));
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -523,7 +526,11 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
         }
 
         @media (max-width: 768px) {
-          .navbar { padding: 0 1rem; height: 60px; }
+          .navbar {
+            padding: env(safe-area-inset-top, 0px) 1rem 0;
+            height: calc(68px + env(safe-area-inset-top, 0px));
+            min-height: calc(68px + env(safe-area-inset-top, 0px));
+          }
           .search-box.desktop-search { display: none; }
           .dashboard-title { font-size: 1.1rem; }
           .navbar-right { gap: 0.5rem; }
@@ -539,11 +546,17 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
             max-height: 300px;
           }
           .mobile-search-btn { display: flex !important; }
-          .mobile-search-dropdown { top: 60px; }
+          .mobile-search-dropdown {
+            top: calc(68px + env(safe-area-inset-top, 0px));
+          }
         }
 
         @media (max-width: 480px) {
-          .navbar { padding: 0 0.75rem; height: 55px; }
+          .navbar {
+            padding: env(safe-area-inset-top, 0px) 0.75rem 0;
+            height: calc(62px + env(safe-area-inset-top, 0px));
+            min-height: calc(62px + env(safe-area-inset-top, 0px));
+          }
           .dashboard-title { font-size: 0.95rem; }
           .icon-btn { width: 34px; height: 34px; }
           .logout-btn { width: 34px; height: 34px; }
@@ -555,13 +568,40 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
             left: auto;
           }
           .nav-dropdown-item { font-size: 0.7rem; padding: 0.4rem 0.6rem; }
-          .mobile-search-dropdown { 
-            top: 55px; 
-            padding: 0.75rem 1rem; 
+          .mobile-search-dropdown {
+            top: calc(62px + env(safe-area-inset-top, 0px));
+            padding: 0.75rem 1rem;
           }
         }
 
         .mobile-search-btn { display: none; }
+
+
+        /*
+         * Mobile camera / notch safe area:
+         * The navbar keeps its original gradient and now reserves the top
+         * device inset before the Dashboard row. Nothing is placed under
+         * the camera/notch.
+         */
+        .navbar-safe-spacer {
+          display: block;
+          width: 100%;
+          height: calc(70px + env(safe-area-inset-top, 0px));
+          flex: 0 0 auto;
+          pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+          .navbar-safe-spacer {
+            height: calc(68px + env(safe-area-inset-top, 0px));
+          }
+        }
+
+        @media (max-width: 480px) {
+          .navbar-safe-spacer {
+            height: calc(62px + env(safe-area-inset-top, 0px));
+          }
+        }
       `}</style>
 
       <nav className="navbar">
@@ -700,6 +740,12 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           </div>
         )}
       </nav>
+
+      {/* Safe space below the fixed navbar.
+          Prevents the first dashboard row/content from sitting underneath
+          the enlarged mobile notch-safe navbar. */}
+      <div className="navbar-safe-spacer" aria-hidden="true" />
+
     </>
   );
 };
