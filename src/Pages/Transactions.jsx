@@ -31,32 +31,32 @@ const GlassSelect = ({ value, onChange, options, className = '', disabled = fals
   return (
     <div
       ref={ref}
-      className={`glass-select ${open ? 'is-open' : ''} ${className}`}
+      className={`tx-glass-select ${open ? 'tx-is-open' : ''} ${className}`}
       style={style}
     >
       <button
         type="button"
-        className="glass-select-trigger"
+        className="tx-glass-select-trigger"
         onClick={() => !disabled && setOpen((prev) => !prev)}
         disabled={disabled}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="glass-select-value">{selected?.label ?? ''}</span>
-        <span className="glass-select-chevron">⌄</span>
+        <span className="tx-glass-select-value">{selected?.label ?? ''}</span>
+        <span className="tx-glass-select-chevron">⌄</span>
       </button>
 
       {open && !disabled && (
-        <div className="glass-select-menu" role="listbox">
+        <div className="tx-glass-select-menu" role="listbox">
           {options.map((option) => (
             <button
               type="button"
               role="option"
               aria-selected={String(option.value) === String(value)}
               key={String(option.value)}
-              className={`glass-select-option ${
-                String(option.value) === String(value) ? 'selected' : ''
+              className={`tx-glass-select-option ${
+                String(option.value) === String(value) ? 'tx-selected' : ''
               }`}
               onClick={() => {
                 onChange(option.value);
@@ -64,7 +64,7 @@ const GlassSelect = ({ value, onChange, options, className = '', disabled = fals
               }}
             >
               <span>{option.label}</span>
-              {String(option.value) === String(value) && <span className="glass-select-check">✓</span>}
+              {String(option.value) === String(value) && <span className="tx-glass-select-check">✓</span>}
             </button>
           ))}
         </div>
@@ -73,7 +73,7 @@ const GlassSelect = ({ value, onChange, options, className = '', disabled = fals
   );
 };
 
-const Transactions = () => {
+const Transactions = ({ refreshTrigger }) => {
   // =============================================
   // STATE
   // =============================================
@@ -147,6 +147,13 @@ const Transactions = () => {
     fetchTransactions(true);
     fetchSummary();
   }, []);
+
+  useEffect(() => {
+    if (refreshTrigger) {
+      fetchTransactions(false);
+      fetchSummary();
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
     if (successMessage) {
@@ -378,359 +385,351 @@ const Transactions = () => {
   // =============================================
   if (loading) {
     return (
-      <div className="transactions-page" style={{
+      <div className="tx-transactions-container" style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: '100vh',
-        background: 'radial-gradient(circle at 12% 8%, rgba(124,58,237,.12), transparent 34%), radial-gradient(circle at 88% 18%, rgba(79,70,229,.10), transparent 36%), linear-gradient(135deg, #0f1026 0%, #171735 52%, #101126 100%)'
+        minHeight: '200px'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid rgba(124,58,237,0.15)',
+            width: '32px',
+            height: '32px',
+            border: '3px solid rgba(124,58,237,0.15)',
             borderTopColor: '#7C3AED',
             borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-            margin: '0 auto 1.5rem'
+            animation: 'tx-spin 0.8s linear infinite',
+            margin: '0 auto 0.8rem'
           }}></div>
-          <p style={{ color: '#A5B4FC', fontSize: '0.9rem', fontWeight: '600' }}>Loading transactions...</p>
+          <p style={{ color: '#94A3B8', fontSize: '0.75rem' }}>Loading transactions...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="transactions-page">
+    <div className="tx-transactions-container">
       <style>{`
         /* =========================================================
-           GLOBAL RESET
+           TRANSACTIONS - ISOLATED STYLES
+           All classes prefixed with 'tx-' to avoid conflicts
            ========================================================= */
-        .transactions-page {
-          width: 100%;
-          min-height: 100vh;
-          background: radial-gradient(circle at 12% 8%, rgba(124,58,237,.10), transparent 34%),
-                      radial-gradient(circle at 88% 18%, rgba(79,70,229,.08), transparent 36%),
-                      linear-gradient(145deg, #0a0b1e 0%, #12122e 40%, #0e0f24 100%);
-          padding: 14px;
-          box-sizing: border-box;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          overflow-x: hidden;
-        }
 
-        .transactions-page * {
-          box-sizing: border-box;
-        }
-
-        @keyframes spin {
+        @keyframes tx-spin {
           to { transform: rotate(360deg); }
         }
 
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(16px); }
+        @keyframes tx-fadeInUp {
+          from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
+        @keyframes tx-slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tx-transactions-container {
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        .tx-transactions-container * {
+          box-sizing: border-box;
         }
 
         /* =========================================================
            GLASS CARDS
            ========================================================= */
-        .glass-card {
+        .tx-glass-card {
           background: linear-gradient(145deg, rgba(30,30,65,.92), rgba(20,20,50,.88));
-          border: 1px solid rgba(167,139,250,.18);
-          border-radius: 16px;
-          padding: 1.25rem;
-          box-shadow: 0 8px 32px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
-          backdrop-filter: blur(16px) saturate(130%);
-          -webkit-backdrop-filter: blur(16px) saturate(130%);
-          transition: border-color 0.3s ease, box-shadow 0.3s ease;
+          border: 1px solid rgba(167,139,250,.15);
+          border-radius: 14px;
+          padding: 1rem;
+          box-shadow: 0 4px 24px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+          backdrop-filter: blur(12px) saturate(130%);
+          -webkit-backdrop-filter: blur(12px) saturate(130%);
+          transition: border-color 0.25s ease;
         }
 
-        .glass-card:hover {
-          border-color: rgba(167,139,250,.35);
-          box-shadow: 0 12px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
+        .tx-glass-card:hover {
+          border-color: rgba(167,139,250,.28);
         }
 
         /* =========================================================
            GLASS SELECT
            ========================================================= */
-        .glass-select {
+        .tx-glass-select {
           position: relative;
           width: 100%;
           z-index: 30;
         }
 
-        .glass-select-trigger {
+        .tx-glass-select-trigger {
           width: 100%;
-          min-height: 38px;
-          padding: 0 12px;
+          min-height: 34px;
+          padding: 0 10px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
-          background: rgba(15,23,42,.70);
-          color: #F8FAFC;
-          border: 1px solid rgba(167,139,250,.20);
-          border-radius: 10px;
-          font-size: 0.75rem;
+          gap: 6px;
+          background: rgba(15,23,42,.65);
+          color: #E2E8F0;
+          border: 1px solid rgba(167,139,250,.16);
+          border-radius: 8px;
+          font-size: 0.7rem;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.25s ease;
+          transition: all 0.2s ease;
           text-align: left;
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
         }
 
-        .glass-select-trigger:hover {
-          background: rgba(30,30,60,.85);
-          border-color: rgba(167,139,250,.40);
+        .tx-glass-select-trigger:hover {
+          background: rgba(30,30,60,.80);
+          border-color: rgba(167,139,250,.32);
         }
 
-        .glass-select.is-open .glass-select-trigger {
+        .tx-glass-select.tx-is-open .tx-glass-select-trigger {
           border-color: #8B5CF6;
-          box-shadow: 0 0 0 3px rgba(139,92,246,.15);
+          box-shadow: 0 0 0 3px rgba(139,92,246,.12);
         }
 
-        .glass-select-value {
+        .tx-glass-select-value {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          color: #F8FAFC;
+          color: #E2E8F0;
         }
 
-        .glass-select-chevron {
-          color: #C4B5FD;
-          font-size: 14px;
-          transition: transform 0.25s ease;
+        .tx-glass-select-chevron {
+          color: #94A3B8;
+          font-size: 12px;
+          transition: transform 0.2s ease;
         }
 
-        .glass-select.is-open .glass-select-chevron {
+        .tx-glass-select.tx-is-open .tx-glass-select-chevron {
           transform: rotate(180deg);
         }
 
-        .glass-select-menu {
+        .tx-glass-select-menu {
           position: absolute;
           left: 0;
           right: 0;
           top: calc(100% + 4px);
           width: 100%;
-          max-height: 200px;
+          max-height: 180px;
           overflow-y: auto;
           padding: 4px;
           background: rgba(20,21,48,.98);
-          border: 1px solid rgba(167,139,250,.25);
-          border-radius: 10px;
-          box-shadow: 0 16px 48px rgba(0,0,0,.50);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(167,139,250,.22);
+          border-radius: 8px;
+          box-shadow: 0 12px 40px rgba(0,0,0,.45);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           z-index: 100000;
         }
 
-        .glass-select-option {
+        .tx-glass-select-option {
           width: 100%;
-          min-height: 36px;
-          padding: 6px 12px;
+          min-height: 32px;
+          padding: 5px 10px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
+          gap: 6px;
           background: transparent;
           color: #E2E8F0;
           border: 0;
           border-radius: 6px;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           font-weight: 600;
           text-align: left;
           cursor: pointer;
-          transition: background 0.15s ease;
+          transition: background 0.12s ease;
         }
 
-        .glass-select-option:hover {
-          background: rgba(124,58,237,.20);
+        .tx-glass-select-option:hover {
+          background: rgba(124,58,237,.18);
           color: #FFFFFF;
         }
 
-        .glass-select-option.selected {
-          background: rgba(124,58,237,.28);
+        .tx-glass-select-option.tx-selected {
+          background: rgba(124,58,237,.24);
           color: #FFFFFF;
         }
 
-        .glass-select-check {
-          color: #C4B5FD;
+        .tx-glass-select-check {
+          color: #A78BFA;
           font-weight: 900;
         }
 
         /* =========================================================
-           PROFESSIONAL GLASS BUTTONS
+           BUTTONS - DIRECT COLORS WITH GLASS EFFECT
            ========================================================= */
-        .btn {
+        .tx-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          min-height: 36px;
-          padding: 0 16px;
-          border-radius: 10px;
-          font-size: 0.78rem;
+          min-height: 34px;
+          padding: 0 14px;
+          border-radius: 8px;
+          font-size: 0.75rem;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           white-space: nowrap;
-          border: 1px solid rgba(255,255,255,.10);
+          border: 1px solid rgba(255,255,255,.12);
           text-shadow: 0 1px 2px rgba(0,0,0,.20);
           position: relative;
           overflow: hidden;
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          letter-spacing: 0.3px;
+          letter-spacing: 0.2px;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
 
-        .btn::before {
+        .tx-btn::before {
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, rgba(255,255,255,.12), transparent 50%);
+          background: linear-gradient(135deg, rgba(255,255,255,.10), transparent 50%);
           pointer-events: none;
           border-radius: inherit;
         }
 
-        .btn:hover {
+        .tx-btn:hover {
           transform: translateY(-2px) scale(1.02);
-          box-shadow: 0 8px 28px rgba(0,0,0,.35);
+          box-shadow: 0 6px 24px rgba(0,0,0,.30);
         }
 
-        .btn:active {
+        .tx-btn:active {
           transform: translateY(0) scale(.97);
         }
 
-        .btn:disabled {
+        .tx-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
           transform: none !important;
           box-shadow: none !important;
         }
 
-        /* Yellow - View/Add */
-        .btn-yellow {
-          background: linear-gradient(135deg, #D97706, #F59E0B);
+        /* YELLOW */
+        .tx-btn-yellow {
+          background: #F59E0B;
           border-color: rgba(245,158,11,.35);
           color: #FFFFFF;
-          box-shadow: 0 4px 18px rgba(245,158,11,.25);
+          box-shadow: 0 4px 16px rgba(245,158,11,.25);
         }
 
-        .btn-yellow:hover {
-          background: linear-gradient(135deg, #B45309, #FBBF24);
+        .tx-btn-yellow:hover {
+          background: #FBBF24;
           border-color: rgba(245,158,11,.55);
-          box-shadow: 0 6px 28px rgba(245,158,11,.35);
+          box-shadow: 0 6px 24px rgba(245,158,11,.35);
         }
 
-        /* Green - Edit/Save */
-        .btn-green {
-          background: linear-gradient(135deg, #059669, #10B981);
+        /* GREEN */
+        .tx-btn-green {
+          background: #10B981;
           border-color: rgba(16,185,129,.35);
           color: #FFFFFF;
-          box-shadow: 0 4px 18px rgba(16,185,129,.25);
+          box-shadow: 0 4px 16px rgba(16,185,129,.25);
         }
 
-        .btn-green:hover {
-          background: linear-gradient(135deg, #047857, #34D399);
+        .tx-btn-green:hover {
+          background: #34D399;
           border-color: rgba(16,185,129,.55);
-          box-shadow: 0 6px 28px rgba(16,185,129,.35);
+          box-shadow: 0 6px 24px rgba(16,185,129,.35);
         }
 
-        /* Red - Delete/Cancel */
-        .btn-red {
-          background: linear-gradient(135deg, #DC2626, #EF4444);
+        /* RED */
+        .tx-btn-red {
+          background: #EF4444;
           border-color: rgba(239,68,68,.35);
           color: #FFFFFF;
-          box-shadow: 0 4px 18px rgba(239,68,68,.25);
+          box-shadow: 0 4px 16px rgba(239,68,68,.25);
         }
 
-        .btn-red:hover {
-          background: linear-gradient(135deg, #B91C1C, #F87171);
+        .tx-btn-red:hover {
+          background: #F87171;
           border-color: rgba(239,68,68,.55);
-          box-shadow: 0 6px 28px rgba(239,68,68,.35);
+          box-shadow: 0 6px 24px rgba(239,68,68,.35);
         }
 
-        /* Purple - Primary */
-        .btn-purple {
-          background: linear-gradient(135deg, #7C3AED, #4F46E5);
-          border-color: rgba(196,181,253,.35);
+        /* PURPLE */
+        .tx-btn-purple {
+          background: #7C3AED;
+          border-color: rgba(124,58,237,.35);
           color: #FFFFFF;
-          box-shadow: 0 4px 18px rgba(124,58,237,.25);
+          box-shadow: 0 4px 16px rgba(124,58,237,.25);
         }
 
-        .btn-purple:hover {
-          background: linear-gradient(135deg, #8B5CF6, #6366F1);
-          border-color: rgba(196,181,253,.55);
-          box-shadow: 0 6px 28px rgba(124,58,237,.35);
+        .tx-btn-purple:hover {
+          background: #8B5CF6;
+          border-color: rgba(124,58,237,.55);
+          box-shadow: 0 6px 24px rgba(124,58,237,.35);
         }
 
-        /* Outline - Glass */
-        .btn-outline {
-          background: rgba(255,255,255,.06);
-          border-color: rgba(167,139,250,.20);
+        /* OUTLINE */
+        .tx-btn-outline {
+          background: rgba(255,255,255,.05);
+          border-color: rgba(167,139,250,.16);
+          color: #94A3B8;
+        }
+
+        .tx-btn-outline:hover {
+          background: rgba(167,139,250,.10);
+          border-color: rgba(167,139,250,.35);
           color: #C4B5FD;
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
         }
 
-        .btn-outline:hover {
-          background: rgba(167,139,250,.15);
-          border-color: rgba(167,139,250,.45);
-          color: #FFFFFF;
-        }
-
-        /* Size variants */
-        .btn-sm {
-          min-height: 32px;
-          padding: 0 12px;
-          font-size: 0.7rem;
-          border-radius: 8px;
-        }
-
-        .btn-xs {
-          min-height: 28px;
+        /* Sizes */
+        .tx-btn-sm {
+          min-height: 30px;
           padding: 0 10px;
           font-size: 0.65rem;
-          border-radius: 7px;
+          border-radius: 6px;
+        }
+
+        .tx-btn-xs {
+          min-height: 28px;
+          padding: 0 8px;
+          font-size: 0.6rem;
+          border-radius: 5px;
           gap: 4px;
         }
 
-        .btn-icon {
-          width: 38px;
-          height: 38px;
-          min-width: 38px;
+        /* ICON BUTTONS - ENLARGED */
+        .tx-btn-icon {
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
           padding: 0;
           border-radius: 10px;
         }
 
-        .btn-icon svg {
-          width: 18px;
-          height: 18px;
+        .tx-btn-icon svg {
+          width: 20px;
+          height: 20px;
         }
 
-        .btn-icon.btn-xs {
-          width: 36px;
-          height: 36px;
-          min-width: 36px;
+        .tx-btn-icon.tx-btn-xs {
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
           border-radius: 9px;
         }
 
-        .btn-icon.btn-xs svg {
-          width: 17px;
-          height: 17px;
+        .tx-btn-icon.tx-btn-xs svg {
+          width: 18px;
+          height: 18px;
         }
 
         /* =========================================================
            BADGES
            ========================================================= */
-        .badge {
+        .tx-badge {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -744,138 +743,134 @@ const Transactions = () => {
           border: 1px solid transparent;
         }
 
-        .badge-pending {
-          background: rgba(245,158,11,.15);
+        .tx-badge-pending {
+          background: rgba(245,158,11,.14);
           color: #FCD34D;
-          border-color: rgba(245,158,11,.25);
+          border-color: rgba(245,158,11,.22);
         }
 
-        .badge-received {
-          background: rgba(16,185,129,.15);
+        .tx-badge-received {
+          background: rgba(16,185,129,.14);
           color: #6EE7B7;
-          border-color: rgba(16,185,129,.25);
+          border-color: rgba(16,185,129,.22);
         }
 
-        .badge-give {
-          background: rgba(239,68,68,.15);
+        .tx-badge-give {
+          background: rgba(239,68,68,.14);
           color: #FDA4AF;
-          border-color: rgba(239,68,68,.25);
+          border-color: rgba(239,68,68,.22);
         }
 
-        .badge-take {
-          background: rgba(16,185,129,.15);
+        .tx-badge-take {
+          background: rgba(16,185,129,.14);
           color: #6EE7B7;
-          border-color: rgba(16,185,129,.25);
+          border-color: rgba(16,185,129,.22);
         }
 
         /* =========================================================
-           SUMMARY CARDS
+           SUMMARY
            ========================================================= */
-        .summary-grid {
+        .tx-summary-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-          gap: 10px;
-          margin-bottom: 16px;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 8px;
+          margin-bottom: 12px;
         }
 
-        .summary-item {
-          background: rgba(15,23,42,.45);
-          border: 1px solid rgba(167,139,250,.10);
-          border-radius: 12px;
-          padding: 10px 14px;
+        .tx-summary-item {
+          background: rgba(15,23,42,.40);
+          border: 1px solid rgba(167,139,250,.08);
+          border-radius: 10px;
+          padding: 8px 12px;
           text-align: center;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          transition: all 0.25s ease;
         }
 
-        .summary-item:hover {
-          border-color: rgba(167,139,250,.25);
-          background: rgba(20,30,55,.55);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0,0,0,.20);
+        .tx-summary-item:hover {
+          border-color: rgba(167,139,250,.20);
+          background: rgba(20,30,55,.50);
         }
 
-        .summary-label {
+        .tx-summary-label {
           font-size: 0.55rem;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.4px;
           color: #94A3B8;
           margin-bottom: 2px;
         }
 
-        .summary-value {
+        .tx-summary-value {
           font-size: 1.1rem;
           font-weight: 800;
         }
 
-        .summary-value.pending { color: #FBBF24; }
-        .summary-value.received { color: #34D399; }
-        .summary-value.give { color: #FB7185; }
-        .summary-value.take { color: #A78BFA; }
+        .tx-summary-value.tx-pending { color: #FBBF24; }
+        .tx-summary-value.tx-received { color: #34D399; }
+        .tx-summary-value.tx-give { color: #FB7185; }
+        .tx-summary-value.tx-take { color: #A78BFA; }
 
         /* =========================================================
            TABLE
            ========================================================= */
-        .table-wrap {
+        .tx-table-wrap {
           width: 100%;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
-          border-radius: 12px;
-          background: rgba(10,15,35,.40);
-          border: 1px solid rgba(167,139,250,.08);
+          border-radius: 10px;
+          background: rgba(10,15,35,.35);
+          border: 1px solid rgba(167,139,250,.06);
         }
 
-        .table {
+        .tx-table {
           width: 100%;
           min-width: 820px;
           border-collapse: collapse;
           font-size: 0.75rem;
         }
 
-        .table thead th {
+        .tx-table thead th {
           padding: 8px 10px;
           text-align: left;
           font-weight: 700;
           font-size: 0.6rem;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.4px;
           color: #94A3B8;
-          border-bottom: 1px solid rgba(167,139,250,.08);
-          background: rgba(15,20,45,.50);
+          border-bottom: 1px solid rgba(167,139,250,.06);
+          background: rgba(15,20,45,.40);
           position: sticky;
           top: 0;
           z-index: 5;
         }
 
-        .table thead th:last-child { text-align: center; }
-        .table thead th:nth-child(2) { text-align: right; }
-        .table thead th:nth-child(4),
-        .table thead th:nth-child(5) { text-align: center; }
+        .tx-table thead th:last-child { text-align: center; }
+        .tx-table thead th:nth-child(2) { text-align: right; }
+        .tx-table thead th:nth-child(4),
+        .tx-table thead th:nth-child(5) { text-align: center; }
 
-        .table tbody tr {
-          transition: background 0.2s ease;
-          border-bottom: 1px solid rgba(167,139,250,.05);
+        .tx-table tbody tr {
+          transition: background 0.15s ease;
+          border-bottom: 1px solid rgba(167,139,250,.04);
         }
 
-        .table tbody tr:hover {
-          background: rgba(124,58,237,.05);
+        .tx-table tbody tr:hover {
+          background: rgba(124,58,237,.04);
         }
 
-        .table tbody td {
+        .tx-table tbody td {
           padding: 8px 10px;
           vertical-align: middle;
           color: #E2E8F0;
           font-size: 0.75rem;
         }
 
-        .table tbody td:last-child { text-align: center; }
-        .table tbody td:nth-child(2) { text-align: right; }
-        .table tbody td:nth-child(4),
-        .table tbody td:nth-child(5) { text-align: center; }
+        .tx-table tbody td:last-child { text-align: center; }
+        .tx-table tbody td:nth-child(2) { text-align: right; }
+        .tx-table tbody td:nth-child(4),
+        .tx-table tbody td:nth-child(5) { text-align: center; }
 
-        .table .name-cell {
+        .tx-name-cell {
           display: flex;
           align-items: center;
           gap: 6px;
@@ -883,18 +878,18 @@ const Transactions = () => {
           color: #F8FAFC;
         }
 
-        .table .name-cell .icon-give { color: #FB7185; }
-        .table .name-cell .icon-take { color: #34D399; }
+        .tx-name-cell .tx-icon-give { color: #FB7185; }
+        .tx-name-cell .tx-icon-take { color: #34D399; }
 
-        .table .amount-give { color: #FB7185; font-weight: 700; }
-        .table .amount-take { color: #34D399; font-weight: 700; }
+        .tx-amount-give { color: #FB7185; font-weight: 700; }
+        .tx-amount-take { color: #34D399; font-weight: 700; }
 
-        .table .date-cell {
+        .tx-date-cell {
           color: #94A3B8;
-          font-size: 0.65rem;
+          font-size: 0.7rem;
         }
 
-        .table .notes-cell {
+        .tx-notes-cell {
           color: #94A3B8;
           max-width: 160px;
           overflow: hidden;
@@ -902,7 +897,7 @@ const Transactions = () => {
           white-space: nowrap;
         }
 
-        .table .actions-cell {
+        .tx-actions-cell {
           display: flex;
           align-items: center;
           justify-content: center;
@@ -910,9 +905,9 @@ const Transactions = () => {
         }
 
         /* =========================================================
-           MODALS - Professional Glass
+           MODALS
            ========================================================= */
-        .modal-overlay {
+        .tx-modal-overlay {
           position: fixed;
           inset: 0;
           z-index: 99999;
@@ -921,397 +916,423 @@ const Transactions = () => {
           justify-content: center;
           padding: 16px;
           background: rgba(4,5,16,.78);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          animation: fadeInUp 0.25s ease;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          animation: tx-fadeInUp 0.2s ease;
         }
 
-        .modal {
+        .tx-modal {
           width: min(500px, 100%);
           max-height: calc(100vh - 32px);
           overflow-y: auto;
           padding: 24px 28px;
           background: linear-gradient(145deg, rgba(35,35,70,.98), rgba(25,25,55,.96));
-          border: 1px solid rgba(167,139,250,.28);
-          border-radius: 20px;
-          box-shadow: 0 24px 64px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
-          animation: fadeInUp 0.3s ease;
+          border: 1px solid rgba(167,139,250,.22);
+          border-radius: 18px;
+          box-shadow: 0 20px 56px rgba(0,0,0,.50), inset 0 1px 0 rgba(255,255,255,.05);
+          animation: tx-fadeInUp 0.25s ease;
         }
 
-        .modal-header {
+        .tx-modal-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 18px;
+          gap: 10px;
+          margin-bottom: 16px;
           padding-bottom: 10px;
-          border-bottom: 1px solid rgba(167,139,250,.10);
+          border-bottom: 1px solid rgba(167,139,250,.08);
         }
 
-        .modal-title {
+        .tx-modal-title {
           display: flex;
           align-items: center;
           gap: 8px;
           font-size: 1rem;
           font-weight: 700;
-          color: #F8FAFC;
+          color: #FFFFFF;
           margin: 0;
         }
 
-        .modal-title .icon { color: #A78BFA; }
+        .tx-modal-title .tx-icon { color: #A78BFA; }
 
-        .modal-close {
+        .tx-modal-close {
           width: 34px;
           height: 34px;
           min-width: 34px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(239,68,68,.12);
-          border: 1px solid rgba(239,68,68,.20);
+          background: rgba(239,68,68,.10);
+          border: 1px solid rgba(239,68,68,.18);
           border-radius: 8px;
           color: #FCA5A5;
           cursor: pointer;
-          transition: all 0.25s ease;
+          transition: all 0.2s ease;
         }
 
-        .modal-close:hover {
-          background: rgba(239,68,68,.22);
-          border-color: rgba(239,68,68,.45);
-          transform: scale(1.05);
+        .tx-modal-close:hover {
+          background: rgba(239,68,68,.20);
+          border-color: rgba(239,68,68,.40);
         }
 
-        .modal-body {
+        .tx-modal-close svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .tx-modal-body {
           color: #E2E8F0;
         }
 
         /* Form */
-        .form-grid {
+        .tx-form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 12px;
           margin-bottom: 12px;
         }
 
-        .form-group {
+        .tx-form-group {
           display: flex;
           flex-direction: column;
           gap: 4px;
         }
 
-        .form-group.full { grid-column: 1 / -1; }
+        .tx-form-group.tx-full { grid-column: 1 / -1; }
 
-        .form-label {
+        .tx-form-label {
           font-size: 0.6rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #94A3B8;
-        }
-
-        .form-input {
-          width: 100%;
-          min-height: 38px;
-          padding: 0 12px;
-          background: rgba(15,23,42,.70);
-          border: 1px solid rgba(167,139,250,.18);
-          border-radius: 8px;
-          color: #F8FAFC;
-          font-size: 0.75rem;
-          font-weight: 600;
-          transition: all 0.25s ease;
-          outline: none;
-        }
-
-        .form-input::placeholder {
-          color: #64748B;
-        }
-
-        .form-input:focus {
-          border-color: #8B5CF6;
-          box-shadow: 0 0 0 3px rgba(139,92,246,.12);
-          background: rgba(20,25,55,.85);
-        }
-
-        .form-input.textarea {
-          min-height: 60px;
-          padding: 8px 12px;
-          resize: vertical;
-          font-family: inherit;
-        }
-
-        .form-actions {
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 10px;
-          margin-top: 16px;
-          padding-top: 14px;
-          border-top: 1px solid rgba(167,139,250,.08);
-        }
-
-        /* Detail Rows */
-        .detail-list {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .detail-row {
-          display: grid;
-          grid-template-columns: 90px 1fr;
-          gap: 14px;
-          padding: 8px 0;
-          border-bottom: 1px solid rgba(167,139,250,.06);
-        }
-
-        .detail-row:last-child { border-bottom: 0; }
-
-        .detail-label {
-          font-size: 0.65rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.4px;
           color: #94A3B8;
         }
 
-        .detail-value {
-          font-size: 0.8rem;
-          font-weight: 600;
+        .tx-form-input {
+          width: 100%;
+          min-height: 36px;
+          padding: 0 12px;
+          background: rgba(15,23,42,.65);
+          border: 1px solid rgba(167,139,250,.14);
+          border-radius: 8px;
           color: #F8FAFC;
+          font-size: 0.75rem;
+          font-weight: 600;
+          transition: all 0.2s ease;
+          outline: none;
+        }
+
+        .tx-form-input::placeholder {
+          color: #475569;
+        }
+
+        .tx-form-input:focus {
+          border-color: #8B5CF6;
+          box-shadow: 0 0 0 3px rgba(139,92,246,.10);
+          background: rgba(20,25,55,.80);
+        }
+
+        .tx-form-input.tx-textarea {
+          min-height: 60px;
+          padding: 8px 12px;
+          resize: vertical;
+          font-family: inherit;
+        }
+
+        .tx-form-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 14px;
+          padding-top: 12px;
+          border-top: 1px solid rgba(167,139,250,.06);
+        }
+
+        .tx-form-actions .tx-btn {
+          min-height: 38px;
+          padding: 0 18px;
+          font-size: 0.75rem;
+        }
+
+        /* Detail Rows */
+        .tx-detail-list {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .tx-detail-row {
+          display: grid;
+          grid-template-columns: 90px 1fr;
+          gap: 14px;
+          padding: 8px 0;
+          border-bottom: 1px solid rgba(167,139,250,.05);
+        }
+
+        .tx-detail-row:last-child { border-bottom: 0; }
+
+        .tx-detail-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          color: #94A3B8;
+        }
+
+        .tx-detail-value {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #FFFFFF;
           text-align: right;
           word-break: break-word;
         }
 
-        .detail-value .badge {
-          font-size: 0.55rem;
+        .tx-detail-value .tx-badge {
+          font-size: 0.6rem;
         }
 
         /* Delete Modal */
-        .delete-icon {
+        .tx-delete-icon {
           font-size: 2.5rem;
           text-align: center;
           margin-bottom: 6px;
         }
 
-        .delete-text {
+        .tx-delete-text {
           text-align: center;
           color: #E2E8F0;
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           font-weight: 600;
         }
 
-        .delete-sub {
+        .tx-delete-sub {
           text-align: center;
           color: #94A3B8;
-          font-size: 0.65rem;
+          font-size: 0.7rem;
           margin-top: 4px;
         }
 
         /* =========================================================
            RESPONSIVE
            ========================================================= */
-        @media (max-width: 992px) {
-          .transactions-page { padding: 10px; }
-        }
-
         @media (max-width: 768px) {
-          .transactions-page { padding: 6px; }
+          .tx-glass-card { padding: 0.7rem; border-radius: 12px; }
 
-          .glass-card { padding: 0.8rem; border-radius: 14px; }
-
-          .summary-grid {
+          .tx-summary-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
+            gap: 5px;
           }
 
-          .summary-item { padding: 8px 10px; }
-          .summary-value { font-size: 0.95rem; }
+          .tx-summary-item { padding: 6px 10px; }
+          .tx-summary-value { font-size: 0.95rem; }
 
-          .table-wrap {
+          .tx-table-wrap {
             background: transparent;
             border: 0;
             overflow: visible;
           }
 
-          .table {
+          .tx-table {
             min-width: 0;
             display: block;
           }
 
-          .table thead { display: none; }
+          .tx-table thead { display: none; }
 
-          .table tbody {
+          .tx-table tbody {
             display: block;
             width: 100%;
           }
 
-          .table tbody tr {
+          .tx-table tbody tr {
             display: block;
             width: 100%;
             margin-bottom: 8px;
             padding: 10px 12px;
             background: linear-gradient(145deg, rgba(30,30,65,.94), rgba(20,20,50,.90));
-            border: 1px solid rgba(167,139,250,.15);
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,.20);
+            border: 1px solid rgba(167,139,250,.12);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.18);
           }
 
-          .table tbody td {
+          .tx-table tbody td {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 5px 0;
-            border-bottom: 1px solid rgba(167,139,250,.05);
+            border-bottom: 1px solid rgba(167,139,250,.04);
           }
 
-          .table tbody td:last-child { border-bottom: 0; }
+          .tx-table tbody td:last-child { border-bottom: 0; }
 
-          .table tbody td::before {
+          .tx-table tbody td::before {
             content: attr(data-label);
             font-size: 0.55rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.3px;
             color: #94A3B8;
-            flex: 0 0 64px;
+            flex: 0 0 60px;
           }
 
-          .table tbody td .name-cell {
+          .tx-table tbody td .tx-name-cell {
             flex: 1;
             justify-content: flex-end;
           }
 
-          .table tbody td:nth-child(2),
-          .table tbody td:nth-child(4),
-          .table tbody td:nth-child(5),
-          .table tbody td:last-child {
+          .tx-table tbody td:nth-child(2),
+          .tx-table tbody td:nth-child(4),
+          .tx-table tbody td:nth-child(5),
+          .tx-table tbody td:last-child {
             text-align: right;
           }
 
-          .table .notes-cell {
+          .tx-notes-cell {
             max-width: none;
             white-space: normal;
             overflow: visible;
             text-overflow: unset;
           }
 
-          .table .actions-cell {
+          .tx-actions-cell {
             justify-content: flex-end;
           }
 
-          .btn-icon.btn-xs {
-            width: 34px;
-            height: 34px;
-            min-width: 34px;
+          .tx-btn-icon {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
           }
 
-          .btn-icon.btn-xs svg {
-            width: 16px;
-            height: 16px;
+          .tx-btn-icon svg {
+            width: 18px;
+            height: 18px;
           }
 
-          .modal {
-            padding: 18px 16px;
-            border-radius: 16px;
-            max-height: calc(100vh - 16px);
+          .tx-btn-icon.tx-btn-xs {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
           }
 
-          .form-grid {
+          .tx-btn-icon.tx-btn-xs svg {
+            width: 17px;
+            height: 17px;
+          }
+
+          .tx-modal {
+            padding: 16px 18px;
+            border-radius: 14px;
+          }
+
+          .tx-form-grid {
             grid-template-columns: 1fr;
             gap: 8px;
           }
 
-          .detail-row {
+          .tx-detail-row {
             grid-template-columns: 1fr;
             gap: 2px;
-            padding: 6px 0;
+            padding: 5px 0;
           }
 
-          .detail-value { text-align: left; }
+          .tx-detail-value { text-align: left; }
 
-          .form-actions {
+          .tx-form-actions {
             flex-direction: column-reverse;
           }
 
-          .form-actions .btn {
+          .tx-form-actions .tx-btn {
             width: 100%;
             justify-content: center;
           }
         }
 
         @media (max-width: 480px) {
-          .transactions-page { padding: 4px; }
+          .tx-glass-card { padding: 0.5rem; border-radius: 10px; }
 
-          .glass-card { padding: 0.6rem; border-radius: 12px; }
-
-          .summary-grid {
+          .tx-summary-grid {
             grid-template-columns: 1fr 1fr;
             gap: 4px;
           }
 
-          .summary-item { padding: 6px 8px; }
-          .summary-value { font-size: 0.85rem; }
-          .summary-label { font-size: 0.5rem; }
+          .tx-summary-item { padding: 4px 8px; border-radius: 8px; }
+          .tx-summary-value { font-size: 0.85rem; }
+          .tx-summary-label { font-size: 0.5rem; }
 
-          .table tbody tr { padding: 8px 10px; border-radius: 10px; }
-          .table tbody td { font-size: 0.68rem; padding: 4px 0; }
-          .table tbody td::before { flex: 0 0 54px; font-size: 0.5rem; }
+          .tx-table tbody tr { padding: 8px 10px; border-radius: 8px; }
+          .tx-table tbody td { font-size: 0.7rem; padding: 4px 0; }
+          .tx-table tbody td::before { flex: 0 0 50px; font-size: 0.5rem; }
 
-          .btn { 
+          .tx-btn { 
             font-size: 0.7rem; 
-            min-height: 32px; 
-            padding: 0 12px; 
+            min-height: 30px; 
+            padding: 0 10px; 
           }
           
-          .btn-icon { 
-            width: 34px; 
-            height: 34px; 
-            min-width: 34px; 
+          .tx-btn-icon { 
+            width: 38px; 
+            height: 38px; 
+            min-width: 38px; 
           }
           
-          .btn-icon.btn-xs { 
-            width: 32px; 
-            height: 32px; 
-            min-width: 32px; 
+          .tx-btn-icon svg {
+            width: 17px;
+            height: 17px;
           }
           
-          .btn-icon.btn-xs svg {
-            width: 15px;
-            height: 15px;
+          .tx-btn-icon.tx-btn-xs { 
+            width: 36px; 
+            height: 36px; 
+            min-width: 36px; 
+          }
+          
+          .tx-btn-icon.tx-btn-xs svg {
+            width: 16px;
+            height: 16px;
           }
 
-          .modal { padding: 14px 12px; border-radius: 14px; }
-          .modal-title { font-size: 0.9rem; }
+          .tx-modal { 
+            padding: 12px 14px; 
+            border-radius: 12px; 
+          }
+          
+          .tx-modal-title { 
+            font-size: 0.9rem; 
+          }
 
-          .badge { font-size: 0.5rem; padding: 2px 8px; }
+          .tx-badge { 
+            font-size: 0.5rem; 
+            padding: 2px 8px; 
+          }
         }
 
         @media (max-width: 360px) {
-          .summary-grid { grid-template-columns: 1fr; }
+          .tx-summary-grid { grid-template-columns: 1fr; }
         }
 
         /* Scrollbar */
-        .modal::-webkit-scrollbar,
-        .table-wrap::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
+        .tx-modal::-webkit-scrollbar,
+        .tx-table-wrap::-webkit-scrollbar {
+          width: 3px;
+          height: 3px;
         }
 
-        .modal::-webkit-scrollbar-track,
-        .table-wrap::-webkit-scrollbar-track {
-          background: rgba(15,23,42,.25);
+        .tx-modal::-webkit-scrollbar-track,
+        .tx-table-wrap::-webkit-scrollbar-track {
+          background: rgba(15,23,42,.20);
         }
 
-        .modal::-webkit-scrollbar-thumb,
-        .table-wrap::-webkit-scrollbar-thumb {
-          background: rgba(124,58,237,.30);
-          border-radius: 4px;
+        .tx-modal::-webkit-scrollbar-thumb,
+        .tx-table-wrap::-webkit-scrollbar-thumb {
+          background: rgba(124,58,237,.25);
+          border-radius: 3px;
         }
 
-        .modal::-webkit-scrollbar-thumb:hover,
-        .table-wrap::-webkit-scrollbar-thumb:hover {
-          background: rgba(124,58,237,.50);
+        .tx-modal::-webkit-scrollbar-thumb:hover,
+        .tx-table-wrap::-webkit-scrollbar-thumb:hover {
+          background: rgba(124,58,237,.45);
         }
       `}</style>
 
@@ -1319,22 +1340,22 @@ const Transactions = () => {
           SUMMARY CARDS
           ========================================================= */}
       {summary && (
-        <div className="summary-grid">
-          <div className="summary-item">
-            <div className="summary-label">Pending</div>
-            <div className="summary-value pending">{formatCurrency(summary.summary?.totalPending || 0)}</div>
+        <div className="tx-summary-grid">
+          <div className="tx-summary-item">
+            <div className="tx-summary-label">Pending</div>
+            <div className="tx-summary-value tx-pending">{formatCurrency(summary.summary?.totalPending || 0)}</div>
           </div>
-          <div className="summary-item">
-            <div className="summary-label">Received</div>
-            <div className="summary-value received">{formatCurrency(summary.summary?.totalReceived || 0)}</div>
+          <div className="tx-summary-item">
+            <div className="tx-summary-label">Received</div>
+            <div className="tx-summary-value tx-received">{formatCurrency(summary.summary?.totalReceived || 0)}</div>
           </div>
-          <div className="summary-item">
-            <div className="summary-label">Give</div>
-            <div className="summary-value give">{formatCurrency(summary.summary?.totalGive || 0)}</div>
+          <div className="tx-summary-item">
+            <div className="tx-summary-label">Give</div>
+            <div className="tx-summary-value tx-give">{formatCurrency(summary.summary?.totalGive || 0)}</div>
           </div>
-          <div className="summary-item">
-            <div className="summary-label">Take</div>
-            <div className="summary-value take">{formatCurrency(summary.summary?.totalTake || 0)}</div>
+          <div className="tx-summary-item">
+            <div className="tx-summary-label">Take</div>
+            <div className="tx-summary-value tx-take">{formatCurrency(summary.summary?.totalTake || 0)}</div>
           </div>
         </div>
       )}
@@ -1342,13 +1363,13 @@ const Transactions = () => {
       {/* =========================================================
           MAIN CARD
           ========================================================= */}
-      <div className="glass-card">
+      <div className="tx-glass-card">
         {/* Error / Success */}
         {error && (
           <div style={{
-            background: 'rgba(239,68,68,.10)',
-            border: '1px solid rgba(239,68,68,.20)',
-            borderRadius: '8px',
+            background: 'rgba(239,68,68,.08)',
+            border: '1px solid rgba(239,68,68,.16)',
+            borderRadius: '7px',
             padding: '8px 12px',
             color: '#FCA5A5',
             fontSize: '0.75rem',
@@ -1360,15 +1381,15 @@ const Transactions = () => {
         )}
         {successMessage && (
           <div style={{
-            background: 'rgba(16,185,129,.10)',
-            border: '1px solid rgba(16,185,129,.20)',
-            borderRadius: '8px',
+            background: 'rgba(16,185,129,.08)',
+            border: '1px solid rgba(16,185,129,.16)',
+            borderRadius: '7px',
             padding: '8px 12px',
             color: '#6EE7B7',
             fontSize: '0.75rem',
             marginBottom: '10px',
             textAlign: 'center',
-            animation: 'slideDown 0.3s ease'
+            animation: 'tx-slideDown 0.3s ease'
           }}>
             ✅ {successMessage}
           </div>
@@ -1384,21 +1405,21 @@ const Transactions = () => {
           marginBottom: '12px'
         }}>
           <h3 style={{
-            fontSize: '0.9rem',
+            fontSize: '0.95rem',
             fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            color: '#F8FAFC',
+            color: '#FFFFFF',
             margin: 0
           }}>
             <ClockIcon size={18} color="#A78BFA" /> Transactions
           </h3>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <button className="btn btn-yellow" onClick={() => setShowAddModal(true)}>
+            <button className="tx-btn tx-btn-yellow" onClick={() => setShowAddModal(true)}>
               <Plus size={15} /> Add
             </button>
-            <button className="btn btn-outline btn-sm" onClick={() => { fetchTransactions(); fetchSummary(); }}>
+            <button className="tx-btn tx-btn-outline tx-btn-sm" onClick={() => { fetchTransactions(); fetchSummary(); }}>
               <RefreshCw size={13} /> Refresh
             </button>
           </div>
@@ -1414,11 +1435,11 @@ const Transactions = () => {
         }}>
           <Filter size={13} color="#94A3B8" />
           <input
-            className="form-input"
+            className="tx-form-input"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: '1', minWidth: '120px', maxWidth: '240px', minHeight: '34px' }}
+            style={{ flex: '1', minWidth: '120px', maxWidth: '220px', minHeight: '34px' }}
           />
           <GlassSelect
             value={filterType}
@@ -1428,7 +1449,7 @@ const Transactions = () => {
               { value: 'Give', label: 'Give' },
               { value: 'Take', label: 'Take' }
             ]}
-            style={{ maxWidth: '110px', minWidth: '90px' }}
+            style={{ maxWidth: '110px', minWidth: '80px' }}
             ariaLabel="Filter by type"
           />
           <GlassSelect
@@ -1439,14 +1460,14 @@ const Transactions = () => {
               { value: 'Pending', label: 'Pending' },
               { value: 'Received', label: 'Received' }
             ]}
-            style={{ maxWidth: '110px', minWidth: '90px' }}
+            style={{ maxWidth: '110px', minWidth: '80px' }}
             ariaLabel="Filter by status"
           />
         </div>
 
         {/* Table */}
-        <div className="table-wrap">
-          <table className="table">
+        <div className="tx-table-wrap">
+          <table className="tx-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -1461,10 +1482,10 @@ const Transactions = () => {
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '28px 0', color: '#64748B' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '28px 0', color: '#475569' }}>
                     <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>📋</div>
                     <div style={{ fontSize: '0.8rem' }}>No transactions found</div>
-                    <div style={{ fontSize: '0.65rem', marginTop: '2px', color: '#475569' }}>Click "Add" to create one</div>
+                    <div style={{ fontSize: '0.65rem', color: '#334155' }}>Click "Add" to create one</div>
                   </td>
                 </tr>
               ) : (
@@ -1475,16 +1496,16 @@ const Transactions = () => {
                       <td data-label="Name">
                         {isEditing ? (
                           <input
-                            className="form-input"
+                            className="tx-form-input"
                             value={editData.person_name}
                             onChange={(e) => setEditData(prev => ({ ...prev, person_name: e.target.value }))}
-                            style={{ minHeight: '30px', fontSize: '0.7rem' }}
+                            style={{ minHeight: '32px', fontSize: '0.7rem' }}
                           />
                         ) : (
-                          <div className="name-cell">
+                          <div className="tx-name-cell">
                             {tx.type === 'Give' 
-                              ? <ArrowUpRight size={13} className="icon-give" /> 
-                              : <ArrowDownRight size={13} className="icon-take" />}
+                              ? <ArrowUpRight size={14} className="tx-icon-give" /> 
+                              : <ArrowDownRight size={14} className="tx-icon-take" />}
                             <span>{tx.person_name}</span>
                           </div>
                         )}
@@ -1492,14 +1513,14 @@ const Transactions = () => {
                       <td data-label="Amount">
                         {isEditing ? (
                           <input
-                            className="form-input"
+                            className="tx-form-input"
                             type="number"
                             value={editData.amount}
                             onChange={(e) => setEditData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                            style={{ minHeight: '30px', fontSize: '0.7rem', width: '70px' }}
+                            style={{ minHeight: '32px', fontSize: '0.7rem', width: '80px' }}
                           />
                         ) : (
-                          <span className={tx.type === 'Give' ? 'amount-give' : 'amount-take'}>
+                          <span className={tx.type === 'Give' ? 'tx-amount-give' : 'tx-amount-take'}>
                             {tx.type === 'Give' ? '−' : '+'}{formatCurrency(tx.amount)}
                           </span>
                         )}
@@ -1507,14 +1528,14 @@ const Transactions = () => {
                       <td data-label="Date">
                         {isEditing ? (
                           <input
-                            className="form-input"
+                            className="tx-form-input"
                             type="date"
                             value={editData.transaction_date}
                             onChange={(e) => setEditData(prev => ({ ...prev, transaction_date: e.target.value }))}
-                            style={{ minHeight: '30px', fontSize: '0.65rem' }}
+                            style={{ minHeight: '32px', fontSize: '0.65rem' }}
                           />
                         ) : (
-                          <span className="date-cell">{formatDate(tx.transaction_date)}</span>
+                          <span className="tx-date-cell">{formatDate(tx.transaction_date)}</span>
                         )}
                       </td>
                       <td data-label="Status">
@@ -1530,7 +1551,7 @@ const Transactions = () => {
                             ariaLabel="Edit status"
                           />
                         ) : (
-                          <span className={`badge ${tx.status === 'Received' ? 'badge-received' : 'badge-pending'}`}>
+                          <span className={`tx-badge ${tx.status === 'Received' ? 'tx-badge-received' : 'tx-badge-pending'}`}>
                             {tx.status}
                           </span>
                         )}
@@ -1548,19 +1569,19 @@ const Transactions = () => {
                             ariaLabel="Edit type"
                           />
                         ) : (
-                          <span className={`badge ${tx.type === 'Give' ? 'badge-give' : 'badge-take'}`}>
+                          <span className={`tx-badge ${tx.type === 'Give' ? 'tx-badge-give' : 'tx-badge-take'}`}>
                             {tx.type}
                           </span>
                         )}
                       </td>
-                      <td data-label="Notes" className="notes-cell">
+                      <td data-label="Notes" className="tx-notes-cell">
                         {isEditing ? (
                           <input
-                            className="form-input"
+                            className="tx-form-input"
                             value={editData.notes || ''}
                             onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
                             placeholder="Notes"
-                            style={{ minHeight: '30px', fontSize: '0.65rem' }}
+                            style={{ minHeight: '32px', fontSize: '0.65rem' }}
                           />
                         ) : (
                           tx.notes || '—'
@@ -1569,23 +1590,23 @@ const Transactions = () => {
                       <td data-label="Actions">
                         {isEditing ? (
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <button className="btn btn-green btn-xs" onClick={() => handleSave(tx.id)} disabled={saving}>
-                              <Save size={13} /> {saving ? 'Saving' : 'Save'}
+                            <button className="tx-btn tx-btn-green tx-btn-xs" onClick={() => handleSave(tx.id)} disabled={saving}>
+                              <Save size={14} /> {saving ? 'Saving' : 'Save'}
                             </button>
-                            <button className="btn btn-red btn-xs" onClick={handleCancel}>
-                              <X size={13} /> Cancel
+                            <button className="tx-btn tx-btn-red tx-btn-xs" onClick={handleCancel}>
+                              <X size={14} /> Cancel
                             </button>
                           </div>
                         ) : (
-                          <div className="actions-cell">
-                            <button className="btn btn-yellow btn-icon btn-xs" onClick={() => handleView(tx)} title="View">
-                              <Eye size={17} />
+                          <div className="tx-actions-cell">
+                            <button className="tx-btn tx-btn-yellow tx-btn-icon tx-btn-xs" onClick={() => handleView(tx)} title="View">
+                              <Eye size={18} />
                             </button>
-                            <button className="btn btn-green btn-icon btn-xs" onClick={() => handleEdit(tx)} title="Edit">
-                              <Edit2 size={17} />
+                            <button className="tx-btn tx-btn-green tx-btn-icon tx-btn-xs" onClick={() => handleEdit(tx)} title="Edit">
+                              <Edit2 size={18} />
                             </button>
-                            <button className="btn btn-red btn-icon btn-xs" onClick={() => { setDeleteId(tx.id); setShowDeleteModal(true); }} title="Delete">
-                              <Trash2 size={17} />
+                            <button className="tx-btn tx-btn-red tx-btn-icon tx-btn-xs" onClick={() => { setDeleteId(tx.id); setShowDeleteModal(true); }} title="Delete">
+                              <Trash2 size={18} />
                             </button>
                           </div>
                         )}
@@ -1602,14 +1623,14 @@ const Transactions = () => {
         <div style={{
           marginTop: '8px',
           paddingTop: '8px',
-          borderTop: '1px solid rgba(167,139,250,.06)',
+          borderTop: '1px solid rgba(167,139,250,.04)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '4px',
           fontSize: '0.6rem',
-          color: '#64748B'
+          color: '#475569'
         }}>
           <span>Total: {filteredTransactions.length} transactions</span>
           <span>Updated: {new Date().toLocaleString()}</span>
@@ -1617,35 +1638,35 @@ const Transactions = () => {
       </div>
 
       {/* =========================================================
-          ADD MODAL - Yellow Add, Red Cancel
+          ADD MODAL
           ========================================================= */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h4 className="modal-title">
-                <Plus size={18} className="icon" /> Add Transaction
+        <div className="tx-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="tx-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tx-modal-header">
+              <h4 className="tx-modal-title">
+                <Plus size={18} className="tx-icon" /> Add Transaction
               </h4>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>
-                <X size={17} />
+              <button className="tx-modal-close" onClick={() => setShowAddModal(false)}>
+                <X size={18} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Person Name *</label>
+            <div className="tx-modal-body">
+              <div className="tx-form-grid">
+                <div className="tx-form-group">
+                  <label className="tx-form-label">Person Name *</label>
                   <input
-                    className="form-input"
+                    className="tx-form-input"
                     type="text"
                     value={newTransaction.person_name}
                     onChange={(e) => setNewTransaction(prev => ({ ...prev, person_name: e.target.value }))}
                     placeholder="Enter name"
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Amount (₹) *</label>
+                <div className="tx-form-group">
+                  <label className="tx-form-label">Amount (₹) *</label>
                   <input
-                    className="form-input"
+                    className="tx-form-input"
                     type="number"
                     value={newTransaction.amount}
                     onChange={(e) => setNewTransaction(prev => ({ ...prev, amount: e.target.value }))}
@@ -1653,17 +1674,17 @@ const Transactions = () => {
                     min="1"
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Date</label>
+                <div className="tx-form-group">
+                  <label className="tx-form-label">Date</label>
                   <input
-                    className="form-input"
+                    className="tx-form-input"
                     type="date"
                     value={newTransaction.transaction_date}
                     onChange={(e) => setNewTransaction(prev => ({ ...prev, transaction_date: e.target.value }))}
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Type</label>
+                <div className="tx-form-group">
+                  <label className="tx-form-label">Type</label>
                   <GlassSelect
                     value={newTransaction.type}
                     onChange={(value) => setNewTransaction(prev => ({ ...prev, type: value }))}
@@ -1674,8 +1695,8 @@ const Transactions = () => {
                     ariaLabel="Transaction type"
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Status</label>
+                <div className="tx-form-group">
+                  <label className="tx-form-label">Status</label>
                   <GlassSelect
                     value={newTransaction.status}
                     onChange={(value) => setNewTransaction(prev => ({ ...prev, status: value }))}
@@ -1686,10 +1707,10 @@ const Transactions = () => {
                     ariaLabel="Transaction status"
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Notes</label>
+                <div className="tx-form-group">
+                  <label className="tx-form-label">Notes</label>
                   <input
-                    className="form-input"
+                    className="tx-form-input"
                     type="text"
                     value={newTransaction.notes}
                     onChange={(e) => setNewTransaction(prev => ({ ...prev, notes: e.target.value }))}
@@ -1697,12 +1718,12 @@ const Transactions = () => {
                   />
                 </div>
               </div>
-              <div className="form-actions">
-                <button className="btn btn-red" onClick={() => setShowAddModal(false)}>
-                  <X size={14} /> Cancel
+              <div className="tx-form-actions">
+                <button className="tx-btn tx-btn-red" onClick={() => setShowAddModal(false)}>
+                  <X size={15} /> Cancel
                 </button>
-                <button className="btn btn-yellow" onClick={handleAddTransaction} disabled={saving}>
-                  <Plus size={14} /> {saving ? 'Saving...' : 'Add Transaction'}
+                <button className="tx-btn tx-btn-yellow" onClick={handleAddTransaction} disabled={saving}>
+                  <Plus size={15} /> {saving ? 'Saving...' : 'Add Transaction'}
                 </button>
               </div>
             </div>
@@ -1714,70 +1735,70 @@ const Transactions = () => {
           VIEW MODAL
           ========================================================= */}
       {showViewModal && viewTransaction && (
-        <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-            <div className="modal-header">
-              <h4 className="modal-title">
-                <Eye size={18} className="icon" /> Transaction Details
+        <div className="tx-modal-overlay" onClick={() => setShowViewModal(false)}>
+          <div className="tx-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div className="tx-modal-header">
+              <h4 className="tx-modal-title">
+                <Eye size={18} className="tx-icon" /> Transaction Details
               </h4>
-              <button className="modal-close" onClick={() => setShowViewModal(false)}>
-                <X size={17} />
+              <button className="tx-modal-close" onClick={() => setShowViewModal(false)}>
+                <X size={18} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="detail-list">
-                <div className="detail-row">
-                  <span className="detail-label">Person</span>
-                  <span className="detail-value">{viewTransaction.person_name}</span>
+            <div className="tx-modal-body">
+              <div className="tx-detail-list">
+                <div className="tx-detail-row">
+                  <span className="tx-detail-label">Person</span>
+                  <span className="tx-detail-value">{viewTransaction.person_name}</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Amount</span>
-                  <span className="detail-value" style={{ 
+                <div className="tx-detail-row">
+                  <span className="tx-detail-label">Amount</span>
+                  <span className="tx-detail-value" style={{ 
                     color: viewTransaction.type === 'Give' ? '#FB7185' : '#34D399',
                     fontWeight: 800
                   }}>
                     {viewTransaction.type === 'Give' ? '−' : '+'}{formatCurrency(viewTransaction.amount)}
                   </span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Date</span>
-                  <span className="detail-value">{formatDateFull(viewTransaction.transaction_date)}</span>
+                <div className="tx-detail-row">
+                  <span className="tx-detail-label">Date</span>
+                  <span className="tx-detail-value">{formatDateFull(viewTransaction.transaction_date)}</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Type</span>
-                  <span className="detail-value">
-                    <span className={`badge ${viewTransaction.type === 'Give' ? 'badge-give' : 'badge-take'}`}>
+                <div className="tx-detail-row">
+                  <span className="tx-detail-label">Type</span>
+                  <span className="tx-detail-value">
+                    <span className={`tx-badge ${viewTransaction.type === 'Give' ? 'tx-badge-give' : 'tx-badge-take'}`}>
                       {viewTransaction.type}
                     </span>
                   </span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Status</span>
-                  <span className="detail-value">
-                    <span className={`badge ${viewTransaction.status === 'Received' ? 'badge-received' : 'badge-pending'}`}>
+                <div className="tx-detail-row">
+                  <span className="tx-detail-label">Status</span>
+                  <span className="tx-detail-value">
+                    <span className={`tx-badge ${viewTransaction.status === 'Received' ? 'tx-badge-received' : 'tx-badge-pending'}`}>
                       {viewTransaction.status}
                     </span>
                   </span>
                 </div>
                 {viewTransaction.notes && (
-                  <div className="detail-row">
-                    <span className="detail-label">Notes</span>
-                    <span className="detail-value" style={{ color: '#94A3B8', fontWeight: 400, fontSize: '0.75rem' }}>
+                  <div className="tx-detail-row">
+                    <span className="tx-detail-label">Notes</span>
+                    <span className="tx-detail-value" style={{ color: '#94A3B8', fontWeight: 400, fontSize: '0.8rem' }}>
                       {viewTransaction.notes}
                     </span>
                   </div>
                 )}
                 {viewTransaction.created_at && (
-                  <div className="detail-row">
-                    <span className="detail-label">Created</span>
-                    <span className="detail-value" style={{ color: '#64748B', fontSize: '0.65rem', fontWeight: 400 }}>
+                  <div className="tx-detail-row">
+                    <span className="tx-detail-label">Created</span>
+                    <span className="tx-detail-value" style={{ color: '#475569', fontSize: '0.7rem', fontWeight: 400 }}>
                       {formatDateFull(viewTransaction.created_at)}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.06)', marginTop: '10px', paddingTop: '10px' }}>
-                <button className="btn btn-outline btn-sm" onClick={() => setShowViewModal(false)}>
+              <div className="tx-form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.05)', marginTop: '10px', paddingTop: '10px' }}>
+                <button className="tx-btn tx-btn-outline tx-btn-sm" onClick={() => setShowViewModal(false)}>
                   Close
                 </button>
               </div>
@@ -1790,26 +1811,26 @@ const Transactions = () => {
           DELETE MODAL
           ========================================================= */}
       {showDeleteModal && (
-        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '380px' }}>
-            <div className="modal-header" style={{ borderBottom: '0', marginBottom: '0', paddingBottom: '0' }}>
-              <h4 className="modal-title" style={{ color: '#FDA4AF' }}>
+        <div className="tx-modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="tx-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '380px' }}>
+            <div className="tx-modal-header" style={{ borderBottom: '0', marginBottom: '0', paddingBottom: '0' }}>
+              <h4 className="tx-modal-title" style={{ color: '#FDA4AF' }}>
                 <AlertCircle size={18} color="#FB7185" /> Delete Transaction
               </h4>
-              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
-                <X size={17} />
+              <button className="tx-modal-close" onClick={() => setShowDeleteModal(false)}>
+                <X size={18} />
               </button>
             </div>
-            <div className="modal-body">
-              <div className="delete-icon">⚠️</div>
-              <div className="delete-text">Are you sure you want to delete this transaction?</div>
-              <div className="delete-sub">This action cannot be undone.</div>
-              <div className="form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.06)', marginTop: '14px', paddingTop: '12px' }}>
-                <button className="btn btn-outline btn-sm" onClick={() => setShowDeleteModal(false)}>
+            <div className="tx-modal-body">
+              <div className="tx-delete-icon">⚠️</div>
+              <div className="tx-delete-text">Are you sure you want to delete this transaction?</div>
+              <div className="tx-delete-sub">This action cannot be undone.</div>
+              <div className="tx-form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.05)', marginTop: '14px', paddingTop: '12px' }}>
+                <button className="tx-btn tx-btn-outline tx-btn-sm" onClick={() => setShowDeleteModal(false)}>
                   Cancel
                 </button>
-                <button className="btn btn-red" onClick={handleDelete} disabled={saving}>
-                  <Trash2 size={14} /> {saving ? 'Deleting...' : 'Delete'}
+                <button className="tx-btn tx-btn-red" onClick={handleDelete} disabled={saving}>
+                  <Trash2 size={15} /> {saving ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>

@@ -5,7 +5,7 @@ import { CheckCircle, XCircle, AlertCircle, Loader2, Eye, EyeOff, Sparkles, LogI
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
 
   const API_BASE = useMemo(() => {
     const envBase = import.meta?.env?.VITE_API_BASE?.trim();
@@ -56,6 +56,87 @@ export default function Login() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // =============================================
+  // AUTO-LOGIN CHECK
+  // =============================================
+  useEffect(() => {
+    // If already authenticated, redirect to dashboard
+    if (isAuthenticated) {
+      navigate("/", { replace: true });
+      return;
+    }
+
+    // Check for saved login credentials
+    const savedEmail = localStorage.getItem("saved_email");
+    const savedPassword = localStorage.getItem("saved_password");
+    const rememberMeChecked = localStorage.getItem("remember_me") === "true";
+
+    if (savedEmail && savedPassword && rememberMeChecked) {
+      // Auto-login with saved credentials
+      setForm({ email: savedEmail, password: savedPassword });
+      setRememberMe(true);
+      
+      // Auto-login after a small delay to show the form
+      const timer = setTimeout(() => {
+        handleAutoLogin(savedEmail, savedPassword);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    } else if (savedEmail) {
+      // Only fill email if remember me was not checked
+      setForm({ email: savedEmail, password: "" });
+    }
+  }, [isAuthenticated, navigate]);
+
+  // =============================================
+  // AUTO-LOGIN FUNCTION
+  // =============================================
+  const handleAutoLogin = async (email, password) => {
+    if (loading) return;
+    
+    try {
+      setLoading(true);
+      
+      const data = await apiPost("/api/personal-users/login", {
+        email: email.trim(),
+        password: password.trim(),
+      });
+
+      if (!aliveRef.current) return;
+
+      const token = data?.token || data?.accessToken || data?.jwt || "";
+      
+      if (token) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("saved_email", email.trim());
+        localStorage.setItem("saved_password", password.trim());
+        localStorage.setItem("remember_me", "true");
+      }
+
+      if (data.success && data.data) {
+        login(data.data);
+        navigate("/", { replace: true });
+      } else {
+        throw new Error(data?.message || "Auto-login failed");
+      }
+
+    } catch (err) {
+      if (!aliveRef.current) return;
+      // Clear saved credentials if auto-login fails
+      localStorage.removeItem("saved_email");
+      localStorage.removeItem("saved_password");
+      localStorage.removeItem("remember_me");
+      setRememberMe(false);
+      showToast(
+        "error",
+        "Auto-Login Failed",
+        "Please enter your credentials manually."
+      );
+    } finally {
+      if (aliveRef.current) setLoading(false);
+    }
+  };
 
   // Warm-up backend
   useEffect(() => {
@@ -208,8 +289,17 @@ export default function Login() {
       
       if (token) {
         localStorage.setItem("token", token);
+        
+        // Save credentials if Remember Me is checked
         if (rememberMe) {
-          localStorage.setItem("remember_token", token);
+          localStorage.setItem("saved_email", form.email.trim());
+          localStorage.setItem("saved_password", form.password.trim());
+          localStorage.setItem("remember_me", "true");
+        } else {
+          // Clear saved credentials if Remember Me is unchecked
+          localStorage.removeItem("saved_email");
+          localStorage.removeItem("saved_password");
+          localStorage.removeItem("remember_me");
         }
       } else {
         localStorage.removeItem("token");
@@ -225,6 +315,13 @@ export default function Login() {
 
     } catch (err) {
       if (!aliveRef.current) return;
+      
+      // Clear saved credentials on login failure
+      localStorage.removeItem("saved_email");
+      localStorage.removeItem("saved_password");
+      localStorage.removeItem("remember_me");
+      setRememberMe(false);
+      
       showToast(
         "error",
         "Login Failed",

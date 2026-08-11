@@ -835,6 +835,20 @@ const Trading = ({ refreshTrigger }) => {
           padding: 1rem;
         }
 
+        /* Small end-page safe space for the fixed footer.
+           Keeps the final Trading details visible without a large gap. */
+        .trading-end-safe-space {
+          width: 100%;
+          height: calc(54px + env(safe-area-inset-bottom, 0px));
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 700px) {
+          .trading-end-safe-space {
+            height: calc(56px + env(safe-area-inset-bottom, 0px));
+          }
+        }
+
         /* =============================================
            TOAST NOTIFICATION STYLES
         ============================================= */
@@ -2477,6 +2491,9 @@ const Trading = ({ refreshTrigger }) => {
             </div>
           </div>
         )}
+
+        {/* Small bottom clearance so the final page content is not hidden by Footer */}
+        <div className="trading-end-safe-space" aria-hidden="true" />
 
       </div>
     </>

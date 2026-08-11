@@ -251,7 +251,7 @@ const Overview = ({ navigationTarget }) => {
   const API_SERVER = (
     import.meta.env.VITE_API_URL ||
     'https://express-project-learning-new.onrender.com'
-).replace(/\/$/, '');
+  ).replace(/\/$/, '');
 
   const API_BASE = `${API_SERVER}/api/personal-overview`;
 
@@ -286,8 +286,6 @@ const Overview = ({ navigationTarget }) => {
   };
 
   const fetchAllData = async ({ silent = false } = {}) => {
-    // Initial page load shows the full-page loader.
-    // Any refresh after add/update/delete keeps the current UI visible.
     if (silent) {
       setRefreshing(true);
     } else {
@@ -325,10 +323,9 @@ const Overview = ({ navigationTarget }) => {
   };
 
   // =============================================
-  // API CALLS - NO month/year in payloads
+  // API CALLS
   // =============================================
 
-  // 1. Financial Review
   const fetchFinancialReview = async () => {
     try {
       const response = await fetch(`${API_BASE}/review/${userId}`);
@@ -376,7 +373,6 @@ const Overview = ({ navigationTarget }) => {
     }
   };
 
-  // 2. Expenses
   const fetchExpenses = async (month, year) => {
     try {
       const response = await fetch(`${API_BASE}/expenses/${userId}?month=${month}&year=${year}`);
@@ -461,7 +457,7 @@ const Overview = ({ navigationTarget }) => {
   const deleteExpense = async (id) => {
     askForConfirmation('expenses', 'Delete this expense?', async () => {
       try {
-          const response = await fetch(`${API_BASE}/expenses/delete/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/expenses/delete/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
           showSuccess('expenses', 'Expense deleted!');
@@ -469,12 +465,10 @@ const Overview = ({ navigationTarget }) => {
         }
       } catch (err) {
         showError('expenses', 'Failed to delete expense');
-      } finally {
-        }
+      }
     });
   };
 
-  // 3. Loans
   const fetchLoans = async (month, year) => {
     try {
       const response = await fetch(`${API_BASE}/loans/${userId}?month=${month}&year=${year}`);
@@ -548,7 +542,7 @@ const Overview = ({ navigationTarget }) => {
   const deleteLoan = async (id) => {
     askForConfirmation('loans', 'Delete this loan record?', async () => {
       try {
-          const response = await fetch(`${API_BASE}/loans/delete/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/loans/delete/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
           showSuccess('loans', 'Loan deleted!');
@@ -556,12 +550,10 @@ const Overview = ({ navigationTarget }) => {
         }
       } catch (err) {
         showError('loans', 'Failed to delete loan');
-      } finally {
-        }
+      }
     });
   };
 
-  // 4. Payments
   const fetchPayments = async (month, year) => {
     try {
       const response = await fetch(`${API_BASE}/payments/${userId}?month=${month}&year=${year}`);
@@ -644,14 +636,13 @@ const Overview = ({ navigationTarget }) => {
       }
     } catch (err) {
       showError('payments', 'Failed to update payment status');
-    } finally {
     }
   };
 
   const deletePayment = async (id) => {
     askForConfirmation('payments', 'Delete this payment record?', async () => {
       try {
-          const response = await fetch(`${API_BASE}/payments/delete/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE}/payments/delete/${id}`, { method: 'DELETE' });
         const result = await response.json();
         if (result.success) {
           showSuccess('payments', 'Payment deleted!');
@@ -659,12 +650,10 @@ const Overview = ({ navigationTarget }) => {
         }
       } catch (err) {
         showError('payments', 'Failed to delete payment');
-      } finally {
-        }
+      }
     });
   };
 
-  // 5. Performance
   const fetchWeeklyPerformance = async (week) => {
     try {
       setWeeklyPerformance(null);
@@ -698,7 +687,6 @@ const Overview = ({ navigationTarget }) => {
     }
   };
 
-  // 6. Summary
   const fetchSummary = async () => {
     try {
       const response = await fetch(`${API_BASE}/summary/${userId}`);
@@ -768,21 +756,21 @@ const Overview = ({ navigationTarget }) => {
       <div className="section-actions">
         {onAdd && !isEditing && (
           <button className="btn-glass btn-add" onClick={onAdd}>
-            <Plus size={14} /> Add
+            <Plus size={15} /> Add
           </button>
         )}
         {isEditing ? (
           <>
             <button className="btn-glass btn-save" onClick={onSave} disabled={saving}>
-              <Save size={14} /> {saving ? 'Saving...' : 'Save'}
+              <Save size={15} /> {saving ? 'Saving...' : 'Save'}
             </button>
             <button className="btn-glass btn-cancel" onClick={onCancel}>
-              <X size={14} /> Cancel
+              <X size={15} /> Cancel
             </button>
           </>
         ) : onEdit ? (
           <button className="btn-glass btn-edit" onClick={onEdit}>
-            <Edit2 size={14} /> Edit
+            <Edit2 size={15} /> Edit
           </button>
         ) : null}
       </div>
@@ -791,13 +779,12 @@ const Overview = ({ navigationTarget }) => {
 
   const renderSectionFeedback = (section) => (
     <>
-
       {messageSection === section && error && <div className="section-feedback error-feedback">⚠️ {error}</div>}
       {messageSection === section && successMessage && <div className="section-feedback success-feedback">✅ {successMessage}</div>}
       {confirmDialog?.section === section && (
         <div className="section-confirm-backdrop">
           <div className="section-confirm-dialog">
-            <AlertTriangle size={22} color="#FCD34D" />
+            <AlertTriangle size={24} color="#FCD34D" />
             <p>{confirmDialog.message}</p>
             <div className="section-confirm-actions">
               <button className="btn-glass btn-danger" onClick={() => setConfirmDialog(null)}>Cancel</button>
@@ -814,7 +801,7 @@ const Overview = ({ navigationTarget }) => {
   );
 
   // =============================================
-  // PIE CHART COMPONENT
+  // PIE CHART COMPONENT - PROFESSIONAL LAYOUT
   // =============================================
   const PieChartComponent = ({ data, total, colors }) => {
     const totalValue = total || data.reduce((sum, d) => sum + d.amount, 0);
@@ -827,7 +814,7 @@ const Overview = ({ navigationTarget }) => {
       const angle = (item.amount / totalValue) * 360;
       const startAngle = cumulativeAngle;
       cumulativeAngle += angle;
-      return { ...item, startAngle, angle, color: colors?.[index] || '#7C3AED' };
+      return { ...item, startAngle, angle, color: colors?.[index % colors.length] || '#7C3AED' };
     });
 
     const polarToCartesian = (cx, cy, r, angleDeg) => {
@@ -844,23 +831,23 @@ const Overview = ({ navigationTarget }) => {
 
     return (
       <div className="pie-chart-container">
-        <div className="pie-chart">
-          <svg width="180" height="180" viewBox="0 0 180 180">
+        <div className="pie-chart-wrapper">
+          <svg width="170" height="170" viewBox="0 0 170 170">
             {pieSegments.map((seg, i) => (
               <path 
                 key={i} 
-                d={describeArc(90, 90, 75, seg.startAngle, seg.startAngle + seg.angle)} 
+                d={describeArc(85, 85, 72, seg.startAngle, seg.startAngle + seg.angle)} 
                 fill={seg.color} 
                 className="pie-segment"
                 stroke="#06060f" 
                 strokeWidth="2"
               />
             ))}
-            <circle cx="90" cy="90" r="40" fill="#06060f" />
-            <text x="90" y="85" textAnchor="middle" fill="white" fontSize="14" fontWeight="800">
+            <circle cx="85" cy="85" r="38" fill="#06060f" />
+            <text x="85" y="79" textAnchor="middle" fill="white" fontSize="13" fontWeight="800">
               {formatCurrency(totalValue)}
             </text>
-            <text x="90" y="102" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="8" fontWeight="600">
+            <text x="85" y="96" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontWeight="600">
               Total
             </text>
           </svg>
@@ -871,7 +858,7 @@ const Overview = ({ navigationTarget }) => {
               <span className="legend-color" style={{ background: item.color }}></span>
               <span className="legend-label">{item.category || item.label}</span>
               <span className="legend-value">{formatCurrency(item.amount)}</span>
-              <span className="legend-percentage">{item.percentage || Math.round((item.amount / totalValue) * 100)}%</span>
+              <span className="legend-percentage">{Math.round((item.amount / totalValue) * 100)}%</span>
             </div>
           ))}
         </div>
@@ -917,7 +904,7 @@ const Overview = ({ navigationTarget }) => {
     <div className="overview-container">
       <style>{`
         /* ============================================
-           GLOBAL STYLES
+           GLOBAL STYLES - INCREASED SIZES
            ============================================ */
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
@@ -949,15 +936,19 @@ const Overview = ({ navigationTarget }) => {
           align-items: center;
           min-height: 100vh;
           background: #06060f;
-          gap: 1rem;
+          gap: 1.2rem;
         }
         .loading-spinner {
-          width: 50px;
-          height: 50px;
+          width: 55px;
+          height: 55px;
           border: 4px solid rgba(124,58,237,0.2);
           border-top-color: #7C3AED;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
+        }
+        .loading-container p {
+          font-size: 1rem;
+          color: rgba(255,255,255,0.6);
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -970,19 +961,19 @@ const Overview = ({ navigationTarget }) => {
           align-items: center;
           flex-wrap: wrap;
           gap: 1rem;
-          margin-bottom: 1.5rem;
+          margin-bottom: 1.2rem;
         }
         .app-header h1 {
-          font-size: clamp(1.2rem, 4vw, 1.8rem);
+          font-size: clamp(1.3rem, 3.5vw, 1.9rem);
           font-weight: 800;
           background: linear-gradient(135deg, #FFFFFF, #A78BFA);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
         .app-header p {
-          font-size: 0.75rem;
-          color: rgba(255,255,255,0.5);
-          margin-top: 0.2rem;
+          font-size: 0.85rem;
+          color: rgba(255,255,255,0.4);
+          margin-top: 0.1rem;
         }
         .header-actions {
           display: flex;
@@ -991,135 +982,107 @@ const Overview = ({ navigationTarget }) => {
         }
 
         /* ============================================
-           BUTTONS - Glass Effect
+           BUTTONS - Glass Effect - INCREASED SIZES
            ============================================ */
         .btn-glass {
-          background: rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.08);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.18);
-          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.14);
+          border-radius: 9px;
           color: #fff;
-          padding: 0.4rem 0.8rem;
-          font-size: 0.7rem;
+          padding: 0.5rem 0.9rem;
+          font-size: 0.75rem;
           font-weight: 600;
           font-family: inherit;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.25s ease;
           display: inline-flex;
           align-items: center;
-          gap: 0.3rem;
-          min-height: 32px;
+          gap: 0.35rem;
+          min-height: 36px;
           justify-content: center;
           white-space: nowrap;
         }
         .btn-glass:hover {
-          background: rgba(124,58,237,0.28);
-          border-color: rgba(196,181,253,0.55);
+          background: rgba(124,58,237,0.25);
+          border-color: rgba(196,181,253,0.5);
           transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(124,58,237,0.15);
+          box-shadow: 0 6px 20px rgba(124,58,237,0.12);
         }
         .btn-glass:active { transform: scale(0.95); }
 
         .btn-glass.btn-edit { 
-          background: rgba(124,58,237,0.15); 
-          border-color: rgba(124,58,237,0.25); 
+          background: rgba(124,58,237,0.12); 
+          border-color: rgba(124,58,237,0.22); 
           color: #A78BFA; 
         }
-        .btn-glass.btn-edit:hover { background: rgba(124,58,237,0.25); }
+        .btn-glass.btn-edit:hover { background: rgba(124,58,237,0.22); }
 
         .btn-glass.btn-save { 
-          background: rgba(16,185,129,0.15); 
-          border-color: rgba(16,185,129,0.25); 
+          background: rgba(16,185,129,0.12); 
+          border-color: rgba(16,185,129,0.22); 
           color: #6EE7B7; 
         }
-        .btn-glass.btn-save:hover { background: rgba(16,185,129,0.25); }
+        .btn-glass.btn-save:hover { background: rgba(16,185,129,0.22); }
 
         .btn-glass.btn-cancel { 
-          background: rgba(239,68,68,0.15); 
-          border-color: rgba(239,68,68,0.25); 
+          background: rgba(239,68,68,0.12); 
+          border-color: rgba(239,68,68,0.22); 
           color: #FCA5A5; 
         }
-        .btn-glass.btn-cancel:hover { background: rgba(239,68,68,0.25); }
+        .btn-glass.btn-cancel:hover { background: rgba(239,68,68,0.22); }
 
         .btn-glass.btn-add { 
-          background: rgba(245,158,11,0.14); 
-          border-color: rgba(245,158,11,0.3); 
+          background: rgba(245,158,11,0.12); 
+          border-color: rgba(245,158,11,0.25); 
           color: #FCD34D; 
         }
-        .btn-glass.btn-add:hover { background: rgba(124,58,237,0.28); border-color: rgba(167,139,250,0.55); color: #E9D5FF; }
+        .btn-glass.btn-add:hover { background: rgba(245,158,11,0.22); }
 
         .btn-glass.btn-danger { 
-          background: rgba(239,68,68,0.12); 
-          border-color: rgba(239,68,68,0.2); 
+          background: rgba(239,68,68,0.10); 
+          border-color: rgba(239,68,68,0.18); 
           color: #FCA5A5; 
         }
-        .btn-glass.btn-danger:hover { background: rgba(239,68,68,0.22); }
+        .btn-glass.btn-danger:hover { background: rgba(239,68,68,0.20); }
 
         .btn-glass.btn-success { 
-          background: rgba(16,185,129,0.12); 
-          border-color: rgba(16,185,129,0.2); 
+          background: rgba(16,185,129,0.10); 
+          border-color: rgba(16,185,129,0.18); 
           color: #6EE7B7; 
         }
-        .btn-glass.btn-success:hover { background: rgba(16,185,129,0.22); }
+        .btn-glass.btn-success:hover { background: rgba(16,185,129,0.20); }
 
         .btn-glass.btn-refresh {
-          background: rgba(124,58,237,0.12);
-          border-color: rgba(124,58,237,0.2);
+          background: rgba(124,58,237,0.10);
+          border-color: rgba(124,58,237,0.18);
           color: #A78BFA;
           padding: 0.5rem 1rem;
         }
-        .btn-glass.btn-refresh:hover { background: rgba(124,58,237,0.22); }
-        .btn-glass.btn-refresh:disabled {
-          opacity: 0.9;
-          cursor: not-allowed;
-          transform: none;
-        }
-        .refresh-spinner {
-          width: 16px;
-          height: 16px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          animation: refreshSpin 0.8s linear infinite;
-        }
-        .refresh-icon {
-          width: 16px;
-          height: 16px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-        @keyframes refreshSpin {
-          to { transform: rotate(360deg); }
-        }
-        .btn-glass:focus-visible, .tab:focus-visible {
-          outline: 2px solid #A78BFA;
-          outline-offset: 2px;
-        }
+        .btn-glass.btn-refresh:hover { background: rgba(124,58,237,0.20); }
 
         /* ============================================
            CARDS
            ============================================ */
         .glass-card {
-          background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(196,181,253,0.28);
+          background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(196,181,253,0.2);
           border-radius: 16px;
           padding: 1rem;
-          transition: all 0.4s ease;
-          margin-bottom: 0.75rem;
-          box-shadow: 0 12px 32px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.06);
+          transition: all 0.3s ease;
+          margin-bottom: 0.8rem;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.04);
         }
         .glass-card:hover {
-          background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(124,58,237,0.08));
-          border-color: rgba(167,139,250,0.45);
-          box-shadow: 0 16px 38px rgba(0,0,0,0.22), 0 0 24px rgba(124,58,237,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+          border-color: rgba(167,139,250,0.35);
+          box-shadow: 0 12px 32px rgba(0,0,0,0.18);
         }
         .glass-card.editing {
-          border-color: rgba(124,58,237,0.4);
-          box-shadow: 0 0 30px rgba(124,58,237,0.1);
+          border-color: rgba(124,58,237,0.35);
+          box-shadow: 0 0 24px rgba(124,58,237,0.08);
         }
 
         /* ============================================
@@ -1133,18 +1096,17 @@ const Overview = ({ navigationTarget }) => {
           gap: 0.5rem;
           margin-bottom: 0.8rem;
           padding-bottom: 0.5rem;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .section-header h3 {
-          font-size: 0.85rem;
+          font-size: 0.95rem;
           font-weight: 700;
           display: flex;
           align-items: center;
           gap: 0.5rem;
           color: #D8C7FF;
-          text-shadow: 0 0 14px rgba(196,181,253,0.25);
+          text-shadow: 0 0 12px rgba(196,181,253,0.2);
         }
-        .section-header h3 svg { filter: drop-shadow(0 0 6px currentColor); }
         .section-actions {
           display: flex;
           gap: 0.3rem;
@@ -1156,40 +1118,40 @@ const Overview = ({ navigationTarget }) => {
         .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
         .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
-        .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem; }
+        .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; }
 
         /* ============================================
            NUMBER BOX
            ============================================ */
         .number-box {
-          background: rgba(255,255,255,0.08);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.10);
           border-radius: 12px;
-          padding: 0.8rem;
+          padding: 0.7rem;
           text-align: center;
-          transition: all 0.3s ease;
+          transition: all 0.25s ease;
         }
         .number-box:hover {
-          background: rgba(124,58,237,0.16);
-          transform: translateY(-3px);
-          box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+          background: rgba(124,58,237,0.12);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
         .number-box .label {
-          font-size: 0.55rem;
-          color: rgba(255,255,255,0.72);
+          font-size: 0.6rem;
+          color: rgba(255,255,255,0.6);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         .number-box .value {
-          font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+          font-size: clamp(1.2rem, 2.5vw, 1.7rem);
           font-weight: 800;
           margin: 0.2rem 0;
         }
         .number-box .sub {
-          font-size: 0.5rem;
-          color: rgba(255,255,255,0.58);
+          font-size: 0.55rem;
+          color: rgba(255,255,255,0.45);
         }
         .number-box .value.green { color: #6EE7B7; }
         .number-box .value.red { color: #FCA5A5; }
@@ -1202,19 +1164,17 @@ const Overview = ({ navigationTarget }) => {
            FORM
            ============================================ */
         .form-container {
-          position: relative;
-          z-index: 20;
           background: rgba(255,255,255,0.03);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.06);
           border-radius: 12px;
           padding: 1rem;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.8rem;
         }
         .form-row {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
           gap: 0.5rem;
         }
         .form-group {
@@ -1223,107 +1183,95 @@ const Overview = ({ navigationTarget }) => {
           gap: 0.2rem;
         }
         .form-group label {
-          font-size: 0.6rem;
+          font-size: 0.65rem;
           font-weight: 600;
           color: rgba(255,255,255,0.5);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         .form-group input, .form-group textarea {
-          background: rgba(255,255,255,0.06);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.05);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.08);
           border-radius: 8px;
-          padding: 0.4rem 0.6rem;
+          padding: 0.45rem 0.6rem;
           color: #fff;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
           font-family: inherit;
           outline: none;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
         }
-        .form-group select, .month-selector select, .week-selector select {
+        .form-group select {
           background: #ffffff;
           color: #111827;
           border: 1px solid #d1d5db;
           border-radius: 8px;
-          padding: 0.4rem 0.6rem;
-          font-size: 0.75rem;
+          padding: 0.45rem 0.6rem;
+          font-size: 0.8rem;
           font-family: inherit;
           font-weight: 600;
           cursor: pointer;
           outline: none;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
-        .form-group select:hover, .month-selector select:hover, .week-selector select:hover {
+        .form-group select:hover {
           background: #f5f3ff;
           border-color: #8b5cf6;
         }
-        .form-group select:focus, .month-selector select:focus, .week-selector select:focus {
+        .form-group select:focus {
           border-color: #7c3aed;
-          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+          box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
         }
-        .form-group select option, .month-selector select option, .week-selector select option {
+        .form-group select option {
           background: #ffffff;
           color: #111827;
         }
-        .form-group select option:checked, .month-selector select option:checked, .week-selector select option:checked {
-          background: #7c3aed;
-          color: #ffffff;
-        }
-        .form-group select option:hover, .month-selector select option:hover, .week-selector select option:hover {
-          background: #ede9fe;
-          color: #5b21b6;
-        }
         .form-group input:focus, .form-group textarea:focus {
-          border-color: rgba(124,58,237,0.5);
-          box-shadow: 0 0 20px rgba(124,58,237,0.1);
+          border-color: rgba(124,58,237,0.4);
+          box-shadow: 0 0 16px rgba(124,58,237,0.06);
         }
         .form-group input::placeholder, .form-group textarea::placeholder {
-          color: rgba(255,255,255,0.3);
+          color: rgba(255,255,255,0.25);
         }
         .category-picker { position: relative; }
-        .category-picker > input { width: 100%; }
         .category-options {
           position: absolute;
           left: 0;
           right: 0;
-          top: calc(100% + 0.3rem);
+          top: calc(100% + 0.2rem);
           z-index: 9999;
-          max-height: min(280px, 45vh);
+          max-height: 220px;
           overflow-y: auto;
           padding: 0.3rem;
           background: rgba(22,22,40,0.98);
-          border: 1px solid rgba(167,139,250,0.35);
+          border: 1px solid rgba(167,139,250,0.3);
           border-radius: 10px;
-          box-shadow: 0 14px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
+          box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
         }
         .category-option {
           width: 100%;
           display: flex;
           align-items: center;
-          gap: 0.45rem;
+          gap: 0.4rem;
           padding: 0.5rem 0.6rem;
           border: 1px solid transparent;
           border-radius: 7px;
           background: transparent;
-          color: rgba(255,255,255,0.78);
+          color: rgba(255,255,255,0.7);
           font-family: inherit;
-          font-size: 0.7rem;
+          font-size: 0.75rem;
           font-weight: 600;
           text-align: left;
           cursor: pointer;
-          transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+          transition: background 0.15s ease;
         }
-        .category-option:hover, .category-option:focus-visible {
-          background: rgba(124,58,237,0.28);
-          border-color: rgba(167,139,250,0.45);
+        .category-option:hover {
+          background: rgba(124,58,237,0.25);
           color: #E9D5FF;
-          outline: none;
         }
-        .category-new-option { color: #6EE7B7; border-top: 1px solid rgba(255,255,255,0.08); border-radius: 0 0 7px 7px; }
+        .category-new-option { color: #6EE7B7; border-top: 1px solid rgba(255,255,255,0.06); }
         .form-group textarea {
           resize: vertical;
           min-height: 40px;
@@ -1339,41 +1287,41 @@ const Overview = ({ navigationTarget }) => {
            LIST ITEMS
            ============================================ */
         .list-item {
-          background: linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.055));
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.16);
-          border-radius: 14px;
-          padding: 0.75rem 0.9rem;
+          background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 12px;
+          padding: 0.7rem 0.8rem;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 0.75rem;
-          transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+          gap: 0.6rem;
+          transition: all 0.2s ease;
         }
         .list-item:hover {
-          background: linear-gradient(135deg, rgba(124,58,237,0.14), rgba(79,107,255,0.07));
-          border-color: rgba(167,139,250,0.35);
-          box-shadow: 0 10px 28px rgba(0,0,0,0.18);
-          transform: translateY(-2px);
+          background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(79,107,255,0.05));
+          border-color: rgba(167,139,250,0.25);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
         .list-item .info { flex: 1; min-width: 0; }
-        .list-item .info .name { font-size: 0.82rem; font-weight: 700; color: #fff; letter-spacing: 0.01em; }
-        .list-item .info .detail { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; font-size: 0.65rem; color: rgba(255,255,255,0.74); }
+        .list-item .info .name { font-size: 0.85rem; font-weight: 700; color: #fff; }
+        .list-item .info .detail { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.25rem; font-size: 0.7rem; color: rgba(255,255,255,0.6); }
         .date-badge {
           display: inline-flex;
           align-items: center;
           gap: 0.25rem;
-          padding: 0.22rem 0.48rem;
+          padding: 0.2rem 0.5rem;
           border-radius: 999px;
-          background: rgba(79,107,255,0.16);
-          border: 1px solid rgba(125,160,255,0.24);
+          background: rgba(79,107,255,0.12);
+          border: 1px solid rgba(125,160,255,0.18);
           color: #BFDBFE;
-          font-size: 0.6rem;
+          font-size: 0.65rem;
           font-weight: 700;
           white-space: nowrap;
         }
-        .list-note { color: rgba(255,255,255,0.76); overflow-wrap: anywhere; }
+        .list-note { color: rgba(255,255,255,0.6); overflow-wrap: anywhere; }
         .list-item .amount { font-size: 0.9rem; font-weight: 800; white-space: nowrap; }
         .list-item .actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
 
@@ -1383,47 +1331,89 @@ const Overview = ({ navigationTarget }) => {
         .badge {
           padding: 0.15rem 0.5rem;
           border-radius: 6px;
-          font-size: 0.55rem;
+          font-size: 0.6rem;
           font-weight: 600;
+          text-transform: uppercase;
         }
-        .badge-pending { background: rgba(245,158,11,0.15); color: #FCD34D; }
-        .badge-received { background: rgba(16,185,129,0.15); color: #6EE7B7; }
-        .badge-overdue { background: rgba(239,68,68,0.15); color: #FCA5A5; }
-        .badge-borrow { background: rgba(245,158,11,0.15); color: #FCD34D; }
-        .badge-loan { background: rgba(124,58,237,0.15); color: #A78BFA; }
+        .badge-pending { background: rgba(245,158,11,0.12); color: #FCD34D; }
+        .badge-received { background: rgba(16,185,129,0.12); color: #6EE7B7; }
+        .badge-overdue { background: rgba(239,68,68,0.12); color: #FCA5A5; }
+        .badge-borrow { background: rgba(245,158,11,0.12); color: #FCD34D; }
+        .badge-loan { background: rgba(124,58,237,0.12); color: #A78BFA; }
 
         /* ============================================
-           PIE CHART
+           PIE CHART - PROFESSIONAL COMPACT LAYOUT
            ============================================ */
         .pie-chart-container {
           display: flex;
           flex-wrap: wrap;
-          gap: 1.5rem;
           align-items: center;
-          justify-content: center;
+          gap: 1.2rem;
+          padding: 0.2rem 0;
         }
-        .pie-chart { flex-shrink: 0; }
-        .pie-legend { display: flex; flex-direction: column; gap: 0.3rem; min-width: 120px; }
-        .legend-item {
+
+        .pie-chart-wrapper {
+          flex: 0 0 auto;
+          width: 170px;
+          height: 170px;
+        }
+
+        .pie-chart-wrapper svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+
+        .pie-legend {
+          flex: 1;
+          min-width: 150px;
           display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+        }
+
+        .legend-item {
+          display: grid;
+          grid-template-columns: 12px minmax(0, 1fr) max-content max-content;
           align-items: center;
           gap: 0.4rem;
-          font-size: 0.65rem;
+          font-size: 0.75rem;
+          padding: 0.2rem 0;
         }
+
         .legend-color {
           width: 12px;
           height: 12px;
           border-radius: 3px;
           flex-shrink: 0;
         }
-        .legend-label { color: rgba(255,255,255,0.7); flex: 1; }
-        .legend-value { font-weight: 600; color: #fff; }
-        .legend-percentage { color: rgba(255,255,255,0.4); font-size: 0.6rem; }
+
+        .legend-label {
+          color: rgba(255,255,255,0.7);
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .legend-value {
+          font-weight: 700;
+          color: #fff;
+          white-space: nowrap;
+        }
+
+        .legend-percentage {
+          color: rgba(255,255,255,0.35);
+          font-size: 0.65rem;
+          white-space: nowrap;
+          text-align: right;
+        }
+
         .empty-chart {
           text-align: center;
           color: rgba(255,255,255,0.3);
           padding: 1rem;
-          font-size: 0.8rem;
+          font-size: 0.85rem;
         }
 
         /* ============================================
@@ -1432,7 +1422,7 @@ const Overview = ({ navigationTarget }) => {
         .no-data-container {
           text-align: center;
           padding: 2rem;
-          color: rgba(255,255,255,0.4);
+          color: rgba(255,255,255,0.35);
         }
         .no-data-icon {
           font-size: 3rem;
@@ -1450,12 +1440,28 @@ const Overview = ({ navigationTarget }) => {
           align-items: center;
           gap: 0.8rem;
           flex-wrap: wrap;
-          padding: 0.6rem 1rem;
+          padding: 0.5rem 1rem;
         }
         .month-selector select {
           outline: none;
           flex: 1;
-          min-width: 140px;
+          min-width: 130px;
+          background: #ffffff;
+          color: #111827;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          padding: 0.4rem 0.6rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .month-selector select:hover {
+          background: #f5f3ff;
+          border-color: #8b5cf6;
+        }
+        .month-selector select:focus {
+          border-color: #7c3aed;
+          box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
         }
 
         /* ============================================
@@ -1465,94 +1471,53 @@ const Overview = ({ navigationTarget }) => {
           display: flex;
           gap: 0.3rem;
           flex-wrap: wrap;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.8rem;
         }
         .tab {
-          background: rgba(255,255,255,0.08);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.14);
-          border-radius: 10px;
-          padding: 0.4rem 1rem;
-          font-size: 0.7rem;
+          background: rgba(255,255,255,0.06);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 9px;
+          padding: 0.45rem 1rem;
+          font-size: 0.75rem;
           font-weight: 600;
-          color: rgba(255,255,255,0.72);
+          color: rgba(255,255,255,0.6);
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.25s ease;
           font-family: inherit;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
         }
-        .tab:hover { background: rgba(255,255,255,0.06); }
+        .tab:hover { background: rgba(255,255,255,0.04); }
         .tab.active {
-          background: linear-gradient(135deg, rgba(124,58,237,0.38), rgba(79,107,255,0.2));
-          border-color: rgba(167,139,250,0.7);
+          background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,107,255,0.15));
+          border-color: rgba(167,139,250,0.5);
           color: #FFFFFF;
-          box-shadow: 0 8px 22px rgba(124,58,237,0.2), inset 0 1px 0 rgba(255,255,255,0.12);
+          box-shadow: 0 4px 16px rgba(124,58,237,0.12);
         }
-        .tab.active svg { color: #C4B5FD; filter: drop-shadow(0 0 5px rgba(196,181,253,0.55)); }
 
         /* ============================================
            MESSAGES
            ============================================ */
-        .error-message {
-          background: rgba(239,68,68,0.15);
-          border: 1px solid rgba(239,68,68,0.3);
-          border-radius: 10px;
-          padding: 0.5rem 0.8rem;
-          color: #FCA5A5;
-          font-size: 0.8rem;
-          margin-bottom: 0.75rem;
-        }
-        .success-message {
-          background: rgba(16,185,129,0.12);
-          border: 1px solid rgba(16,185,129,0.25);
-          border-radius: 10px;
-          padding: 0.5rem 0.8rem;
-          color: #6EE7B7;
-          font-size: 0.8rem;
-          margin-bottom: 0.75rem;
-          text-align: center;
-          animation: slideDown 0.3s ease;
-        }
         .section-feedback {
-          width: min(92%, 420px);
-          margin: 0.6rem auto 0.8rem;
-          padding: 0.55rem 0.8rem;
-          border-radius: 10px;
+          width: 100%;
+          margin: 0.5rem 0 0.8rem;
+          padding: 0.5rem 0.8rem;
+          border-radius: 9px;
           text-align: center;
-          font-size: 0.75rem;
-          animation: slideDown 0.3s ease;
-        }
-        .section-loading {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.55rem;
-          width: min(92%, 420px);
-          margin: 0.6rem auto 0.8rem;
-          padding: 0.6rem 0.8rem;
-          border: 1px solid rgba(167,139,250,0.28);
-          border-radius: 10px;
-          background: rgba(124,58,237,0.12);
-          color: #DDD6FE;
-          font-size: 0.72rem;
-        }
-        .section-spinner {
-          width: 16px;
-          height: 16px;
-          border: 2px solid rgba(196,181,253,0.28);
-          border-top-color: #C4B5FD;
-          border-radius: 50%;
-          animation: spin 0.75s linear infinite;
-          flex-shrink: 0;
+          font-size: 0.8rem;
+          animation: slideDown 0.25s ease;
         }
         .error-feedback {
-          background: rgba(239,68,68,0.15);
-          border: 1px solid rgba(239,68,68,0.3);
+          background: rgba(239,68,68,0.12);
+          border: 1px solid rgba(239,68,68,0.2);
           color: #FCA5A5;
         }
         .success-feedback {
-          background: rgba(16,185,129,0.12);
-          border: 1px solid rgba(16,185,129,0.25);
+          background: rgba(16,185,129,0.10);
+          border: 1px solid rgba(16,185,129,0.18);
           color: #6EE7B7;
         }
         .section-confirm-backdrop {
@@ -1563,22 +1528,22 @@ const Overview = ({ navigationTarget }) => {
           z-index: 2;
         }
         .section-confirm-dialog {
-          width: min(92%, 360px);
+          width: min(92%, 340px);
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.55rem;
+          gap: 0.5rem;
           padding: 1rem;
           background: #202033;
-          border: 1px solid rgba(245,158,11,0.35);
+          border: 1px solid rgba(245,158,11,0.3);
           border-radius: 12px;
-          box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.3);
           text-align: center;
         }
         .section-confirm-dialog p {
           margin: 0;
-          color: rgba(255,255,255,0.85);
-          font-size: 0.75rem;
+          color: rgba(255,255,255,0.8);
+          font-size: 0.8rem;
         }
         .section-confirm-actions {
           display: flex;
@@ -1586,7 +1551,7 @@ const Overview = ({ navigationTarget }) => {
           gap: 0.4rem;
         }
         @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
+          from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
@@ -1597,37 +1562,132 @@ const Overview = ({ navigationTarget }) => {
           .grid-4 { grid-template-columns: repeat(2, 1fr); }
           .grid-3 { grid-template-columns: repeat(2, 1fr); }
         }
+
         @media (max-width: 768px) {
           .overview-container { padding: 12px; }
-          .grid-4 { grid-template-columns: 1fr 1fr; }
-          .grid-3 { grid-template-columns: 1fr 1fr; }
+          .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+          .grid-3 { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
           .grid-2 { grid-template-columns: 1fr; }
           .form-row { grid-template-columns: 1fr; }
-          .app-header h1 { font-size: 1.2rem; }
-          .pie-chart-container { flex-direction: column; align-items: center; }
-          .month-selector { flex-direction: column; align-items: stretch; }
-          .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .tab { width: 100%; padding: 0.55rem 0.35rem; }
-          .list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
-          .list-item .amount { font-size: 0.8rem; }
+          .app-header h1 { font-size: clamp(1rem, 3vw, 1.3rem); }
+          .app-header p { font-size: 0.7rem; }
+          .tabs { display: grid; grid-template-columns: repeat(3, 1fr); }
+          .tab { width: 100%; padding: 0.45rem 0.25rem; font-size: 0.65rem; justify-content: center; }
+          .list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+          .list-item .amount { font-size: clamp(0.7rem, 1.5vw, 0.8rem); }
+
+          .pie-chart-container {
+            flex-direction: column;
+            align-items: center;
+            gap: 0.8rem;
+          }
+
+          .pie-chart-wrapper {
+            width: 150px;
+            height: 150px;
+          }
+
+          .pie-legend {
+            width: 100%;
+            min-width: 0;
+          }
+
+          .legend-item {
+            grid-template-columns: 12px minmax(0, 1fr) max-content max-content;
+            font-size: 0.7rem;
+            gap: 0.3rem;
+          }
         }
+
         @media (max-width: 480px) {
           .overview-container { padding: 8px; }
-          .grid-4 { grid-template-columns: 1fr 1fr; gap: 0.3rem; }
-          .grid-3 { grid-template-columns: 1fr; }
-          .glass-card { padding: 0.6rem; border-radius: 12px; }
-          .number-box { padding: 0.5rem; }
-          .number-box .value { font-size: 1rem; }
-          .tabs { gap: 0.35rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .tab { padding: 0.5rem 0.25rem; font-size: 0.6rem; }
-          .section-header h3 { font-size: 0.7rem; }
-          .list-item { grid-template-columns: minmax(0, 1fr) auto; padding: 0.65rem 0.7rem; gap: 0.45rem; }
-          .list-item .info { grid-column: 1 / -1; }
-          .list-item .amount { grid-column: 1; grid-row: 2; }
-          .list-item .actions { grid-column: 2; grid-row: 2; }
+          .glass-card { padding: 0.7rem; border-radius: 12px; }
+          .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 0.3rem; }
+          .grid-3 { grid-template-columns: 1fr; gap: 0.3rem; }
+          .number-box { padding: 0.5rem; border-radius: 10px; }
+          .number-box .value { font-size: clamp(0.9rem, 3.5vw, 1.1rem); }
+          .number-box .label { font-size: 0.55rem; }
+          .section-header h3 { font-size: 0.8rem; }
+          .btn-glass { font-size: 0.7rem; padding: 0.35rem 0.6rem; min-height: 32px; }
+          .tabs { grid-template-columns: repeat(2, 1fr); gap: 0.25rem; }
+          .tab { font-size: 0.6rem; padding: 0.35rem 0.2rem; }
+          .list-item { padding: 0.5rem 0.6rem; border-radius: 10px; }
           .list-item .info .name { font-size: 0.75rem; }
-          .list-note { max-width: none; }
-          .section-actions { width: 100%; justify-content: flex-end; }
+          .list-item .info .detail { font-size: 0.6rem; }
+          .list-item .amount { font-size: 0.8rem; }
+
+          .pie-chart-wrapper {
+            width: 130px;
+            height: 130px;
+          }
+
+          .pie-legend {
+            gap: 0.25rem;
+          }
+
+          .legend-item {
+            grid-template-columns: 10px minmax(0, 1fr) max-content max-content;
+            font-size: 0.65rem;
+            gap: 0.25rem;
+            padding: 0.15rem 0;
+          }
+
+          .legend-color {
+            width: 10px;
+            height: 10px;
+          }
+
+          .legend-percentage {
+            font-size: 0.6rem;
+          }
+
+          .month-selector { padding: 0.3rem 0.6rem; gap: 0.5rem; }
+          .month-selector select { min-width: 110px; font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+          .month-selector span { font-size: 0.65rem; }
+          .month-selector span:last-child { font-size: 0.6rem; }
+        }
+
+        @media (max-width: 360px) {
+          .overview-container { padding: 4px; }
+          .glass-card { padding: 0.5rem; border-radius: 10px; }
+          .grid-4 { grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+          .number-box { padding: 0.4rem; }
+          .number-box .value { font-size: 0.85rem; }
+          .number-box .label { font-size: 0.5rem; }
+          .tabs { grid-template-columns: 1fr 1fr; }
+          .tab { font-size: 0.55rem; padding: 0.3rem 0.15rem; }
+
+          .pie-chart-wrapper {
+            width: 110px;
+            height: 110px;
+          }
+
+          .legend-item {
+            font-size: 0.55rem;
+            grid-template-columns: 8px minmax(0, 1fr) max-content max-content;
+            gap: 0.2rem;
+          }
+
+          .legend-color {
+            width: 8px;
+            height: 8px;
+          }
+        }
+
+        /* Scrollbar */
+        .overview-container::-webkit-scrollbar,
+        .category-options::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
+        .overview-container::-webkit-scrollbar-track,
+        .category-options::-webkit-scrollbar-track {
+          background: rgba(15,23,42,0.2);
+        }
+        .overview-container::-webkit-scrollbar-thumb,
+        .category-options::-webkit-scrollbar-thumb {
+          background: rgba(124,58,237,0.25);
+          border-radius: 4px;
         }
       `}</style>
 
@@ -1647,25 +1707,20 @@ const Overview = ({ navigationTarget }) => {
               fetchAllData({ silent: true }).then(() => showSuccess('overview', 'Refreshed!'));
             }}
             disabled={refreshing}
-            aria-label={refreshing ? 'Refreshing data' : 'Refresh data'}
           >
-            <span className={refreshing ? 'refresh-spinner' : 'refresh-icon'}>
-              <RefreshCw size={16} />
-            </span>
+            <RefreshCw size={16} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </header>
 
-      {noDataMessage && <div className="no-data-container"><div className="no-data-icon">📋</div><p className="no-data-text">{noDataMessage}</p></div>}
-
       {/* ============================================
           MONTH SELECTOR
           ============================================ */}
-      <div className="glass-card" style={{ padding: '0.5rem' }}>
+      <div className="glass-card" style={{ padding: '0.4rem 0.6rem' }}>
         <div className="month-selector">
           <Calendar size={18} color="#A78BFA" />
-          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Select Month:</span>
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>Select Month:</span>
           <select 
             value={selectedMonth}
             onChange={(e) => {
@@ -1688,8 +1743,8 @@ const Overview = ({ navigationTarget }) => {
                 return <option key={monthYearStr} value={monthYearStr}>{monthYearStr}</option>;
               })}
           </select>
-          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)' }}>
-            Showing data for {selectedMonth}
+          <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>
+            {selectedMonth}
           </span>
         </div>
       </div>
@@ -1699,22 +1754,22 @@ const Overview = ({ navigationTarget }) => {
           ============================================ */}
       <div className="tabs">
         <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
-          <PieChart size={14} /> Overview
+          <PieChart size={15} /> Overview
         </button>
         <button className={`tab ${activeTab === 'expenses' ? 'active' : ''}`} onClick={() => setActiveTab('expenses')}>
-          <CreditCard size={14} /> Expenses
+          <CreditCard size={15} /> Expenses
         </button>
         <button className={`tab ${activeTab === 'loans' ? 'active' : ''}`} onClick={() => setActiveTab('loans')}>
-          <HandCoins size={14} /> Loans
+          <HandCoins size={15} /> Loans
         </button>
         <button className={`tab ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>
-          <Wallet size={14} /> Payments
+          <Wallet size={15} /> Payments
         </button>
         <button className={`tab ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
-          <TrendingUp size={14} /> Performance
+          <TrendingUp size={15} /> Performance
         </button>
         <button className={`tab ${activeTab === 'summary' ? 'active' : ''}`} onClick={() => setActiveTab('summary')}>
-          <BarChart3 size={14} /> Summary
+          <BarChart3 size={15} /> Summary
         </button>
       </div>
 
@@ -1727,7 +1782,7 @@ const Overview = ({ navigationTarget }) => {
           <div className={`glass-card ${editingSection === 'Financial Review' ? 'editing' : ''}`}>
             <SectionHeader
               title={`Financial Review (${selectedMonth})`}
-              icon={<Briefcase size={16} />}
+              icon={<Briefcase size={17} />}
               isEditing={editingSection === 'Financial Review'}
               onEdit={() => setEditingSection('Financial Review')}
               onSave={saveFinancialReview}
@@ -1739,7 +1794,7 @@ const Overview = ({ navigationTarget }) => {
               <div className="number-box">
                 <div className="label">Total Business</div>
                 {editingSection === 'Financial Review' ? (
-                  <input className="edit-input" type="text" value={financialReview.total_business || ''} onChange={(e) => handleFinancialChange('total_business', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
+                  <input className="edit-input" type="text" value={financialReview.total_business || ''} onChange={(e) => handleFinancialChange('total_business', e.target.value)} placeholder="0" style={{ fontSize: '1.1rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
                   <div className="value purple">{formatNumber(financialReview.total_business)}</div>
                 )}
@@ -1748,7 +1803,7 @@ const Overview = ({ navigationTarget }) => {
               <div className="number-box">
                 <div className="label">Total Works</div>
                 {editingSection === 'Financial Review' ? (
-                  <input className="edit-input" type="text" value={financialReview.total_works || ''} onChange={(e) => handleFinancialChange('total_works', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
+                  <input className="edit-input" type="text" value={financialReview.total_works || ''} onChange={(e) => handleFinancialChange('total_works', e.target.value)} placeholder="0" style={{ fontSize: '1.1rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
                   <div className="value blue">{formatNumber(financialReview.total_works)}</div>
                 )}
@@ -1757,7 +1812,7 @@ const Overview = ({ navigationTarget }) => {
               <div className="number-box">
                 <div className="label">Business Payment</div>
                 {editingSection === 'Financial Review' ? (
-                  <input className="edit-input" type="text" value={financialReview.business_payment || ''} onChange={(e) => handleFinancialChange('business_payment', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
+                  <input className="edit-input" type="text" value={financialReview.business_payment || ''} onChange={(e) => handleFinancialChange('business_payment', e.target.value)} placeholder="0" style={{ fontSize: '1.1rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
                   <div className="value green">{formatCurrency(financialReview.business_payment)}</div>
                 )}
@@ -1766,7 +1821,7 @@ const Overview = ({ navigationTarget }) => {
               <div className="number-box">
                 <div className="label">Work Payment</div>
                 {editingSection === 'Financial Review' ? (
-                  <input className="edit-input" type="text" value={financialReview.work_payment || ''} onChange={(e) => handleFinancialChange('work_payment', e.target.value)} placeholder="0" style={{ fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
+                  <input className="edit-input" type="text" value={financialReview.work_payment || ''} onChange={(e) => handleFinancialChange('work_payment', e.target.value)} placeholder="0" style={{ fontSize: '1.1rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '0.2rem 0.4rem', color: '#fff', width: '100%' }} />
                 ) : (
                   <div className="value gold">{formatCurrency(financialReview.work_payment)}</div>
                 )}
@@ -1774,22 +1829,22 @@ const Overview = ({ navigationTarget }) => {
               </div>
             </div>
             <div className="grid-4" style={{ marginTop: '0.5rem' }}>
-              <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.2)' }}>
+              <div className="number-box" style={{ background: 'rgba(16,185,129,0.04)', borderColor: 'rgba(16,185,129,0.12)' }}>
                 <div className="label">Total Savings</div>
                 <div className="value green">{formatCurrency(selectedMonthSavings)}</div>
                 <div className="sub">Selected month only</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)' }}>
+              <div className="number-box" style={{ background: 'rgba(239,68,68,0.04)', borderColor: 'rgba(239,68,68,0.12)' }}>
                 <div className="label">Total Expenses</div>
                 <div className="value red">{formatCurrency(selectedMonthExpenses)}</div>
                 <div className="sub">Selected month only</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.2)' }}>
+              <div className="number-box" style={{ background: 'rgba(245,158,11,0.04)', borderColor: 'rgba(245,158,11,0.12)' }}>
                 <div className="label">Total Borrow</div>
                 <div className="value orange">{formatCurrency(selectedMonthBorrow)}</div>
                 <div className="sub">Selected month only</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(124,58,237,0.05)', borderColor: 'rgba(124,58,237,0.2)' }}>
+              <div className="number-box" style={{ background: 'rgba(124,58,237,0.04)', borderColor: 'rgba(124,58,237,0.12)' }}>
                 <div className="label">Total Loan EMI</div>
                 <div className="value purple">{formatCurrency(selectedMonthLoanEmi)}</div>
                 <div className="sub">Selected month only</div>
@@ -1799,19 +1854,19 @@ const Overview = ({ navigationTarget }) => {
 
           {/* Quick Stats */}
           <div className="grid-4">
-            <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)' }}>
+            <div className="number-box" style={{ background: 'rgba(16,185,129,0.04)' }}>
               <div className="label">Total Income</div>
               <div className="value green">{formatCurrency(selectedMonthIncome)}</div>
             </div>
-            <div className="number-box" style={{ background: 'rgba(239,68,68,0.05)' }}>
+            <div className="number-box" style={{ background: 'rgba(239,68,68,0.04)' }}>
               <div className="label">Total Expenses</div>
               <div className="value red">{formatCurrency(selectedMonthExpenses)}</div>
             </div>
-            <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)' }}>
+            <div className="number-box" style={{ background: 'rgba(245,158,11,0.04)' }}>
               <div className="label">Pending Payments</div>
               <div className="value orange">{formatCurrency(pendingPayments)}</div>
             </div>
-            <div className="number-box" style={{ background: 'rgba(124,58,237,0.05)' }}>
+            <div className="number-box" style={{ background: 'rgba(124,58,237,0.04)' }}>
               <div className="label">Net Profit</div>
               <div className="value purple">{formatCurrency(selectedMonthIncome - selectedMonthExpenses)}</div>
             </div>
@@ -1826,10 +1881,10 @@ const Overview = ({ navigationTarget }) => {
         <div data-overview-section="expenses">
           {showExpenseForm && (
             <div className="form-container">
-              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingExpenseId !== null ? 'Edit Expense' : 'Add New Expense'}</h4>
+              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA', fontSize: '0.9rem' }}>{editingExpenseId !== null ? 'Edit Expense' : 'Add New Expense'}</h4>
               <div className="form-row">
                 <div className="form-group">
-                  <label>Category / New Category *</label>
+                  <label>Category *</label>
                   <div className="category-picker">
                     <input
                       type="text"
@@ -1838,7 +1893,6 @@ const Overview = ({ navigationTarget }) => {
                       onBlur={() => setTimeout(() => setExpenseCategoryOpen(false), 150)}
                       onChange={(e) => handleExpenseChange('category', e.target.value)}
                       placeholder="Select or type a category"
-                      aria-label="Expense category"
                     />
                     {expenseCategoryOpen && (
                       <div className="category-options">
@@ -1899,7 +1953,7 @@ const Overview = ({ navigationTarget }) => {
           <div className="glass-card">
             <SectionHeader
               title={`Expenses (${selectedMonth})`}
-              icon={<CreditCard size={16} color="#7C3AED" />}
+              icon={<CreditCard size={17} color="#7C3AED" />}
               onAdd={() => {
                 cancelExpenseForm();
                 setNewExpense({ category: '', amount: '', expense_date: new Date().toISOString().split('T')[0], notes: '' });
@@ -1909,8 +1963,10 @@ const Overview = ({ navigationTarget }) => {
             {renderSectionFeedback('expenses')}
             
             {expensePieData.length > 0 && (
-              <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Category Breakdown</h4>
+              <div style={{ marginBottom: '0.8rem' }}>
+                <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Category Breakdown
+                </h4>
                 <PieChartComponent 
                   data={expensePieData} 
                   total={expensePieData.reduce((sum, d) => sum + d.amount, 0)}
@@ -1919,7 +1975,9 @@ const Overview = ({ navigationTarget }) => {
               </div>
             )}
 
-            <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Expense Records</h4>
+            <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Expense Records
+            </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               {expenses.length === 0 ? (
                 <NoDataMessage message="No expenses found. Click Add to create your first expense!" />
@@ -1936,10 +1994,10 @@ const Overview = ({ navigationTarget }) => {
                     <div className="amount red">{formatCurrency(exp.amount)}</div>
                     <div className="actions">
                       <button className="btn-glass btn-edit" onClick={() => editExpense(exp)} style={{ padding: '0.15rem 0.4rem' }}>
-                        <Edit2 size={12} />
+                        <Edit2 size={13} />
                       </button>
                       <button className="btn-glass btn-danger" onClick={() => deleteExpense(exp.id)} style={{ padding: '0.15rem 0.4rem' }}>
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -1957,7 +2015,7 @@ const Overview = ({ navigationTarget }) => {
         <div data-overview-section="loans">
           {showLoanForm && (
             <div className="form-container">
-              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingLoanId !== null ? 'Edit Loan/Borrow' : 'Add New Loan/Borrow'}</h4>
+              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA', fontSize: '0.9rem' }}>{editingLoanId !== null ? 'Edit Loan/Borrow' : 'Add New Loan/Borrow'}</h4>
               <div className="form-row">
                 <div className="form-group">
                   <label>Name *</label>
@@ -2001,7 +2059,7 @@ const Overview = ({ navigationTarget }) => {
           <div className="glass-card">
             <SectionHeader
               title={`Loans & Borrows (${selectedMonth})`}
-              icon={<HandCoins size={16} color="#F43F5E" />}
+              icon={<HandCoins size={17} color="#F43F5E" />}
               onAdd={() => {
                 cancelLoanForm();
                 setNewLoan({ name: '', amount: '', emi: '', loan_date: new Date().toISOString().split('T')[0], type: 'Borrow', notes: '' });
@@ -2011,15 +2069,15 @@ const Overview = ({ navigationTarget }) => {
             {renderSectionFeedback('loans')}
             
             <div className="grid-3" style={{ marginBottom: '0.8rem' }}>
-              <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)' }}>
+              <div className="number-box" style={{ background: 'rgba(245,158,11,0.04)' }}>
                 <div className="label">Total Borrow</div>
                 <div className="value orange">{formatCurrency(totalBorrow)}</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(124,58,237,0.05)' }}>
+              <div className="number-box" style={{ background: 'rgba(124,58,237,0.04)' }}>
                 <div className="label">Total Loans</div>
                 <div className="value purple">{formatCurrency(totalLoans)}</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)' }}>
+              <div className="number-box" style={{ background: 'rgba(16,185,129,0.04)' }}>
                 <div className="label">Total</div>
                 <div className="value green">{formatCurrency(totalBorrow + totalLoans)}</div>
               </div>
@@ -2044,10 +2102,10 @@ const Overview = ({ navigationTarget }) => {
                     </div>
                     <div className="actions">
                       <button className="btn-glass btn-edit" onClick={() => editLoan(loan)} style={{ padding: '0.15rem 0.4rem' }}>
-                        <Edit2 size={12} />
+                        <Edit2 size={13} />
                       </button>
                       <button className="btn-glass btn-danger" onClick={() => deleteLoan(loan.id)} style={{ padding: '0.15rem 0.4rem' }}>
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -2065,7 +2123,7 @@ const Overview = ({ navigationTarget }) => {
         <div data-overview-section="payments">
           {showPaymentForm && (
             <div className="form-container">
-              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA' }}>{editingPaymentId !== null ? 'Edit Payment' : 'Add New Payment'}</h4>
+              <h4 style={{ marginBottom: '0.5rem', color: '#A78BFA', fontSize: '0.9rem' }}>{editingPaymentId !== null ? 'Edit Payment' : 'Add New Payment'}</h4>
               <div className="form-row">
                 <div className="form-group">
                   <label>Person Name *</label>
@@ -2106,7 +2164,7 @@ const Overview = ({ navigationTarget }) => {
           <div className="glass-card">
             <SectionHeader
               title={`Remaining Payments (${selectedMonth})`}
-              icon={<Wallet size={16} color="#F59E0B" />}
+              icon={<Wallet size={17} color="#F59E0B" />}
               onAdd={() => {
                 cancelPaymentForm();
                 setNewPayment({ person_name: '', amount: '', payment_date: new Date().toISOString().split('T')[0], notes: '', status: 'pending' });
@@ -2116,15 +2174,15 @@ const Overview = ({ navigationTarget }) => {
             {renderSectionFeedback('payments')}
             
             <div className="grid-3" style={{ marginBottom: '0.8rem' }}>
-              <div className="number-box" style={{ background: 'rgba(245,158,11,0.05)' }}>
+              <div className="number-box" style={{ background: 'rgba(245,158,11,0.04)' }}>
                 <div className="label">Total Pending</div>
                 <div className="value orange">{formatCurrency(pendingPayments)}</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(16,185,129,0.05)' }}>
+              <div className="number-box" style={{ background: 'rgba(16,185,129,0.04)' }}>
                 <div className="label">Total Received</div>
                 <div className="value green">{formatCurrency(payments.filter(p => p.status === 'received').reduce((sum, p) => sum + parseFloat(p.amount), 0))}</div>
               </div>
-              <div className="number-box" style={{ background: 'rgba(239,68,68,0.05)' }}>
+              <div className="number-box" style={{ background: 'rgba(239,68,68,0.04)' }}>
                 <div className="label">Overdue</div>
                 <div className="value red">{formatCurrency(payments.filter(p => p.status === 'overdue').reduce((sum, p) => sum + parseFloat(p.amount), 0))}</div>
               </div>
@@ -2147,15 +2205,15 @@ const Overview = ({ navigationTarget }) => {
                     <div className="amount gold">{formatCurrency(payment.amount)}</div>
                     <div className="actions">
                       <button className="btn-glass btn-edit" onClick={() => editPayment(payment)} style={{ padding: '0.15rem 0.4rem' }}>
-                        <Edit2 size={12} />
+                        <Edit2 size={13} />
                       </button>
                       {payment.status !== 'received' && (
                         <button className="btn-glass btn-success" onClick={() => updatePaymentStatus(payment.id, 'received')} style={{ padding: '0.15rem 0.4rem', fontSize: '0.5rem' }}>
-                          <CheckCircle size={12} />
+                          <CheckCircle size={13} />
                         </button>
                       )}
                       <button className="btn-glass btn-danger" onClick={() => deletePayment(payment.id)} style={{ padding: '0.15rem 0.4rem' }}>
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -2171,16 +2229,17 @@ const Overview = ({ navigationTarget }) => {
           ============================================ */}
       {activeTab === 'performance' && (
         <div data-overview-section="performance">
-          <div className="glass-card" style={{ padding: '0.5rem', marginBottom: '0.75rem' }}>
-            <div className="week-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.6rem 1rem' }}>
-              <Calendar size={18} color="#4F6BFF" />
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>Select Week:</span>
+          <div className="glass-card" style={{ padding: '0.4rem 0.6rem', marginBottom: '0.8rem' }}>
+            <div className="week-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.4rem 0.6rem' }}>
+              <Calendar size={17} color="#4F6BFF" />
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>Select Week:</span>
               <select
                 value={selectedWeek.key}
                 onChange={(e) => {
                   const week = getWeeksForMonth(selectedMonth).find(item => item.key === e.target.value);
                   if (week) setSelectedWeek(week);
                 }}
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', borderRadius: '8px', background: '#fff', color: '#111827', border: '1px solid #d1d5db', outline: 'none' }}
               >
                 {getWeeksForMonth(selectedMonth).map((week, index) => (
                   <option key={week.key} value={week.key}>Week {index + 1}: {week.label}</option>
@@ -2191,8 +2250,8 @@ const Overview = ({ navigationTarget }) => {
 
           {weeklyPerformance ? (
             <div className="glass-card">
-              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.8rem', color: '#4F6BFF' }}>
-                <Calendar size={16} /> Weekly Performance ({formatDate(weeklyPerformance.week_start)} to {formatDate(weeklyPerformance.week_end)})
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.8rem', color: '#4F6BFF' }}>
+                <Calendar size={17} /> Weekly Performance ({formatDate(weeklyPerformance.week_start)} to {formatDate(weeklyPerformance.week_end)})
               </h3>
               <div className="grid-4">
                 <div className="number-box"><div className="label">Total Income</div><div className="value green">{formatCurrency(weeklyPerformance.totalIncome)}</div></div>
@@ -2202,7 +2261,9 @@ const Overview = ({ navigationTarget }) => {
               </div>
               {weeklyPerformance.pieData && weeklyPerformance.pieData.length > 0 && (
                 <div style={{ marginTop: '0.8rem' }}>
-                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Weekly Expense Breakdown</h4>
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Weekly Expense Breakdown
+                  </h4>
                   <PieChartComponent 
                     data={weeklyPerformance.pieData.map(d => ({ category: d.category, amount: d.amount }))}
                     total={weeklyPerformance.totalExpenses}
@@ -2217,8 +2278,8 @@ const Overview = ({ navigationTarget }) => {
 
           {monthlyPerformance ? (
             <div className="glass-card">
-              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.8rem', color: '#7C3AED' }}>
-                <BarChart3 size={16} /> Monthly Performance ({monthlyPerformance.monthName} {monthlyPerformance.year})
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.8rem', color: '#7C3AED' }}>
+                <BarChart3 size={17} /> Monthly Performance ({monthlyPerformance.monthName} {monthlyPerformance.year})
               </h3>
               <div className="grid-4">
                 <div className="number-box"><div className="label">Total Income</div><div className="value green">{formatCurrency(monthlyPerformance.totalIncome)}</div></div>
@@ -2235,7 +2296,9 @@ const Overview = ({ navigationTarget }) => {
               </div>
               {monthlyPerformance.pieData && monthlyPerformance.pieData.length > 0 && (
                 <div style={{ marginTop: '0.8rem' }}>
-                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Monthly Expense Breakdown</h4>
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Monthly Expense Breakdown
+                  </h4>
                   <PieChartComponent 
                     data={monthlyPerformance.pieData}
                     total={monthlyPerformance.totalExpenses}
@@ -2258,8 +2321,8 @@ const Overview = ({ navigationTarget }) => {
           {summary ? (
             <>
               <div className="glass-card">
-                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.8rem', color: '#FBBF24' }}>
-                  <Trophy size={16} /> All-Time Summary
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.8rem', color: '#FBBF24' }}>
+                  <Trophy size={17} /> All-Time Summary
                 </h3>
                 <div className="grid-3">
                   <div className="number-box">
@@ -2270,7 +2333,7 @@ const Overview = ({ navigationTarget }) => {
                     <div className="label">All-Time Total Expenses</div>
                     <div className="value red">{formatCurrency(allTimeExpenses)}</div>
                   </div>
-                  <div className="number-box" style={{ background: netTotalSavings >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)' }}>
+                  <div className="number-box" style={{ background: netTotalSavings >= 0 ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)' }}>
                     <div className="label">Net Total Savings</div>
                     <div className={`value ${netTotalSavings >= 0 ? 'green' : 'red'}`}>
                       {netTotalSavings >= 0 ? '+' : '−'}{formatCurrency(Math.abs(netTotalSavings))}
@@ -2288,7 +2351,9 @@ const Overview = ({ navigationTarget }) => {
 
               {summaryPieData && summaryPieData.length > 0 && (
                 <div className="glass-card">
-                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Income vs Expenses vs Savings</h4>
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Income vs Expenses vs Savings
+                  </h4>
                   <PieChartComponent 
                     data={summaryPieData}
                     total={summaryPieData.reduce((sum, d) => sum + d.amount, 0)}
@@ -2299,17 +2364,19 @@ const Overview = ({ navigationTarget }) => {
 
               {summary.monthlyTrends && summary.monthlyTrends.length > 0 && (
                 <div className="glass-card">
-                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>Monthly Trends</h4>
+                  <h4 style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.4rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Monthly Trends
+                  </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.3rem' }}>
                     {summary.monthlyTrends.map((trend, index) => (
-                      <div key={index} className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                      <div key={index} className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch', padding: '0.5rem 0.6rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{trend.monthName} {trend.year}</span>
-                          <span style={{ fontSize: '0.6rem', color: trend.savings >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{trend.monthName} {trend.year}</span>
+                          <span style={{ fontSize: '0.65rem', color: trend.savings >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
                             {trend.savings >= 0 ? '▲' : '▼'} {formatCurrency(trend.savings)}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.6rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.65rem' }}>
                           <span style={{ color: '#6EE7B7' }}>Income: {formatCurrency(trend.income)}</span>
                           <span style={{ color: '#FCA5A5' }}>Exp: {formatCurrency(trend.expenses)}</span>
                         </div>

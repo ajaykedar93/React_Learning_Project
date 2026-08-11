@@ -31,7 +31,7 @@ const Footer = () => {
           box-shadow:
             0 -8px 30px rgba(0, 0, 0, 0.18),
             inset 0 1px 0 rgba(255, 255, 255, 0.025);
-          padding: 0.95rem 2rem;
+          padding: 0.45rem 1rem;
           display: flex;
           justify-content: center;
           align-items: center;
@@ -41,8 +41,8 @@ const Footer = () => {
           bottom: 0;
           z-index: 100;
           /* Safe area for mobile navigation */
-          padding-bottom: calc(0.95rem + env(safe-area-inset-bottom, 0px));
-          padding-bottom: calc(0.95rem + constant(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(0.45rem + constant(safe-area-inset-bottom, 0px));
         }
 
         .footer-container:hover {
@@ -318,9 +318,9 @@ const Footer = () => {
         /* Mobile Navigation Safe Space */
         @media (max-width: 768px) {
           .footer-container {
-            padding: 0.4rem 0.75rem;
-            padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
-            padding-bottom: calc(0.4rem + constant(safe-area-inset-bottom, 0px));
+            padding: 0.25rem 0.6rem;
+            padding-bottom: calc(0.18rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.18rem + constant(safe-area-inset-bottom, 0px));
           }
           .footer-content {
             gap: 0.75rem;
@@ -367,9 +367,9 @@ const Footer = () => {
 
         @media (max-width: 480px) {
           .footer-container {
-            padding: 0.25rem 0.5rem;
-            padding-bottom: calc(0.25rem + env(safe-area-inset-bottom, 0px));
-            padding-bottom: calc(0.25rem + constant(safe-area-inset-bottom, 0px));
+            padding: 0.18rem 0.45rem;
+            padding-bottom: calc(0.18rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.18rem + constant(safe-area-inset-bottom, 0px));
           }
           .footer-content {
             gap: 0.45rem;
@@ -422,7 +422,7 @@ const Footer = () => {
         /* Special handling for devices with bottom navigation */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
           .footer-container {
-            padding-bottom: calc(0.95rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
           }
         }
       `}</style>
