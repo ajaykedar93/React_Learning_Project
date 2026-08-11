@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowUpRight, ArrowDownRight, Clock as ClockIcon, Filter, 
   Plus, X, Edit2, Save, Trash2, RefreshCw, 
-  CheckCircle, AlertCircle, Eye, EyeOff, User, Calendar, 
-  IndianRupee, Tag, FileText, DollarSign
+  AlertCircle, Eye
 } from 'lucide-react';
 
 // =========================================================
@@ -379,12 +378,12 @@ const Transactions = () => {
   // =============================================
   if (loading) {
     return (
-      <div className="transactions-container" style={{
+      <div className="transactions-page" style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: '400px',
-        background: 'linear-gradient(135deg, #0f1026 0%, #171735 52%, #101126 100%)'
+        minHeight: '100vh',
+        background: 'radial-gradient(circle at 12% 8%, rgba(124,58,237,.12), transparent 34%), radial-gradient(circle at 88% 18%, rgba(79,70,229,.10), transparent 36%), linear-gradient(135deg, #0f1026 0%, #171735 52%, #101126 100%)'
       }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
@@ -403,25 +402,24 @@ const Transactions = () => {
   }
 
   return (
-    <div className="transactions-wrapper">
+    <div className="transactions-page">
       <style>{`
         /* =========================================================
-           GLOBAL RESET & BASE
+           GLOBAL RESET
            ========================================================= */
-        .transactions-wrapper {
+        .transactions-page {
           width: 100%;
-          max-width: 100%;
           min-height: 100vh;
-          background: radial-gradient(circle at 12% 8%, rgba(124,58,237,.12), transparent 34%),
-                      radial-gradient(circle at 88% 18%, rgba(79,70,229,.10), transparent 36%),
-                      linear-gradient(135deg, #0f1026 0%, #171735 52%, #101126 100%);
-          padding: 12px;
+          background: radial-gradient(circle at 12% 8%, rgba(124,58,237,.10), transparent 34%),
+                      radial-gradient(circle at 88% 18%, rgba(79,70,229,.08), transparent 36%),
+                      linear-gradient(145deg, #0a0b1e 0%, #12122e 40%, #0e0f24 100%);
+          padding: 14px;
           box-sizing: border-box;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           overflow-x: hidden;
         }
 
-        .transactions-wrapper * {
+        .transactions-page * {
           box-sizing: border-box;
         }
 
@@ -443,23 +441,23 @@ const Transactions = () => {
            GLASS CARDS
            ========================================================= */
         .glass-card {
-          background: linear-gradient(145deg, rgba(39,39,70,.92), rgba(28,29,58,.88));
-          border: 1px solid rgba(167,139,250,.22);
+          background: linear-gradient(145deg, rgba(30,30,65,.92), rgba(20,20,50,.88));
+          border: 1px solid rgba(167,139,250,.18);
           border-radius: 16px;
           padding: 1.25rem;
-          box-shadow: 0 8px 32px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+          box-shadow: 0 8px 32px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
           backdrop-filter: blur(16px) saturate(130%);
           -webkit-backdrop-filter: blur(16px) saturate(130%);
-          transition: border-color 0.25s ease, box-shadow 0.25s ease;
+          transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .glass-card:hover {
-          border-color: rgba(167,139,250,.38);
-          box-shadow: 0 12px 40px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.08);
+          border-color: rgba(167,139,250,.35);
+          box-shadow: 0 12px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
         }
 
         /* =========================================================
-           GLASS SELECT (Custom Dropdown)
+           GLASS SELECT
            ========================================================= */
         .glass-select {
           position: relative;
@@ -469,26 +467,28 @@ const Transactions = () => {
 
         .glass-select-trigger {
           width: 100%;
-          min-height: 40px;
+          min-height: 38px;
           padding: 0 12px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
-          background: rgba(15,23,42,.78);
+          gap: 8px;
+          background: rgba(15,23,42,.70);
           color: #F8FAFC;
-          border: 1px solid rgba(167,139,250,.25);
+          border: 1px solid rgba(167,139,250,.20);
           border-radius: 10px;
-          font-size: 0.78rem;
-          font-weight: 700;
+          font-size: 0.75rem;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
           text-align: left;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
 
         .glass-select-trigger:hover {
-          background: rgba(30,30,60,.92);
-          border-color: rgba(167,139,250,.45);
+          background: rgba(30,30,60,.85);
+          border-color: rgba(167,139,250,.40);
         }
 
         .glass-select.is-open .glass-select-trigger {
@@ -505,7 +505,7 @@ const Transactions = () => {
 
         .glass-select-chevron {
           color: #C4B5FD;
-          font-size: 16px;
+          font-size: 14px;
           transition: transform 0.25s ease;
         }
 
@@ -517,15 +517,15 @@ const Transactions = () => {
           position: absolute;
           left: 0;
           right: 0;
-          top: calc(100% + 6px);
+          top: calc(100% + 4px);
           width: 100%;
-          max-height: 220px;
+          max-height: 200px;
           overflow-y: auto;
           padding: 4px;
           background: rgba(20,21,48,.98);
-          border: 1px solid rgba(167,139,250,.30);
-          border-radius: 12px;
-          box-shadow: 0 16px 48px rgba(0,0,0,.45);
+          border: 1px solid rgba(167,139,250,.25);
+          border-radius: 10px;
+          box-shadow: 0 16px 48px rgba(0,0,0,.50);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           z-index: 100000;
@@ -533,30 +533,30 @@ const Transactions = () => {
 
         .glass-select-option {
           width: 100%;
-          min-height: 38px;
-          padding: 8px 12px;
+          min-height: 36px;
+          padding: 6px 12px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
+          gap: 8px;
           background: transparent;
           color: #E2E8F0;
           border: 0;
-          border-radius: 8px;
+          border-radius: 6px;
           font-size: 0.75rem;
-          font-weight: 700;
+          font-weight: 600;
           text-align: left;
           cursor: pointer;
           transition: background 0.15s ease;
         }
 
         .glass-select-option:hover {
-          background: rgba(124,58,237,.25);
+          background: rgba(124,58,237,.20);
           color: #FFFFFF;
         }
 
         .glass-select-option.selected {
-          background: rgba(124,58,237,.30);
+          background: rgba(124,58,237,.28);
           color: #FFFFFF;
         }
 
@@ -566,7 +566,7 @@ const Transactions = () => {
         }
 
         /* =========================================================
-           BUTTONS
+           PROFESSIONAL GLASS BUTTONS
            ========================================================= */
         .btn {
           display: inline-flex;
@@ -574,92 +574,157 @@ const Transactions = () => {
           justify-content: center;
           gap: 6px;
           min-height: 36px;
-          padding: 0 14px;
+          padding: 0 16px;
           border-radius: 10px;
-          border: 1px solid rgba(167,139,250,.25);
-          background: rgba(255,255,255,.06);
-          color: #F8FAFC;
-          font-size: 0.75rem;
+          font-size: 0.78rem;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           white-space: nowrap;
+          border: 1px solid rgba(255,255,255,.10);
+          text-shadow: 0 1px 2px rgba(0,0,0,.20);
+          position: relative;
+          overflow: hidden;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          letter-spacing: 0.3px;
+        }
+
+        .btn::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, rgba(255,255,255,.12), transparent 50%);
+          pointer-events: none;
+          border-radius: inherit;
         }
 
         .btn:hover {
-          background: rgba(255,255,255,.12);
-          border-color: rgba(167,139,250,.45);
-          transform: translateY(-1px);
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 28px rgba(0,0,0,.35);
         }
 
         .btn:active {
-          transform: translateY(1px) scale(.98);
+          transform: translateY(0) scale(.97);
         }
 
         .btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
           transform: none !important;
+          box-shadow: none !important;
         }
 
-        .btn-primary {
-          background: linear-gradient(135deg, #7C3AED, #4F46E5);
-          border-color: rgba(196,181,253,.40);
+        /* Yellow - View/Add */
+        .btn-yellow {
+          background: linear-gradient(135deg, #D97706, #F59E0B);
+          border-color: rgba(245,158,11,.35);
           color: #FFFFFF;
-          box-shadow: 0 4px 16px rgba(124,58,237,.25);
+          box-shadow: 0 4px 18px rgba(245,158,11,.25);
         }
 
-        .btn-primary:hover {
+        .btn-yellow:hover {
+          background: linear-gradient(135deg, #B45309, #FBBF24);
+          border-color: rgba(245,158,11,.55);
+          box-shadow: 0 6px 28px rgba(245,158,11,.35);
+        }
+
+        /* Green - Edit/Save */
+        .btn-green {
+          background: linear-gradient(135deg, #059669, #10B981);
+          border-color: rgba(16,185,129,.35);
+          color: #FFFFFF;
+          box-shadow: 0 4px 18px rgba(16,185,129,.25);
+        }
+
+        .btn-green:hover {
+          background: linear-gradient(135deg, #047857, #34D399);
+          border-color: rgba(16,185,129,.55);
+          box-shadow: 0 6px 28px rgba(16,185,129,.35);
+        }
+
+        /* Red - Delete/Cancel */
+        .btn-red {
+          background: linear-gradient(135deg, #DC2626, #EF4444);
+          border-color: rgba(239,68,68,.35);
+          color: #FFFFFF;
+          box-shadow: 0 4px 18px rgba(239,68,68,.25);
+        }
+
+        .btn-red:hover {
+          background: linear-gradient(135deg, #B91C1C, #F87171);
+          border-color: rgba(239,68,68,.55);
+          box-shadow: 0 6px 28px rgba(239,68,68,.35);
+        }
+
+        /* Purple - Primary */
+        .btn-purple {
+          background: linear-gradient(135deg, #7C3AED, #4F46E5);
+          border-color: rgba(196,181,253,.35);
+          color: #FFFFFF;
+          box-shadow: 0 4px 18px rgba(124,58,237,.25);
+        }
+
+        .btn-purple:hover {
           background: linear-gradient(135deg, #8B5CF6, #6366F1);
           border-color: rgba(196,181,253,.55);
-          box-shadow: 0 6px 24px rgba(124,58,237,.35);
+          box-shadow: 0 6px 28px rgba(124,58,237,.35);
         }
 
-        .btn-success {
-          background: rgba(16,185,129,.18);
-          border-color: rgba(16,185,129,.30);
-          color: #6EE7B7;
-        }
-
-        .btn-success:hover {
-          background: rgba(16,185,129,.28);
-          border-color: rgba(16,185,129,.45);
-        }
-
-        .btn-danger {
-          background: rgba(239,68,68,.16);
-          border-color: rgba(239,68,68,.30);
-          color: #FCA5A5;
-        }
-
-        .btn-danger:hover {
-          background: rgba(239,68,68,.26);
-          border-color: rgba(239,68,68,.45);
-        }
-
+        /* Outline - Glass */
         .btn-outline {
-          background: transparent;
+          background: rgba(255,255,255,.06);
           border-color: rgba(167,139,250,.20);
           color: #C4B5FD;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
 
         .btn-outline:hover {
-          background: rgba(167,139,250,.10);
-          border-color: rgba(167,139,250,.40);
+          background: rgba(167,139,250,.15);
+          border-color: rgba(167,139,250,.45);
+          color: #FFFFFF;
         }
 
+        /* Size variants */
         .btn-sm {
           min-height: 32px;
+          padding: 0 12px;
+          font-size: 0.7rem;
+          border-radius: 8px;
+        }
+
+        .btn-xs {
+          min-height: 28px;
           padding: 0 10px;
-          font-size: 0.68rem;
+          font-size: 0.65rem;
+          border-radius: 7px;
+          gap: 4px;
         }
 
         .btn-icon {
-          width: 34px;
-          height: 34px;
-          min-width: 34px;
+          width: 38px;
+          height: 38px;
+          min-width: 38px;
           padding: 0;
-          border-radius: 8px;
+          border-radius: 10px;
+        }
+
+        .btn-icon svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .btn-icon.btn-xs {
+          width: 36px;
+          height: 36px;
+          min-width: 36px;
+          border-radius: 9px;
+        }
+
+        .btn-icon.btn-xs svg {
+          width: 17px;
+          height: 17px;
         }
 
         /* =========================================================
@@ -676,30 +741,31 @@ const Transactions = () => {
           letter-spacing: 0.3px;
           white-space: nowrap;
           text-transform: uppercase;
+          border: 1px solid transparent;
         }
 
         .badge-pending {
           background: rgba(245,158,11,.15);
           color: #FCD34D;
-          border: 1px solid rgba(245,158,11,.30);
+          border-color: rgba(245,158,11,.25);
         }
 
         .badge-received {
           background: rgba(16,185,129,.15);
           color: #6EE7B7;
-          border: 1px solid rgba(16,185,129,.30);
+          border-color: rgba(16,185,129,.25);
         }
 
         .badge-give {
           background: rgba(239,68,68,.15);
           color: #FDA4AF;
-          border: 1px solid rgba(239,68,68,.28);
+          border-color: rgba(239,68,68,.25);
         }
 
         .badge-take {
           background: rgba(16,185,129,.15);
           color: #6EE7B7;
-          border: 1px solid rgba(16,185,129,.28);
+          border-color: rgba(16,185,129,.25);
         }
 
         /* =========================================================
@@ -707,36 +773,40 @@ const Transactions = () => {
            ========================================================= */
         .summary-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
           gap: 10px;
           margin-bottom: 16px;
         }
 
         .summary-item {
-          background: rgba(15,23,42,.50);
-          border: 1px solid rgba(167,139,250,.12);
+          background: rgba(15,23,42,.45);
+          border: 1px solid rgba(167,139,250,.10);
           border-radius: 12px;
-          padding: 12px 16px;
+          padding: 10px 14px;
           text-align: center;
-          transition: all 0.25s ease;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
 
         .summary-item:hover {
-          border-color: rgba(167,139,250,.28);
-          background: rgba(20,30,55,.60);
+          border-color: rgba(167,139,250,.25);
+          background: rgba(20,30,55,.55);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(0,0,0,.20);
         }
 
         .summary-label {
-          font-size: 0.6rem;
+          font-size: 0.55rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
           color: #94A3B8;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
 
         .summary-value {
-          font-size: 1.15rem;
+          font-size: 1.1rem;
           font-weight: 800;
         }
 
@@ -753,8 +823,8 @@ const Transactions = () => {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           border-radius: 12px;
-          background: rgba(15,23,42,.45);
-          border: 1px solid rgba(167,139,250,.12);
+          background: rgba(10,15,35,.40);
+          border: 1px solid rgba(167,139,250,.08);
         }
 
         .table {
@@ -765,15 +835,15 @@ const Transactions = () => {
         }
 
         .table thead th {
-          padding: 10px 12px;
+          padding: 8px 10px;
           text-align: left;
           font-weight: 700;
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           text-transform: uppercase;
-          letter-spacing: 0.4px;
+          letter-spacing: 0.5px;
           color: #94A3B8;
-          border-bottom: 1px solid rgba(167,139,250,.10);
-          background: rgba(20,25,50,.50);
+          border-bottom: 1px solid rgba(167,139,250,.08);
+          background: rgba(15,20,45,.50);
           position: sticky;
           top: 0;
           z-index: 5;
@@ -785,16 +855,16 @@ const Transactions = () => {
         .table thead th:nth-child(5) { text-align: center; }
 
         .table tbody tr {
-          transition: background 0.15s ease;
-          border-bottom: 1px solid rgba(167,139,250,.06);
+          transition: background 0.2s ease;
+          border-bottom: 1px solid rgba(167,139,250,.05);
         }
 
         .table tbody tr:hover {
-          background: rgba(124,58,237,.06);
+          background: rgba(124,58,237,.05);
         }
 
         .table tbody td {
-          padding: 10px 12px;
+          padding: 8px 10px;
           vertical-align: middle;
           color: #E2E8F0;
           font-size: 0.75rem;
@@ -808,7 +878,7 @@ const Transactions = () => {
         .table .name-cell {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           font-weight: 600;
           color: #F8FAFC;
         }
@@ -821,12 +891,12 @@ const Transactions = () => {
 
         .table .date-cell {
           color: #94A3B8;
-          font-size: 0.7rem;
+          font-size: 0.65rem;
         }
 
         .table .notes-cell {
           color: #94A3B8;
-          max-width: 180px;
+          max-width: 160px;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -836,11 +906,11 @@ const Transactions = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 6px;
         }
 
         /* =========================================================
-           MODALS
+           MODALS - Professional Glass
            ========================================================= */
         .modal-overlay {
           position: fixed;
@@ -850,21 +920,21 @@ const Transactions = () => {
           align-items: center;
           justify-content: center;
           padding: 16px;
-          background: rgba(4,5,16,.72);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          background: rgba(4,5,16,.78);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           animation: fadeInUp 0.25s ease;
         }
 
         .modal {
-          width: min(520px, 100%);
+          width: min(500px, 100%);
           max-height: calc(100vh - 32px);
           overflow-y: auto;
           padding: 24px 28px;
-          background: linear-gradient(145deg, rgba(39,39,70,.98), rgba(28,29,58,.96));
+          background: linear-gradient(145deg, rgba(35,35,70,.98), rgba(25,25,55,.96));
           border: 1px solid rgba(167,139,250,.28);
           border-radius: 20px;
-          box-shadow: 0 24px 64px rgba(0,0,0,.50), inset 0 1px 0 rgba(255,255,255,.06);
+          box-shadow: 0 24px 64px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
           animation: fadeInUp 0.3s ease;
         }
 
@@ -873,15 +943,15 @@ const Transactions = () => {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          margin-bottom: 20px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid rgba(167,139,250,.12);
+          margin-bottom: 18px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid rgba(167,139,250,.10);
         }
 
         .modal-title {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           font-size: 1rem;
           font-weight: 700;
           color: #F8FAFC;
@@ -898,16 +968,17 @@ const Transactions = () => {
           align-items: center;
           justify-content: center;
           background: rgba(239,68,68,.12);
-          border: 1px solid rgba(239,68,68,.25);
+          border: 1px solid rgba(239,68,68,.20);
           border-radius: 8px;
           color: #FCA5A5;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
         }
 
         .modal-close:hover {
           background: rgba(239,68,68,.22);
           border-color: rgba(239,68,68,.45);
+          transform: scale(1.05);
         }
 
         .modal-body {
@@ -918,37 +989,37 @@ const Transactions = () => {
         .form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 14px;
-          margin-bottom: 14px;
+          gap: 12px;
+          margin-bottom: 12px;
         }
 
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 4px;
         }
 
         .form-group.full { grid-column: 1 / -1; }
 
         .form-label {
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.4px;
+          letter-spacing: 0.5px;
           color: #94A3B8;
         }
 
         .form-input {
           width: 100%;
-          min-height: 42px;
+          min-height: 38px;
           padding: 0 12px;
-          background: rgba(15,23,42,.78);
-          border: 1px solid rgba(167,139,250,.22);
-          border-radius: 10px;
+          background: rgba(15,23,42,.70);
+          border: 1px solid rgba(167,139,250,.18);
+          border-radius: 8px;
           color: #F8FAFC;
-          font-size: 0.78rem;
+          font-size: 0.75rem;
           font-weight: 600;
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
           outline: none;
         }
 
@@ -958,13 +1029,13 @@ const Transactions = () => {
 
         .form-input:focus {
           border-color: #8B5CF6;
-          box-shadow: 0 0 0 3px rgba(139,92,246,.14);
-          background: rgba(20,25,55,.90);
+          box-shadow: 0 0 0 3px rgba(139,92,246,.12);
+          background: rgba(20,25,55,.85);
         }
 
         .form-input.textarea {
-          min-height: 70px;
-          padding: 10px 12px;
+          min-height: 60px;
+          padding: 8px 12px;
           resize: vertical;
           font-family: inherit;
         }
@@ -973,13 +1044,13 @@ const Transactions = () => {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 8px;
+          gap: 10px;
           margin-top: 16px;
           padding-top: 14px;
-          border-top: 1px solid rgba(167,139,250,.10);
+          border-top: 1px solid rgba(167,139,250,.08);
         }
 
-        /* View Modal Detail Rows */
+        /* Detail Rows */
         .detail-list {
           display: flex;
           flex-direction: column;
@@ -988,16 +1059,16 @@ const Transactions = () => {
 
         .detail-row {
           display: grid;
-          grid-template-columns: 100px 1fr;
-          gap: 16px;
-          padding: 10px 0;
-          border-bottom: 1px solid rgba(167,139,250,.07);
+          grid-template-columns: 90px 1fr;
+          gap: 14px;
+          padding: 8px 0;
+          border-bottom: 1px solid rgba(167,139,250,.06);
         }
 
         .detail-row:last-child { border-bottom: 0; }
 
         .detail-label {
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.4px;
@@ -1005,7 +1076,7 @@ const Transactions = () => {
         }
 
         .detail-value {
-          font-size: 0.82rem;
+          font-size: 0.8rem;
           font-weight: 600;
           color: #F8FAFC;
           text-align: right;
@@ -1013,52 +1084,50 @@ const Transactions = () => {
         }
 
         .detail-value .badge {
-          font-size: 0.6rem;
+          font-size: 0.55rem;
         }
 
         /* Delete Modal */
         .delete-icon {
-          font-size: 2.8rem;
+          font-size: 2.5rem;
           text-align: center;
-          margin-bottom: 8px;
+          margin-bottom: 6px;
         }
 
         .delete-text {
           text-align: center;
           color: #E2E8F0;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           font-weight: 600;
         }
 
         .delete-sub {
           text-align: center;
           color: #94A3B8;
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           margin-top: 4px;
         }
 
         /* =========================================================
            RESPONSIVE
            ========================================================= */
-        @media (max-width: 768px) {
-          .transactions-wrapper {
-            padding: 8px;
-          }
+        @media (max-width: 992px) {
+          .transactions-page { padding: 10px; }
+        }
 
-          .glass-card {
-            padding: 0.9rem;
-          }
+        @media (max-width: 768px) {
+          .transactions-page { padding: 6px; }
+
+          .glass-card { padding: 0.8rem; border-radius: 14px; }
 
           .summary-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
+            gap: 6px;
           }
 
-          .summary-value {
-            font-size: 1rem;
-          }
+          .summary-item { padding: 8px 10px; }
+          .summary-value { font-size: 0.95rem; }
 
-          /* Mobile Table -> Cards */
           .table-wrap {
             background: transparent;
             border: 0;
@@ -1080,38 +1149,32 @@ const Transactions = () => {
           .table tbody tr {
             display: block;
             width: 100%;
-            margin-bottom: 10px;
-            padding: 12px 14px;
-            background: linear-gradient(145deg, rgba(39,39,70,.94), rgba(28,29,58,.90));
-            border: 1px solid rgba(167,139,250,.18);
-            border-radius: 14px;
-            box-shadow: 0 6px 20px rgba(0,0,0,.20);
-          }
-
-          .table tbody tr:hover {
-            background: linear-gradient(145deg, rgba(48,46,88,.96), rgba(32,31,67,.94));
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            background: linear-gradient(145deg, rgba(30,30,65,.94), rgba(20,20,50,.90));
+            border: 1px solid rgba(167,139,250,.15);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.20);
           }
 
           .table tbody td {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(167,139,250,.06);
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(167,139,250,.05);
           }
 
-          .table tbody td:last-child {
-            border-bottom: 0;
-          }
+          .table tbody td:last-child { border-bottom: 0; }
 
           .table tbody td::before {
             content: attr(data-label);
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             color: #94A3B8;
-            flex: 0 0 70px;
+            flex: 0 0 64px;
           }
 
           .table tbody td .name-cell {
@@ -1119,10 +1182,12 @@ const Transactions = () => {
             justify-content: flex-end;
           }
 
-          .table tbody td:nth-child(2) { text-align: right; }
+          .table tbody td:nth-child(2),
           .table tbody td:nth-child(4),
-          .table tbody td:nth-child(5) { text-align: right; }
-          .table tbody td:last-child { text-align: right; }
+          .table tbody td:nth-child(5),
+          .table tbody td:last-child {
+            text-align: right;
+          }
 
           .table .notes-cell {
             max-width: none;
@@ -1135,7 +1200,17 @@ const Transactions = () => {
             justify-content: flex-end;
           }
 
-          /* Modal */
+          .btn-icon.btn-xs {
+            width: 34px;
+            height: 34px;
+            min-width: 34px;
+          }
+
+          .btn-icon.btn-xs svg {
+            width: 16px;
+            height: 16px;
+          }
+
           .modal {
             padding: 18px 16px;
             border-radius: 16px;
@@ -1144,18 +1219,16 @@ const Transactions = () => {
 
           .form-grid {
             grid-template-columns: 1fr;
-            gap: 10px;
+            gap: 8px;
           }
 
           .detail-row {
             grid-template-columns: 1fr;
-            gap: 4px;
-            padding: 8px 0;
+            gap: 2px;
+            padding: 6px 0;
           }
 
-          .detail-value {
-            text-align: left;
-          }
+          .detail-value { text-align: left; }
 
           .form-actions {
             flex-direction: column-reverse;
@@ -1168,73 +1241,57 @@ const Transactions = () => {
         }
 
         @media (max-width: 480px) {
-          .transactions-wrapper {
-            padding: 4px;
-          }
+          .transactions-page { padding: 4px; }
 
-          .glass-card {
-            padding: 0.7rem;
-            border-radius: 14px;
-          }
+          .glass-card { padding: 0.6rem; border-radius: 12px; }
 
           .summary-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 4px;
           }
 
-          .summary-item {
-            padding: 8px 12px;
+          .summary-item { padding: 6px 8px; }
+          .summary-value { font-size: 0.85rem; }
+          .summary-label { font-size: 0.5rem; }
+
+          .table tbody tr { padding: 8px 10px; border-radius: 10px; }
+          .table tbody td { font-size: 0.68rem; padding: 4px 0; }
+          .table tbody td::before { flex: 0 0 54px; font-size: 0.5rem; }
+
+          .btn { 
+            font-size: 0.7rem; 
+            min-height: 32px; 
+            padding: 0 12px; 
+          }
+          
+          .btn-icon { 
+            width: 34px; 
+            height: 34px; 
+            min-width: 34px; 
+          }
+          
+          .btn-icon.btn-xs { 
+            width: 32px; 
+            height: 32px; 
+            min-width: 32px; 
+          }
+          
+          .btn-icon.btn-xs svg {
+            width: 15px;
+            height: 15px;
           }
 
-          .summary-value {
-            font-size: 0.9rem;
-          }
+          .modal { padding: 14px 12px; border-radius: 14px; }
+          .modal-title { font-size: 0.9rem; }
 
-          .table tbody tr {
-            padding: 10px 12px;
-            border-radius: 12px;
-          }
-
-          .table tbody td {
-            font-size: 0.7rem;
-            padding: 5px 0;
-          }
-
-          .table tbody td::before {
-            flex: 0 0 60px;
-            font-size: 0.55rem;
-          }
-
-          .modal {
-            padding: 14px 12px;
-          }
-
-          .modal-title {
-            font-size: 0.9rem;
-          }
-
-          .btn {
-            font-size: 0.7rem;
-            min-height: 34px;
-            padding: 0 10px;
-          }
-
-          .btn-icon {
-            width: 32px;
-            height: 32px;
-            min-width: 32px;
-          }
+          .badge { font-size: 0.5rem; padding: 2px 8px; }
         }
 
         @media (max-width: 360px) {
-          .summary-grid {
-            grid-template-columns: 1fr;
-          }
+          .summary-grid { grid-template-columns: 1fr; }
         }
 
-        /* =========================================================
-           SCROLLBAR STYLING
-           ========================================================= */
+        /* Scrollbar */
         .modal::-webkit-scrollbar,
         .table-wrap::-webkit-scrollbar {
           width: 4px;
@@ -1243,7 +1300,7 @@ const Transactions = () => {
 
         .modal::-webkit-scrollbar-track,
         .table-wrap::-webkit-scrollbar-track {
-          background: rgba(15,23,42,.30);
+          background: rgba(15,23,42,.25);
         }
 
         .modal::-webkit-scrollbar-thumb,
@@ -1289,13 +1346,13 @@ const Transactions = () => {
         {/* Error / Success */}
         {error && (
           <div style={{
-            background: 'rgba(239,68,68,.12)',
-            border: '1px solid rgba(239,68,68,.25)',
-            borderRadius: '10px',
-            padding: '10px 14px',
+            background: 'rgba(239,68,68,.10)',
+            border: '1px solid rgba(239,68,68,.20)',
+            borderRadius: '8px',
+            padding: '8px 12px',
             color: '#FCA5A5',
-            fontSize: '0.8rem',
-            marginBottom: '12px',
+            fontSize: '0.75rem',
+            marginBottom: '10px',
             textAlign: 'center'
           }}>
             ⚠️ {error}
@@ -1303,13 +1360,13 @@ const Transactions = () => {
         )}
         {successMessage && (
           <div style={{
-            background: 'rgba(16,185,129,.12)',
-            border: '1px solid rgba(16,185,129,.25)',
-            borderRadius: '10px',
-            padding: '10px 14px',
+            background: 'rgba(16,185,129,.10)',
+            border: '1px solid rgba(16,185,129,.20)',
+            borderRadius: '8px',
+            padding: '8px 12px',
             color: '#6EE7B7',
-            fontSize: '0.8rem',
-            marginBottom: '12px',
+            fontSize: '0.75rem',
+            marginBottom: '10px',
             textAlign: 'center',
             animation: 'slideDown 0.3s ease'
           }}>
@@ -1323,11 +1380,11 @@ const Transactions = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '10px',
-          marginBottom: '14px'
+          gap: '8px',
+          marginBottom: '12px'
         }}>
           <h3 style={{
-            fontSize: '0.95rem',
+            fontSize: '0.9rem',
             fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
@@ -1338,10 +1395,10 @@ const Transactions = () => {
             <ClockIcon size={18} color="#A78BFA" /> Transactions
           </h3>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-              <Plus size={14} /> Add
+            <button className="btn btn-yellow" onClick={() => setShowAddModal(true)}>
+              <Plus size={15} /> Add
             </button>
-            <button className="btn btn-outline" onClick={() => { fetchTransactions(); fetchSummary(); }}>
+            <button className="btn btn-outline btn-sm" onClick={() => { fetchTransactions(); fetchSummary(); }}>
               <RefreshCw size={13} /> Refresh
             </button>
           </div>
@@ -1351,17 +1408,17 @@ const Transactions = () => {
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '8px',
-          marginBottom: '14px',
+          gap: '6px',
+          marginBottom: '12px',
           alignItems: 'center'
         }}>
-          <Filter size={14} color="#94A3B8" />
+          <Filter size={13} color="#94A3B8" />
           <input
             className="form-input"
-            placeholder="Search by name or notes..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: '1', minWidth: '140px', maxWidth: '280px' }}
+            style={{ flex: '1', minWidth: '120px', maxWidth: '240px', minHeight: '34px' }}
           />
           <GlassSelect
             value={filterType}
@@ -1371,7 +1428,7 @@ const Transactions = () => {
               { value: 'Give', label: 'Give' },
               { value: 'Take', label: 'Take' }
             ]}
-            style={{ maxWidth: '130px', minWidth: '100px' }}
+            style={{ maxWidth: '110px', minWidth: '90px' }}
             ariaLabel="Filter by type"
           />
           <GlassSelect
@@ -1382,7 +1439,7 @@ const Transactions = () => {
               { value: 'Pending', label: 'Pending' },
               { value: 'Received', label: 'Received' }
             ]}
-            style={{ maxWidth: '130px', minWidth: '100px' }}
+            style={{ maxWidth: '110px', minWidth: '90px' }}
             ariaLabel="Filter by status"
           />
         </div>
@@ -1404,10 +1461,10 @@ const Transactions = () => {
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px 0', color: '#64748B' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '28px 0', color: '#64748B' }}>
                     <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>📋</div>
-                    <div>No transactions found</div>
-                    <div style={{ fontSize: '0.7rem', marginTop: '2px', color: '#475569' }}>Click "Add" to create your first transaction</div>
+                    <div style={{ fontSize: '0.8rem' }}>No transactions found</div>
+                    <div style={{ fontSize: '0.65rem', marginTop: '2px', color: '#475569' }}>Click "Add" to create one</div>
                   </td>
                 </tr>
               ) : (
@@ -1421,13 +1478,13 @@ const Transactions = () => {
                             className="form-input"
                             value={editData.person_name}
                             onChange={(e) => setEditData(prev => ({ ...prev, person_name: e.target.value }))}
-                            style={{ minHeight: '34px', fontSize: '0.7rem' }}
+                            style={{ minHeight: '30px', fontSize: '0.7rem' }}
                           />
                         ) : (
                           <div className="name-cell">
                             {tx.type === 'Give' 
-                              ? <ArrowUpRight size={14} className="icon-give" /> 
-                              : <ArrowDownRight size={14} className="icon-take" />}
+                              ? <ArrowUpRight size={13} className="icon-give" /> 
+                              : <ArrowDownRight size={13} className="icon-take" />}
                             <span>{tx.person_name}</span>
                           </div>
                         )}
@@ -1439,7 +1496,7 @@ const Transactions = () => {
                             type="number"
                             value={editData.amount}
                             onChange={(e) => setEditData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                            style={{ minHeight: '34px', fontSize: '0.7rem', width: '80px' }}
+                            style={{ minHeight: '30px', fontSize: '0.7rem', width: '70px' }}
                           />
                         ) : (
                           <span className={tx.type === 'Give' ? 'amount-give' : 'amount-take'}>
@@ -1454,7 +1511,7 @@ const Transactions = () => {
                             type="date"
                             value={editData.transaction_date}
                             onChange={(e) => setEditData(prev => ({ ...prev, transaction_date: e.target.value }))}
-                            style={{ minHeight: '34px', fontSize: '0.7rem' }}
+                            style={{ minHeight: '30px', fontSize: '0.65rem' }}
                           />
                         ) : (
                           <span className="date-cell">{formatDate(tx.transaction_date)}</span>
@@ -1469,7 +1526,7 @@ const Transactions = () => {
                               { value: 'Received', label: 'Received' },
                               { value: 'Pending', label: 'Pending' }
                             ]}
-                            style={{ minWidth: '90px' }}
+                            style={{ minWidth: '80px' }}
                             ariaLabel="Edit status"
                           />
                         ) : (
@@ -1487,7 +1544,7 @@ const Transactions = () => {
                               { value: 'Give', label: 'Give' },
                               { value: 'Take', label: 'Take' }
                             ]}
-                            style={{ minWidth: '80px' }}
+                            style={{ minWidth: '70px' }}
                             ariaLabel="Edit type"
                           />
                         ) : (
@@ -1502,8 +1559,8 @@ const Transactions = () => {
                             className="form-input"
                             value={editData.notes || ''}
                             onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Add notes"
-                            style={{ minHeight: '34px', fontSize: '0.7rem' }}
+                            placeholder="Notes"
+                            style={{ minHeight: '30px', fontSize: '0.65rem' }}
                           />
                         ) : (
                           tx.notes || '—'
@@ -1511,24 +1568,24 @@ const Transactions = () => {
                       </td>
                       <td data-label="Actions">
                         {isEditing ? (
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                            <button className="btn btn-success btn-sm" onClick={() => handleSave(tx.id)} disabled={saving}>
-                              <Save size={12} /> {saving ? 'Saving...' : 'Save'}
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button className="btn btn-green btn-xs" onClick={() => handleSave(tx.id)} disabled={saving}>
+                              <Save size={13} /> {saving ? 'Saving' : 'Save'}
                             </button>
-                            <button className="btn btn-danger btn-sm" onClick={handleCancel}>
-                              <X size={12} /> Cancel
+                            <button className="btn btn-red btn-xs" onClick={handleCancel}>
+                              <X size={13} /> Cancel
                             </button>
                           </div>
                         ) : (
                           <div className="actions-cell">
-                            <button className="btn btn-outline btn-icon btn-sm" onClick={() => handleView(tx)} title="View">
-                              <Eye size={13} />
+                            <button className="btn btn-yellow btn-icon btn-xs" onClick={() => handleView(tx)} title="View">
+                              <Eye size={17} />
                             </button>
-                            <button className="btn btn-outline btn-icon btn-sm" onClick={() => handleEdit(tx)} title="Edit">
-                              <Edit2 size={13} />
+                            <button className="btn btn-green btn-icon btn-xs" onClick={() => handleEdit(tx)} title="Edit">
+                              <Edit2 size={17} />
                             </button>
-                            <button className="btn btn-danger btn-icon btn-sm" onClick={() => { setDeleteId(tx.id); setShowDeleteModal(true); }} title="Delete">
-                              <Trash2 size={13} />
+                            <button className="btn btn-red btn-icon btn-xs" onClick={() => { setDeleteId(tx.id); setShowDeleteModal(true); }} title="Delete">
+                              <Trash2 size={17} />
                             </button>
                           </div>
                         )}
@@ -1543,15 +1600,15 @@ const Transactions = () => {
 
         {/* Footer */}
         <div style={{
-          marginTop: '10px',
-          paddingTop: '10px',
-          borderTop: '1px solid rgba(167,139,250,.08)',
+          marginTop: '8px',
+          paddingTop: '8px',
+          borderTop: '1px solid rgba(167,139,250,.06)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '6px',
-          fontSize: '0.65rem',
+          gap: '4px',
+          fontSize: '0.6rem',
           color: '#64748B'
         }}>
           <span>Total: {filteredTransactions.length} transactions</span>
@@ -1560,7 +1617,7 @@ const Transactions = () => {
       </div>
 
       {/* =========================================================
-          ADD MODAL
+          ADD MODAL - Yellow Add, Red Cancel
           ========================================================= */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
@@ -1570,7 +1627,7 @@ const Transactions = () => {
                 <Plus size={18} className="icon" /> Add Transaction
               </h4>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
             <div className="modal-body">
@@ -1641,11 +1698,11 @@ const Transactions = () => {
                 </div>
               </div>
               <div className="form-actions">
-                <button className="btn btn-outline" onClick={() => setShowAddModal(false)}>
+                <button className="btn btn-red" onClick={() => setShowAddModal(false)}>
                   <X size={14} /> Cancel
                 </button>
-                <button className="btn btn-success" onClick={handleAddTransaction} disabled={saving}>
-                  <Save size={14} /> {saving ? 'Saving...' : 'Add Transaction'}
+                <button className="btn btn-yellow" onClick={handleAddTransaction} disabled={saving}>
+                  <Plus size={14} /> {saving ? 'Saving...' : 'Add Transaction'}
                 </button>
               </div>
             </div>
@@ -1658,13 +1715,13 @@ const Transactions = () => {
           ========================================================= */}
       {showViewModal && viewTransaction && (
         <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
             <div className="modal-header">
               <h4 className="modal-title">
                 <Eye size={18} className="icon" /> Transaction Details
               </h4>
               <button className="modal-close" onClick={() => setShowViewModal(false)}>
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
             <div className="modal-body">
@@ -1705,7 +1762,7 @@ const Transactions = () => {
                 {viewTransaction.notes && (
                   <div className="detail-row">
                     <span className="detail-label">Notes</span>
-                    <span className="detail-value" style={{ color: '#94A3B8', fontWeight: 400 }}>
+                    <span className="detail-value" style={{ color: '#94A3B8', fontWeight: 400, fontSize: '0.75rem' }}>
                       {viewTransaction.notes}
                     </span>
                   </div>
@@ -1713,14 +1770,14 @@ const Transactions = () => {
                 {viewTransaction.created_at && (
                   <div className="detail-row">
                     <span className="detail-label">Created</span>
-                    <span className="detail-value" style={{ color: '#64748B', fontSize: '0.7rem', fontWeight: 400 }}>
+                    <span className="detail-value" style={{ color: '#64748B', fontSize: '0.65rem', fontWeight: 400 }}>
                       {formatDateFull(viewTransaction.created_at)}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.08)', marginTop: '12px', paddingTop: '12px' }}>
-                <button className="btn btn-outline" onClick={() => setShowViewModal(false)}>
+              <div className="form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.06)', marginTop: '10px', paddingTop: '10px' }}>
+                <button className="btn btn-outline btn-sm" onClick={() => setShowViewModal(false)}>
                   Close
                 </button>
               </div>
@@ -1734,24 +1791,24 @@ const Transactions = () => {
           ========================================================= */}
       {showDeleteModal && (
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '380px' }}>
             <div className="modal-header" style={{ borderBottom: '0', marginBottom: '0', paddingBottom: '0' }}>
               <h4 className="modal-title" style={{ color: '#FDA4AF' }}>
                 <AlertCircle size={18} color="#FB7185" /> Delete Transaction
               </h4>
               <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
             <div className="modal-body">
               <div className="delete-icon">⚠️</div>
               <div className="delete-text">Are you sure you want to delete this transaction?</div>
               <div className="delete-sub">This action cannot be undone.</div>
-              <div className="form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.08)', marginTop: '16px', paddingTop: '14px' }}>
-                <button className="btn btn-outline" onClick={() => setShowDeleteModal(false)}>
+              <div className="form-actions" style={{ borderTop: '1px solid rgba(167,139,250,.06)', marginTop: '14px', paddingTop: '12px' }}>
+                <button className="btn btn-outline btn-sm" onClick={() => setShowDeleteModal(false)}>
                   Cancel
                 </button>
-                <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>
+                <button className="btn btn-red" onClick={handleDelete} disabled={saving}>
                   <Trash2 size={14} /> {saving ? 'Deleting...' : 'Delete'}
                 </button>
               </div>

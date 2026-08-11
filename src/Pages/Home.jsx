@@ -197,7 +197,7 @@ const Home = () => {
         }
 
         .home-container {
-          --footer-space: 58px;
+          --footer-space: 48px;
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -420,7 +420,7 @@ const Home = () => {
 
         .home-end-safe-space {
           width: 100%;
-          height: 4px;
+          height: 2px;
           flex-shrink: 0;
         }
 
@@ -440,11 +440,14 @@ const Home = () => {
           margin: 0;
           padding: 0 0 env(safe-area-inset-bottom, 0px);
           background: #06060f;
+          display: flex;
+          align-items: center;
         }
 
         .footer-wrapper > * {
           width: 100%;
           max-width: 100%;
+          margin: 0 !important;
         }
 
         @media (max-width: 768px) {
@@ -453,7 +456,7 @@ const Home = () => {
           }
 
           .home-container {
-            --footer-space: 64px;
+            --footer-space: 52px;
             padding-top: calc(55px + env(safe-area-inset-top, 0px));
             padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
           }
@@ -493,7 +496,7 @@ const Home = () => {
           }
 
           .home-container {
-            --footer-space: 64px;
+            --footer-space: 52px;
             padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
           }
 
