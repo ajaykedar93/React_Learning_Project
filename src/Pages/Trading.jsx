@@ -5,7 +5,7 @@ import {
   RefreshCw, Plus, X, Edit2, Save, Trash2,
   Building2, Briefcase, LineChart, CandlestickChart,
   Wallet, ArrowUpRight, ArrowDownRight, Activity,
-  CheckCircle, XCircle, Info
+  CheckCircle, XCircle, Info, Percent, Award, Zap
 } from 'lucide-react';
 
 const Trading = ({ refreshTrigger }) => {
@@ -835,7 +835,6 @@ const Trading = ({ refreshTrigger }) => {
   // =============================================
   const downloadReport = async () => {
     try {
-      // Prepare API request parameters
       const period = filterType;
       const format = reportFormat;
       
@@ -848,7 +847,6 @@ const Trading = ({ refreshTrigger }) => {
         monthValue = selectedMonth;
       }
       
-      // Build API URL
       const url = new URL(`${API_BASE}/api/personal-trading/export/${userId}`);
       url.searchParams.append('period', period);
       url.searchParams.append('format', format);
@@ -861,10 +859,8 @@ const Trading = ({ refreshTrigger }) => {
         url.searchParams.append('month', monthValue);
       }
       
-      // Show loading toast
       showToast('Generating report...', 'info', 5000);
       
-      // Fetch the report
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
@@ -881,7 +877,6 @@ const Trading = ({ refreshTrigger }) => {
         throw new Error(errorData.message || `Failed to download report (Status: ${response.status})`);
       }
       
-      // Determine filename and content type
       const filename = `${period}-trading-report-${new Date().toISOString().slice(0, 10)}`;
       let blob;
       
@@ -898,7 +893,6 @@ const Trading = ({ refreshTrigger }) => {
         });
       }
       
-      // Download the file
       const urlBlob = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = urlBlob;
@@ -1735,6 +1729,307 @@ const Trading = ({ refreshTrigger }) => {
 
         .required-mark { color: #FB7185; margin-left: 2px; }
         .optional-mark { color: rgba(255,255,255,0.35); font-weight: 400; }
+
+        /* =============================================
+           ENHANCED PROFESSIONAL STYLES
+        ============================================= */
+
+        .pro-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          margin-bottom: 1.25rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .pro-title {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .pro-title h1 {
+          font-size: 1.6rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #FFFFFF, #A78BFA);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin: 0;
+        }
+
+        .pro-title-badge {
+          font-size: 0.55rem;
+          font-weight: 700;
+          color: #A78BFA;
+          background: rgba(124,58,237,0.12);
+          padding: 0.2rem 0.6rem;
+          border-radius: 20px;
+          border: 1px solid rgba(124,58,237,0.2);
+          white-space: nowrap;
+        }
+
+        .pro-subtitle {
+          font-size: 0.7rem;
+          color: rgba(255,255,255,0.4);
+          margin-top: 0.1rem;
+        }
+
+        .pro-actions {
+          display: flex;
+          gap: 0.4rem;
+          flex-wrap: wrap;
+        }
+
+        .pro-stat-card {
+          background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 14px;
+          padding: 0.8rem 1rem;
+          text-align: center;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .pro-stat-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(124,58,237,0.3), transparent);
+        }
+
+        .pro-stat-card:hover {
+          background: linear-gradient(145deg, rgba(124,58,237,0.08), rgba(255,255,255,0.03));
+          border-color: rgba(124,58,237,0.2);
+          transform: translateY(-2px);
+        }
+
+        .pro-stat-value {
+          font-size: 1.6rem;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          line-height: 1.2;
+        }
+
+        .pro-stat-label {
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: rgba(255,255,255,0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-top: 0.15rem;
+        }
+
+        .pro-stat-sub {
+          font-size: 0.5rem;
+          color: rgba(255,255,255,0.25);
+          margin-top: 0.1rem;
+        }
+
+        .pro-filter-section {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          background: rgba(255,255,255,0.03);
+          border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .pro-filter-group {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .pro-filter-label {
+          font-size: 0.6rem;
+          font-weight: 600;
+          color: rgba(255,255,255,0.4);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .pro-select {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          color: white;
+          padding: 0.3rem 0.8rem;
+          font-size: 0.7rem;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+
+        .pro-select:hover {
+          border-color: rgba(124,58,237,0.3);
+        }
+
+        .pro-select:focus {
+          border-color: #7C3AED;
+          box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+        }
+
+        .pro-select option {
+          background: #0a0a1f;
+          color: white;
+        }
+
+        .pro-input {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 8px;
+          color: white;
+          padding: 0.3rem 0.8rem;
+          font-size: 0.7rem;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          outline: none;
+          transition: all 0.2s ease;
+          width: 120px;
+        }
+
+        .pro-input::placeholder {
+          color: rgba(255,255,255,0.25);
+        }
+
+        .pro-input:focus {
+          border-color: rgba(124,58,237,0.4);
+          box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+        }
+
+        .pro-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.75rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .pro-pnl-large {
+          font-size: 2rem;
+          font-weight: 900;
+          letter-spacing: -0.03em;
+          text-shadow: 0 0 30px currentColor;
+        }
+
+        .pro-section-title {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: rgba(255,255,255,0.9);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .pro-section-title .badge {
+          font-size: 0.5rem;
+          font-weight: 700;
+          color: rgba(255,255,255,0.3);
+          background: rgba(255,255,255,0.05);
+          padding: 0.1rem 0.5rem;
+          border-radius: 20px;
+        }
+
+        .pro-market-card {
+          border: 1px solid rgba(196,181,253,0.15);
+          border-radius: 16px;
+          padding: 0.9rem;
+          transition: all 0.3s ease;
+          background: rgba(255,255,255,0.02);
+        }
+
+        .pro-market-card:hover {
+          border-color: rgba(196,181,253,0.35);
+          background: rgba(255,255,255,0.04);
+        }
+
+        .pro-market-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 0.5rem;
+        }
+
+        .pro-market-name {
+          font-size: 0.85rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+
+        .pro-market-stats {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.4rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .pro-market-stat {
+          text-align: center;
+          padding: 0.3rem;
+          background: rgba(255,255,255,0.03);
+          border-radius: 8px;
+        }
+
+        .pro-market-stat-value {
+          font-size: 0.75rem;
+          font-weight: 700;
+        }
+
+        .pro-market-stat-label {
+          font-size: 0.45rem;
+          font-weight: 600;
+          color: rgba(255,255,255,0.35);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        @media (max-width: 768px) {
+          .pro-stat-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .pro-market-stats {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .pro-title h1 {
+            font-size: 1.2rem;
+          }
+          .pro-filter-section {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .pro-filter-group {
+            justify-content: center;
+          }
+          .pro-input {
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .pro-stat-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .pro-market-stats {
+            grid-template-columns: 1fr 1fr;
+          }
+          .pro-stat-value {
+            font-size: 1.2rem;
+          }
+          .pro-pnl-large {
+            font-size: 1.5rem;
+          }
+        }
       `}</style>
 
       <div id="trading-journal" className="trading-container">
@@ -1868,104 +2163,93 @@ const Trading = ({ refreshTrigger }) => {
         })()}
 
         {/* =============================================
-            HEADER
+            HEADER - PROFESSIONAL
         ============================================= */}
-        <div className="flex justify-between items-center flex-wrap" style={{ gap: '0.75rem', marginBottom: '1rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: '800', background: 'linear-gradient(135deg, #FFFFFF, #A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Trading Journal
-            </h1>
-            <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.1rem' }}>
-              Track Indian & Forex trades with brokerage
-            </p>
+        <div className="pro-header">
+          <div className="pro-title">
+            <div>
+              <h1>📊 Trading Journal</h1>
+              <div className="pro-subtitle">
+                Track Indian & Forex trades with brokerage analytics
+              </div>
+            </div>
+            <span className="pro-title-badge">
+              <Activity size={12} /> Live
+            </span>
           </div>
-          <div className="flex flex-wrap" style={{ gap: '0.4rem' }}>
+          <div className="pro-actions">
             <button 
-              className={`refresh-btn ${refreshing ? 'spinning' : ''}`} 
+              className={`glass-btn ${refreshing ? 'spinning' : ''}`} 
               onClick={handleRefresh}
               disabled={refreshing}
-              style={{ padding: '0.3rem 0.6rem', fontSize: '0.65rem' }}
+              style={{ padding: '0.4rem 0.8rem' }}
             >
-              <RefreshCw size={12} className="refresh-icon" />
+              <RefreshCw size={14} className="refresh-icon" />
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             <button 
               className="glass-btn primary" 
               onClick={() => { resetForm(); setShowAddModal(true); }}
-              style={{ padding: '0.3rem 0.6rem', fontSize: '0.65rem' }}
+              style={{ padding: '0.4rem 0.8rem' }}
             >
-              <Plus size={12} /> Add Trade
+              <Plus size={14} /> Add Trade
             </button>
           </div>
         </div>
 
         {/* =============================================
-            FILTER SECTION
+            FILTER SECTION - PROFESSIONAL
         ============================================= */}
-        <div className="glass-card" style={{ marginBottom: '0.75rem', padding: '0.75rem' }}>
-          <div className="flex justify-between items-center flex-wrap" style={{ gap: '0.5rem' }}>
-            <div className="flex items-center" style={{ gap: '0.5rem' }}>
-              <Clock size={16} color="#2EA8FF" />
-              <div className="filter-toggle">
-                <button className={filterType === 'monthly' ? 'active' : ''} onClick={() => setFilterType('monthly')}>📆 Monthly</button>
-                <button className={filterType === 'daily' ? 'active' : ''} onClick={() => setFilterType('daily')}>📊 Daily</button>
-                <button className={filterType === 'weekly' ? 'active' : ''} onClick={() => setFilterType('weekly')}>📈 Weekly</button>
-              </div>
-            </div>
-            <div className="flex items-center" style={{ gap: '0.5rem' }}>
-              <Calendar size={14} color="#2EA8FF" />
-              {filterType === 'monthly' ? (
-                <select 
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: '8px',
-                    color: 'white',
-                    padding: '0.3rem 0.6rem',
-                    fontSize: '0.75rem',
-                    fontFamily: 'Plus Jakarta Sans, sans-serif',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  {months.map(month => (
-                    <option key={month.value} value={month.value} style={{ background: '#0a0a1f' }}>{month.label}</option>
-                  ))}
-                </select>
-              ) : (
-                <input 
-                  type="date"
-                  value={selectedDate.toISOString().split('T')[0]}
-                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: '8px',
-                    color: 'white',
-                    padding: '0.3rem 0.6rem',
-                    fontSize: '0.75rem',
-                    fontFamily: 'Plus Jakarta Sans, sans-serif',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                />
-              )}
-            </div>
-            <div className="flex items-center" style={{ gap: '0.3rem' }}>
-              <Filter size={14} color="rgba(255,255,255,0.3)" />
-              <input 
-                className="edit-input" 
-                placeholder="Search..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '120px', fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
-              />
+        <div className="pro-filter-section" style={{ marginBottom: '0.75rem' }}>
+          <div className="pro-filter-group">
+            <span className="pro-filter-label">
+              <Clock size={14} style={{ marginRight: '0.3rem' }} />
+              Period
+            </span>
+            <div className="filter-toggle">
+              <button className={filterType === 'monthly' ? 'active' : ''} onClick={() => setFilterType('monthly')}>Monthly</button>
+              <button className={filterType === 'daily' ? 'active' : ''} onClick={() => setFilterType('daily')}>Daily</button>
+              <button className={filterType === 'weekly' ? 'active' : ''} onClick={() => setFilterType('weekly')}>Weekly</button>
             </div>
           </div>
-          <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.3rem' }}>
-            Showing: {getFilterLabel()}
+
+          <div className="pro-filter-group">
+            <span className="pro-filter-label">
+              <Calendar size={14} style={{ marginRight: '0.3rem' }} />
+              {filterType === 'monthly' ? 'Month' : 'Date'}
+            </span>
+            {filterType === 'monthly' ? (
+              <select className="pro-select" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+                {months.map(month => (
+                  <option key={month.value} value={month.value}>{month.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input 
+                type="date"
+                className="pro-input"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+              />
+            )}
+          </div>
+
+          <div className="pro-filter-group" style={{ marginLeft: 'auto' }}>
+            <span className="pro-filter-label">
+              <Filter size={14} style={{ marginRight: '0.3rem' }} />
+              Search
+            </span>
+            <input 
+              className="pro-input" 
+              placeholder="Search trades..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '160px' }}
+            />
+          </div>
+
+          <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginLeft: '0.5rem' }}>
+            {getFilterLabel()}
           </div>
         </div>
 
@@ -1976,7 +2260,7 @@ const Trading = ({ refreshTrigger }) => {
           <div className="report-toolbar-left">
             <div className="report-icon"><BarChart3 size={15} /></div>
             <div>
-              <div className="report-title">Period Report</div>
+              <div className="report-title">📄 Period Report</div>
               <div className="report-subtitle">{getReportPeriodText()}</div>
             </div>
           </div>
@@ -1988,9 +2272,9 @@ const Trading = ({ refreshTrigger }) => {
               onChange={(e) => setReportFormat(e.target.value)}
               aria-label="Report format"
             >
-              <option value="pdf">PDF</option>
-              <option value="excel">Excel</option>
-              <option value="text">Text</option>
+              <option value="pdf">📄 PDF</option>
+              <option value="excel">📊 Excel</option>
+              <option value="text">📝 Text</option>
             </select>
 
             <button
@@ -2005,77 +2289,90 @@ const Trading = ({ refreshTrigger }) => {
         </div>
 
         {/* =============================================
-            COMBINED SUMMARY STATS
+            SUMMARY STATS - PROFESSIONAL
         ============================================= */}
-        <div className="grid-4" style={{ marginBottom: '0.5rem' }}>
-          <div className="stat-box" style={{ padding: '0.5rem' }}>
-            <div className="stat-value" style={{ color: '#A78BFA', fontSize: '1.2rem' }}>{combinedStats.totalTrades}</div>
-            <div className="stat-label">Total Trades</div>
+        <div className="pro-stat-grid">
+          <div className="pro-stat-card">
+            <div className="pro-stat-value" style={{ color: '#A78BFA' }}>
+              {combinedStats.totalTrades}
+            </div>
+            <div className="pro-stat-label">Total Trades</div>
+            <div className="pro-stat-sub">
+              <span style={{ color: '#6EE7B7' }}>W: {combinedStats.winningTrades}</span> · 
+              <span style={{ color: '#FCA5A5' }}> L: {combinedStats.losingTrades}</span>
+            </div>
           </div>
-          <div className="stat-box" style={{ padding: '0.5rem' }}>
-            <div className="stat-value net-pnl-value" style={{ color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+
+          <div className="pro-stat-card">
+            <div className={`pro-stat-value ${combinedStats.netPL >= 0 ? 'profit' : 'loss'}`} style={{ color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
               {formatCurrency(combinedStats.netPL)}
             </div>
-            <div className="stat-label">Net P&L</div>
+            <div className="pro-stat-label">Net P&L</div>
+            <div className="pro-stat-sub">After brokerage</div>
           </div>
-          <div className="stat-box" style={{ padding: '0.5rem' }}>
-            <div className="stat-value" style={{ color: '#6EE7B7', fontSize: '1.2rem' }}>{combinedStats.winRate.toFixed(1)}%</div>
-            <div className="stat-label">Win Rate</div>
+
+          <div className="pro-stat-card">
+            <div className="pro-stat-value" style={{ color: '#6EE7B7' }}>
+              {combinedStats.winRate.toFixed(1)}%
+            </div>
+            <div className="pro-stat-label">Win Rate</div>
+            <div className="pro-stat-sub">
+              {combinedStats.winningTrades}/{combinedStats.decidedTrades} decided
+            </div>
           </div>
-          <div className="stat-box" style={{ padding: '0.5rem' }}>
-            <div className="stat-value" style={{ color: '#FCD34D', fontSize: '1.2rem' }}>
+
+          <div className="pro-stat-card">
+            <div className="pro-stat-value" style={{ color: '#FCD34D' }}>
               {formatCurrency(combinedStats.totalBrokerage)}
             </div>
-            <div className="stat-label">Total Brokerage</div>
+            <div className="pro-stat-label">Total Brokerage</div>
+            <div className="pro-stat-sub">All trades</div>
           </div>
         </div>
 
         {/* =============================================
-            INDIAN & FOREX MARKET SECTIONS
+            INDIAN & FOREX MARKET SECTIONS - PROFESSIONAL
         ============================================= */}
         <div className="market-sections">
           
           {/* INDIAN MARKET */}
-          <div className="glass-card market-card indian" style={{ padding: '0.75rem' }}>
-            <div className="market-header indian">
-              🇮🇳 Indian Market
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: '400' }}>
-                ({indianStats.totalTrades} trades)
+          <div className="pro-market-card" style={{ borderColor: 'rgba(16,185,129,0.2)' }}>
+            <div className="pro-market-header">
+              <div className="pro-market-name" style={{ color: '#6EE7B7' }}>
+                🇮🇳 Indian Market
+                <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: '400' }}>
+                  ({indianStats.totalTrades} trades)
+                </span>
+              </div>
+              <span style={{ fontSize: '0.6rem', color: indianStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5', fontWeight: '700' }}>
+                {formatCurrency(indianStats.netPL, false)}
               </span>
             </div>
             
-            <div className="market-stats">
-              <div className="market-stat">
-                <div className="market-stat-value net-pnl-value" style={{ color: indianStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
-                  {formatCurrency(indianStats.netPL, false)}
-                </div>
-                <div className="market-stat-label">Net P&L</div>
+            <div className="pro-market-stats">
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#6EE7B7' }}>{indianStats.winRate.toFixed(1)}%</div>
+                <div className="pro-market-stat-label">Win Rate</div>
               </div>
-              <div className="market-stat">
-                <div className="market-stat-value" style={{ color: '#6EE7B7' }}>
-                  {indianStats.winRate.toFixed(1)}%
-                </div>
-                <div className="market-stat-label">Win Rate</div>
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#FCD34D' }}>{formatCurrency(indianStats.totalBrokerage, false)}</div>
+                <div className="pro-market-stat-label">Brokerage</div>
               </div>
-              <div className="market-stat">
-                <div className="market-stat-value" style={{ color: '#FCD34D' }}>
-                  {formatCurrency(indianStats.totalBrokerage, false)}
-                </div>
-                <div className="market-stat-label">Brokerage</div>
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#6EE7B7' }}>{indianStats.winningTrades}</div>
+                <div className="pro-market-stat-label">Wins</div>
               </div>
-              <div className="market-stat">
-                <div className="market-stat-value">
-                  {indianStats.winningTrades}/{indianStats.losingTrades}
-                </div>
-                <div className="market-stat-label">W/L</div>
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#FCA5A5' }}>{indianStats.losingTrades}</div>
+                <div className="pro-market-stat-label">Losses</div>
               </div>
             </div>
 
             {/* Indian P&L BAR CHART */}
-            <div style={{ marginBottom: '0.55rem' }}>
+            <div style={{ marginBottom: '0.3rem' }}>
               <div className="market-chart-head">
                 <div>
-                  <div className="chart-title">Daily Net P&L</div>
+                  <div className="chart-title">📊 Daily Net P&L</div>
                   <div className="chart-subtitle">After brokerage</div>
                 </div>
                 <div className="chart-legend">
@@ -2087,7 +2384,7 @@ const Trading = ({ refreshTrigger }) => {
                 <div className="professional-bar-chart">
                   <div className="bar-axis-label top">{formatCurrency(maxIndianPL, false)}</div>
                   <div className="bar-zero-line" />
-                  <div className="bar-axis-label bottom">-{formatCurrency(maxIndianPL, false).replace('₹','₹')}</div>
+                  <div className="bar-axis-label bottom">-{formatCurrency(maxIndianPL, false)}</div>
                   <div className="professional-bars">
                     {indianStats.barData.map((item, index) => {
                       const maxAbs = Math.max(maxIndianPL, 1);
@@ -2117,46 +2414,43 @@ const Trading = ({ refreshTrigger }) => {
           </div>
 
           {/* FOREX MARKET */}
-          <div className="glass-card market-card forex" style={{ padding: '0.75rem' }}>
-            <div className="market-header forex">
-              🌍 Forex Market
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: '400' }}>
-                ({forexStats.totalTrades} trades)
+          <div className="pro-market-card" style={{ borderColor: 'rgba(245,158,11,0.2)' }}>
+            <div className="pro-market-header">
+              <div className="pro-market-name" style={{ color: '#FBBF24' }}>
+                🌍 Forex Market
+                <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: '400' }}>
+                  ({forexStats.totalTrades} trades)
+                </span>
+              </div>
+              <span style={{ fontSize: '0.6rem', color: forexStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5', fontWeight: '700' }}>
+                {formatCurrency(forexStats.netPL, true)}
               </span>
             </div>
             
-            <div className="market-stats">
-              <div className="market-stat">
-                <div className="market-stat-value net-pnl-value" style={{ color: forexStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
-                  {formatCurrency(forexStats.netPL, true)}
-                </div>
-                <div className="market-stat-label">Net P&L</div>
+            <div className="pro-market-stats">
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#6EE7B7' }}>{forexStats.winRate.toFixed(1)}%</div>
+                <div className="pro-market-stat-label">Win Rate</div>
               </div>
-              <div className="market-stat">
-                <div className="market-stat-value" style={{ color: '#6EE7B7' }}>
-                  {forexStats.winRate.toFixed(1)}%
-                </div>
-                <div className="market-stat-label">Win Rate</div>
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#FCD34D' }}>{formatCurrency(forexStats.totalBrokerage, true)}</div>
+                <div className="pro-market-stat-label">Brokerage</div>
               </div>
-              <div className="market-stat">
-                <div className="market-stat-value" style={{ color: '#FCD34D' }}>
-                  {formatCurrency(forexStats.totalBrokerage, true)}
-                </div>
-                <div className="market-stat-label">Brokerage</div>
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#6EE7B7' }}>{forexStats.winningTrades}</div>
+                <div className="pro-market-stat-label">Wins</div>
               </div>
-              <div className="market-stat">
-                <div className="market-stat-value">
-                  {forexStats.winningTrades}/{forexStats.losingTrades}
-                </div>
-                <div className="market-stat-label">W/L</div>
+              <div className="pro-market-stat">
+                <div className="pro-market-stat-value" style={{ color: '#FCA5A5' }}>{forexStats.losingTrades}</div>
+                <div className="pro-market-stat-label">Losses</div>
               </div>
             </div>
 
             {/* Forex P&L BAR CHART */}
-            <div style={{ marginBottom: '0.55rem' }}>
+            <div style={{ marginBottom: '0.3rem' }}>
               <div className="market-chart-head">
                 <div>
-                  <div className="chart-title">Daily Net P&L</div>
+                  <div className="chart-title">📊 Daily Net P&L</div>
                   <div className="chart-subtitle">After brokerage</div>
                 </div>
                 <div className="chart-legend">
@@ -2168,7 +2462,7 @@ const Trading = ({ refreshTrigger }) => {
                 <div className="professional-bar-chart">
                   <div className="bar-axis-label top">{formatCurrency(maxForexPL, true)}</div>
                   <div className="bar-zero-line" />
-                  <div className="bar-axis-label bottom">-{formatCurrency(maxForexPL, true).replace('$','$')}</div>
+                  <div className="bar-axis-label bottom">-{formatCurrency(maxForexPL, true)}</div>
                   <div className="professional-bars">
                     {forexStats.barData.map((item, index) => {
                       const maxAbs = Math.max(maxForexPL, 1);
@@ -2199,22 +2493,13 @@ const Trading = ({ refreshTrigger }) => {
         </div>
 
         {/* =============================================
-            TOTAL P&L OVERVIEW CHART
+            TOTAL P&L OVERVIEW CHART - PROFESSIONAL
         ============================================= */}
-        <div className="glass-card" style={{ marginBottom: '0.75rem', padding: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-            <div>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: '800', color: 'white' }}>Total P&L Overview</h3>
-              <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)', marginTop: '0.15rem' }}>
-                Profit/Loss after brokerage with final net result
-              </p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: '900', color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
-                {formatCurrency(combinedStats.netPL)}
-              </div>
-              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.45)' }}>Total Net P&L</div>
-            </div>
+        <div className="glass-card" style={{ marginBottom: '0.75rem', padding: '1.25rem' }}>
+          <div className="pro-section-title">
+            <PieChart size={18} color="#A78BFA" />
+            Total P&L Overview
+            <span className="badge">Profit/Loss Distribution</span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
@@ -2255,27 +2540,33 @@ const Trading = ({ refreshTrigger }) => {
 
             <div style={{ minWidth: '220px', flex: '1 1 260px', maxWidth: '420px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div className="stat-box">
-                  <div className="stat-value" style={{ color: '#6EE7B7' }}>{formatCurrency(combinedStats.totalNetProfit)}</div>
-                  <div className="stat-label">Net Profit</div>
+                <div className="pro-stat-card" style={{ padding: '0.6rem' }}>
+                  <div className="pro-stat-value" style={{ color: '#6EE7B7', fontSize: '1.2rem' }}>
+                    {formatCurrency(combinedStats.totalNetProfit)}
+                  </div>
+                  <div className="pro-stat-label">Net Profit</div>
                 </div>
-                <div className="stat-box">
-                  <div className="stat-value" style={{ color: '#FCA5A5' }}>{formatCurrency(combinedStats.totalNetLoss)}</div>
-                  <div className="stat-label">Net Loss</div>
+                <div className="pro-stat-card" style={{ padding: '0.6rem' }}>
+                  <div className="pro-stat-value" style={{ color: '#FCA5A5', fontSize: '1.2rem' }}>
+                    {formatCurrency(combinedStats.totalNetLoss)}
+                  </div>
+                  <div className="pro-stat-label">Net Loss</div>
                 </div>
-                <div className="stat-box">
-                  <div className="stat-value" style={{ color: '#FCD34D' }}>{formatCurrency(combinedStats.totalBrokerage)}</div>
-                  <div className="stat-label">Brokerage</div>
+                <div className="pro-stat-card" style={{ padding: '0.6rem' }}>
+                  <div className="pro-stat-value" style={{ color: '#FCD34D', fontSize: '1.2rem' }}>
+                    {formatCurrency(combinedStats.totalBrokerage)}
+                  </div>
+                  <div className="pro-stat-label">Brokerage</div>
                 </div>
-                <div className="stat-box">
-                  <div className="stat-value" style={{ color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                <div className="pro-stat-card" style={{ padding: '0.6rem' }}>
+                  <div className="pro-stat-value" style={{ color: combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5', fontSize: '1.2rem' }}>
                     {formatCurrency(combinedStats.netPL)}
                   </div>
-                  <div className="stat-label">Total Net</div>
+                  <div className="pro-stat-label">Total Net</div>
                 </div>
               </div>
 
-              <div style={{ marginTop: '0.75rem' }}>
+              <div style={{ marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', marginBottom: '0.3rem' }}>
                   <span style={{ color: '#6EE7B7' }}>● Profit</span>
                   <strong style={{ color: '#6EE7B7' }}>{totalChartProfitPercent.toFixed(1)}%</strong>
@@ -2284,21 +2575,31 @@ const Trading = ({ refreshTrigger }) => {
                   <span style={{ color: '#FCA5A5' }}>● Loss</span>
                   <strong style={{ color: '#FCA5A5' }}>{totalChartLossPercent.toFixed(1)}%</strong>
                 </div>
+                <div style={{ marginTop: '0.3rem', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    width: `${totalChartProfitPercent}%`, 
+                    height: '100%', 
+                    background: 'linear-gradient(90deg, #059669, #34D399)',
+                    borderRadius: '2px'
+                  }} />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* =============================================
-            TRADE LIST
+            TRADE LIST - PROFESSIONAL
         ============================================= */}
         <div className="glass-card" style={{ padding: '0.75rem' }}>
-          <h3 style={{ fontSize: '0.75rem', fontWeight: '700', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#F59E0B' }}>
-            <Activity size={14} /> Trades ({displayTrades.length})
-            <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', fontWeight: '400' }}>
-              ({filterType === 'monthly' ? 'Monthly' : filterType === 'daily' ? 'Daily' : 'Weekly'} view)
+          <div className="pro-section-title">
+            <Activity size={16} color="#F59E0B" />
+            Trade Records
+            <span className="badge">{displayTrades.length} trades</span>
+            <span className="badge" style={{ marginLeft: '0.2rem' }}>
+              {filterType === 'monthly' ? 'Monthly' : filterType === 'daily' ? 'Daily' : 'Weekly'} view
             </span>
-          </h3>
+          </div>
           
           {displayTrades.length > 0 ? (
             <>
@@ -2433,7 +2734,7 @@ const Trading = ({ refreshTrigger }) => {
               </button>
               
               <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'white' }}>
-                {editingTrade ? 'Edit Trade' : 'Add Trade'}
+                {editingTrade ? '✏️ Edit Trade' : '➕ Add Trade'}
               </h2>
 
               {/* Market Type Selector */}
