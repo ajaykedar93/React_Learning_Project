@@ -61,9 +61,6 @@ const Loans = () => {
     }, 3000);
   };
 
-  // Keep user-entered decimal precision:
-  // 40000 -> ₹40,000
-  // 40000.40 -> ₹40,000.40
   const currency = (value) => {
     if (value === null || value === undefined || value === '') {
       return '₹0';
@@ -83,9 +80,6 @@ const Loans = () => {
     })}`;
   };
 
-  // Use this for values that are calculated in JavaScript.
-  // It avoids floating-point display artifacts while still
-  // showing decimals when they actually exist.
   const currencyCalculated = (value) => {
     const numeric = Number(value) || 0;
     const rounded = Math.round((numeric + Number.EPSILON) * 100) / 100;
@@ -342,8 +336,6 @@ const Loans = () => {
 
     setEditData({
       name: loan.loan_name || '',
-      // Keep database numeric strings exactly as returned.
-      // This preserves 40000 vs 40000.40 inside Edit.
       amount:
         loan.total_amount === null ||
         loan.total_amount === undefined
@@ -531,7 +523,6 @@ const Loans = () => {
     try {
       setSaving(true);
 
-      // One click represents exactly one EMI payment.
       const remainingEmi = currentRemainingEmi - 1;
       const { paid: totalAmountPaid } = calculateLoanAmounts(
         loan.total_amount,
@@ -637,8 +628,6 @@ const Loans = () => {
 
     if (!query) return loans;
 
-    // Same-name search: every loan whose bank / loan-app name
-    // contains the searched name is shown below immediately.
     return loans.filter((loan) =>
       String(loan.loan_name || '')
         .toLowerCase()
@@ -704,10 +693,6 @@ const Loans = () => {
   // ALL-TIME CHART / DETAILS
   // =====================================================
 
-  // Money-based pie chart values use the same unit:
-  // Total EMI amount, Total Paid amount, Total Remaining amount.
-  // Total EMI count is shown separately because a count cannot
-  // be meaningfully combined with rupee amounts in one pie chart.
   const totalEmiAmount = loans.reduce(
     (sum, loan) =>
       sum +
@@ -757,6 +742,8 @@ const Loans = () => {
 
         .loans-container {
           width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
         }
 
         .glass-card {
@@ -773,6 +760,7 @@ const Loans = () => {
           border-radius: 20px;
           padding: 1.2rem;
           box-shadow: 0 14px 36px rgba(0,0,0,.22);
+          margin-bottom: 1rem;
         }
 
         .loan-header {
@@ -844,6 +832,7 @@ const Loans = () => {
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           overscroll-behavior-x: contain;
+          margin-bottom: 0.5rem;
         }
 
         table {
@@ -1151,12 +1140,12 @@ const Loans = () => {
         }
 
         /* =================================================
-           ALL-TIME EMI CHART
+           ALL-TIME EMI CHART - PROPER SPACING
         ================================================= */
 
         .all-time-section {
-          margin-top: 18px;
-          padding-top: 18px;
+          margin-top: 1rem;
+          padding-top: 1rem;
           border-top: 1px solid rgba(255,255,255,.10);
         }
 
@@ -1176,8 +1165,8 @@ const Loans = () => {
         .all-time-grid {
           display: grid;
           grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
-          gap: 22px;
-          align-items: center;
+          gap: 24px;
+          align-items: start;
         }
 
         .pie-area {
@@ -1303,7 +1292,7 @@ const Loans = () => {
         .chart-details {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 10px;
+          gap: 12px;
         }
 
         .chart-stat {
@@ -1365,7 +1354,7 @@ const Loans = () => {
           flex-wrap: wrap;
           color: rgba(255,255,255,.52);
           font-size: .59rem;
-          margin-top: 1px;
+          margin-top: 6px;
         }
 
         .legend-item {
@@ -1396,7 +1385,250 @@ const Loans = () => {
           padding: 20px;
         }
 
+        /* =================================================
+           MOBILE LOAN CARDS - PROFESSIONAL SPACING
+        ================================================= */
+
+        .mobile-loan-cards {
+          display: none;
+        }
+
+        .mobile-loan-card,
+        .mobile-loan-card * {
+          box-sizing: border-box;
+        }
+
+        .mobile-loan-card {
+          border: 1px solid rgba(196,181,253,.18);
+          border-radius: 16px;
+          background: linear-gradient(145deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+          padding: 14px 16px;
+          box-shadow: 0 12px 28px rgba(0,0,0,.16);
+          margin-bottom: 12px;
+          transition: all 0.2s ease;
+        }
+
+        .mobile-loan-card:hover {
+          border-color: rgba(196,181,253,.35);
+          box-shadow: 0 16px 32px rgba(0,0,0,.22);
+        }
+
+        .mobile-loan-card:last-child {
+          margin-bottom: 0;
+        }
+
+        .mobile-loan-card-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+
+        .mobile-loan-name-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+          color: #fff;
+          font-weight: 800;
+          font-size: .82rem;
+        }
+
+        .mobile-loan-name-wrap span {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .mobile-loan-status {
+          flex-shrink: 0;
+          padding: 4px 10px;
+          border-radius: 999px;
+          font-size: .55rem;
+          font-weight: 800;
+          color: #C4B5FD;
+          background: rgba(139,92,246,.12);
+          border: 1px solid rgba(139,92,246,.22);
+        }
+
+        .mobile-detail-grid,
+        .mobile-edit-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          padding: 12px 0;
+        }
+
+        .mobile-detail-item,
+        .mobile-field {
+          min-width: 0;
+        }
+
+        .mobile-detail-item {
+          padding: 10px 12px;
+          border-radius: 11px;
+          border: 1px solid rgba(255,255,255,.07);
+          background: rgba(255,255,255,.025);
+          text-align: center;
+        }
+
+        .mobile-detail-wide {
+          grid-column: 1 / -1;
+        }
+
+        .mobile-detail-item span,
+        .mobile-field > span {
+          display: block;
+          color: rgba(255,255,255,.45);
+          font-size: .57rem;
+          font-weight: 700;
+          margin-bottom: 4px;
+          text-align: center;
+        }
+
+        .mobile-detail-item strong {
+          display: block;
+          color: #fff;
+          font-size: .72rem;
+          font-weight: 800;
+          overflow-wrap: anywhere;
+          text-align: center;
+          word-break: break-word;
+        }
+
+        .mobile-amount { color: #FCA5A5 !important; }
+        .mobile-emi { color: #FCD34D !important; }
+        .mobile-paid { color: #6EE7B7 !important; }
+        .mobile-remaining { color: #FB7185 !important; }
+        .mobile-count { color: #A78BFA !important; }
+
+        .mobile-field {
+          text-align: center;
+        }
+
+        .mobile-field .input {
+          font-size: .67rem;
+          padding: 8px 6px;
+          text-align: center;
+          width: 100%;
+        }
+
+        .readonly-value {
+          min-height: 33px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          border-radius: 7px;
+          border: 1px solid rgba(255,255,255,.14);
+          background: rgba(255,255,255,.08);
+          color: #FB7185;
+          font-size: .67rem;
+          font-weight: 800;
+          text-align: center;
+          width: 100%;
+        }
+
+        .mobile-card-actions {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 6px;
+          padding-top: 12px;
+          border-top: 1px solid rgba(255,255,255,.07);
+        }
+
+        .mobile-action-btn {
+          min-width: 0;
+          min-height: 38px;
+          border-radius: 9px;
+          border: 1px solid rgba(255,255,255,.10);
+          background: rgba(255,255,255,.05);
+          color: #fff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 6px 5px;
+          font-size: .6rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .mobile-action-btn:hover {
+          transform: translateY(-1px);
+        }
+
+        .mobile-action-btn:disabled {
+          opacity: .45;
+          cursor: not-allowed;
+          transform: none !important;
+        }
+
+        .pay-action {
+          color: #6EE7B7;
+          background: rgba(16,185,129,.10);
+        }
+
+        .pay-action:hover {
+          background: rgba(16,185,129,.20);
+        }
+
+        .edit-action {
+          color: #C4B5FD;
+          background: rgba(139,92,246,.10);
+        }
+
+        .edit-action:hover {
+          background: rgba(139,92,246,.20);
+        }
+
+        .delete-action,
+        .cancel-action {
+          color: #FCA5A5;
+          background: rgba(239,68,68,.10);
+        }
+
+        .delete-action:hover,
+        .cancel-action:hover {
+          background: rgba(239,68,68,.20);
+        }
+
+        .save-action {
+          color: #6EE7B7;
+          background: rgba(16,185,129,.10);
+        }
+
+        .save-action:hover {
+          background: rgba(16,185,129,.20);
+        }
+
+        .mobile-action-spacer {
+          display: block;
+        }
+
+        .mobile-loan-empty {
+          text-align: center;
+          color: rgba(255,255,255,.42);
+          padding: 22px 10px;
+          font-size: .68rem;
+        }
+
+        /* =================================================
+           RESPONSIVE BREAKPOINTS
+        ================================================= */
+
         @media(max-width:900px) and (min-width:701px) {
+          .table-wrap {
+            display: block;
+          }
+
+          .mobile-loan-cards {
+            display: none;
+          }
+
           .glass-card {
             padding: .9rem;
           }
@@ -1407,6 +1639,7 @@ const Loans = () => {
 
           .all-time-grid {
             grid-template-columns: minmax(190px, 250px) 1fr;
+            gap: 18px;
           }
 
           .chart-details {
@@ -1438,6 +1671,7 @@ const Loans = () => {
           .summary span {
             white-space: normal;
             overflow-wrap: anywhere;
+            word-break: break-word;
           }
 
           .summary .btn-add {
@@ -1460,98 +1694,20 @@ const Loans = () => {
             padding-left: 23px;
           }
 
-          /* On phones the wide desktop table becomes stacked loan cards.
-             Nothing is cut, hidden, or horizontally scrolled. */
+          /* Hide desktop table, show mobile cards */
           .table-wrap {
-            overflow: visible;
-          }
-
-          table,
-          thead,
-          tbody,
-          tr,
-          th,
-          td {
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-          }
-
-          table {
-            min-width: 0;
-          }
-
-          thead {
             display: none;
           }
 
-          tbody {
+          .mobile-loan-cards {
             display: grid;
-            gap: 10px;
+            gap: 0;
           }
 
-          tbody tr {
-            border: 1px solid rgba(255,255,255,.10);
-            border-radius: 14px;
-            background: rgba(255,255,255,.035);
-            padding: 8px;
-          }
-
-          tbody tr:hover {
-            background: rgba(124,58,237,.08);
-          }
-
-          tbody td {
-            display: grid;
-            grid-template-columns: minmax(105px, 42%) minmax(0, 58%);
+          .mobile-detail-grid,
+          .mobile-edit-grid {
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
-            align-items: center;
-            padding: 7px 4px;
-            border-bottom: 1px solid rgba(255,255,255,.06);
-            white-space: normal;
-            overflow-wrap: anywhere;
-            text-align: left !important;
-          }
-
-          tbody td::before {
-            color: rgba(255,255,255,.48);
-            font-size: .61rem;
-            font-weight: 700;
-          }
-
-          tbody td:nth-child(1)::before { content: 'Bank / Loan App'; }
-          tbody td:nth-child(2)::before { content: 'Total Amount'; }
-          tbody td:nth-child(3)::before { content: 'EMI Amount'; }
-          tbody td:nth-child(4)::before { content: 'EMI Date'; }
-          tbody td:nth-child(5)::before { content: 'Total EMI'; }
-          tbody td:nth-child(6)::before { content: 'Remaining EMI'; }
-          tbody td:nth-child(7)::before { content: 'Total Paid'; }
-          tbody td:nth-child(8)::before { content: 'Total Remaining'; }
-          tbody td:nth-child(9)::before { content: 'Actions'; }
-
-          tbody td:last-child {
-            border-bottom: 0;
-          }
-
-          tbody td > * {
-            min-width: 0;
-            max-width: 100%;
-          }
-
-          .amount,
-          .emi,
-          .paid,
-          .remaining,
-          .count,
-          .actions {
-            text-align: left;
-          }
-
-          .actions {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-            gap: 4px;
           }
 
           .actions .btn {
@@ -1563,14 +1719,15 @@ const Loans = () => {
             font-size: .72rem;
           }
 
+          /* All-Time Chart - Mobile */
           .all-time-section {
-            margin-top: 12px;
-            padding-top: 14px;
+            margin-top: 10px;
+            padding-top: 12px;
           }
 
           .all-time-grid {
             grid-template-columns: 1fr;
-            gap: 14px;
+            gap: 16px;
           }
 
           .pie-area {
@@ -1578,46 +1735,53 @@ const Loans = () => {
           }
 
           .pie-wrap {
-            gap: 12px;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: center;
           }
 
           .emi-pie {
-            width: 165px;
-            height: 165px;
+            width: 170px;
+            height: 170px;
           }
 
           .emi-pie::after {
-            width: 102px;
-            height: 102px;
+            width: 105px;
+            height: 105px;
           }
 
           .pie-legend {
             min-width: 0;
-            width: min(170px, 45%);
+            width: min(180px, 50%);
           }
 
           .pie-legend-item {
-            padding: 9px;
+            padding: 9px 10px;
           }
 
           .chart-details {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
           }
 
           .chart-stat {
             min-width: 0;
+            padding: 10px 12px;
           }
 
           .chart-stat-value,
           .chart-stat-sub,
           .chart-stat-label {
             overflow-wrap: anywhere;
+            word-break: break-word;
           }
 
           .chart-legend {
-            grid-column: auto;
+            grid-column: 1 / -1;
+            margin-top: 6px;
           }
 
+          /* Modal - Mobile */
           .modal-overlay {
             align-items: flex-start;
             justify-content: center;
@@ -1665,16 +1829,20 @@ const Loans = () => {
               to bottom,
               rgba(30,41,59,0),
               #1e293b 22%
-            );
+          );
           }
 
           .modal-actions button {
             flex: 1;
             min-height: 42px;
           }
+
+          .modal-feedback {
+            margin-top: 10px;
+          }
         }
 
-        @media(max-width:430px) {
+        @media(max-width:480px) {
           .pie-wrap {
             flex-direction: column;
             width: 100%;
@@ -1688,9 +1856,42 @@ const Loans = () => {
           .pie-legend-item {
             min-width: 0;
           }
+
+          .emi-pie {
+            width: 155px;
+            height: 155px;
+          }
+
+          .emi-pie::after {
+            width: 95px;
+            height: 95px;
+          }
+
+          .pie-center strong {
+            font-size: .8rem;
+          }
+
+          .mobile-detail-grid,
+          .mobile-edit-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+          }
+
+          .mobile-detail-item {
+            padding: 8px 10px;
+          }
         }
 
-        @media(max-width:360px) {
+        @media(max-width:400px) {
+          .mobile-detail-grid,
+          .mobile-edit-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .mobile-detail-wide {
+            grid-column: auto;
+          }
+
           .summary {
             grid-template-columns: 1fr;
           }
@@ -1699,13 +1900,114 @@ const Loans = () => {
             grid-column: auto;
           }
 
-          tbody td {
+          .mobile-card-actions {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px;
+          }
+
+          .mobile-action-btn {
+            font-size: .55rem;
+            padding: 4px 4px;
+            min-height: 34px;
+          }
+
+          .chart-details {
             grid-template-columns: 1fr;
-            gap: 4px;
+          }
+
+          .pie-legend {
+            grid-template-columns: 1fr;
+            width: 100%;
           }
 
           .pie-center strong {
-            font-size: .78rem;
+            font-size: .7rem;
+          }
+        }
+
+        @media(max-width:360px) {
+          .glass-card {
+            padding: .5rem;
+          }
+
+          .mobile-loan-card {
+            padding: 10px 12px;
+          }
+
+          .mobile-loan-name-wrap {
+            font-size: .7rem;
+          }
+
+          .mobile-detail-item {
+            padding: 6px 8px;
+          }
+
+          .mobile-detail-item strong {
+            font-size: .65rem;
+          }
+
+          .mobile-card-actions {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 4px;
+          }
+
+          .mobile-action-btn {
+            font-size: .5rem;
+            padding: 4px 3px;
+            min-height: 32px;
+          }
+
+          .mobile-action-btn span {
+            display: none;
+          }
+
+          .emi-pie {
+            width: 140px;
+            height: 140px;
+          }
+
+          .emi-pie::after {
+            width: 85px;
+            height: 85px;
+          }
+
+          .pie-center strong {
+            font-size: .65rem;
+          }
+
+          .pie-center span {
+            font-size: .5rem;
+          }
+
+          .chart-stat {
+            padding: 8px 10px;
+          }
+        }
+
+        @media(max-width:320px) {
+          .mobile-loan-card {
+            padding: 8px 10px;
+          }
+
+          .mobile-loan-name-wrap {
+            font-size: .65rem;
+          }
+
+          .mobile-detail-item {
+            padding: 4px 6px;
+          }
+
+          .mobile-detail-item strong {
+            font-size: .6rem;
+          }
+
+          .mobile-detail-item span {
+            font-size: .48rem;
+          }
+
+          .mobile-card-actions {
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 3px;
           }
         }
 
@@ -2184,7 +2486,186 @@ const Loans = () => {
         </div>
 
         {/* =================================================
-            ALL-TIME EMI CHART & DETAILS
+            MOBILE PROFESSIONAL DETAILS CARDS
+        ================================================= */}
+
+        <div className="mobile-loan-cards">
+          {loading ? (
+            <div className="mobile-loan-empty">Loading loans...</div>
+          ) : filteredLoans.length === 0 ? (
+            <div className="mobile-loan-empty">No loans found.</div>
+          ) : (
+            filteredLoans.map((loan) => {
+              const editing = editingId === loan.id;
+              const paidAmount = getPaidAmount(loan);
+              const remainingAmount = getRemainingAmount(loan);
+
+              return (
+                <div className="mobile-loan-card" key={`mobile-${loan.id}`}>
+                  <div className="mobile-loan-card-top">
+                    <div className="mobile-loan-name-wrap">
+                      <Building2 size={16} />
+                      <span>{loan.loan_name}</span>
+                    </div>
+                    <span className="mobile-loan-status">
+                      {Number(loan.remaining_emi || 0) > 0 ? 'Active' : 'Completed'}
+                    </span>
+                  </div>
+
+                  {editing ? (
+                    <div className="mobile-edit-grid">
+                      {[
+                        ['Bank / Loan App', 'name', 'text'],
+                        ['Total Amount', 'amount', 'number'],
+                        ['EMI Amount', 'emi', 'number'],
+                        ['EMI Date', 'emiDate', 'date'],
+                        ['Total EMI', 'totalEmi', 'number'],
+                        ['Remaining EMI', 'remainingEmi', 'number']
+                      ].map(([label, field, type]) => (
+                        <div className="mobile-field" key={field}>
+                          <span>{label}</span>
+                          <input
+                            className="input"
+                            type={type}
+                            min={type === 'number' ? '0' : undefined}
+                            value={editData[field] ?? ''}
+                            onChange={(e) => handleEditChange(field, e.target.value)}
+                          />
+                        </div>
+                      ))}
+
+                      <div className="mobile-field">
+                        <span>Total Paid</span>
+                        <input
+                          className="input"
+                          type="number"
+                          value={calculateLoanAmounts(
+                            editData.amount,
+                            editData.emi,
+                            editData.totalEmi,
+                            editData.remainingEmi
+                          ).paid}
+                          readOnly
+                        />
+                      </div>
+
+                      <div className="mobile-field">
+                        <span>Total Remaining</span>
+                        <div className="readonly-value">
+                          {currencyCalculated(
+                            calculateLoanAmounts(
+                              editData.amount,
+                              editData.emi,
+                              editData.totalEmi,
+                              editData.remainingEmi
+                            ).remaining
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mobile-detail-grid">
+                      <div className="mobile-detail-item">
+                        <span>Total Amount</span>
+                        <strong className="mobile-amount">{currency(loan.total_amount)}</strong>
+                      </div>
+                      <div className="mobile-detail-item">
+                        <span>EMI Amount</span>
+                        <strong className="mobile-emi">{currency(loan.emi_amount)}</strong>
+                      </div>
+                      <div className="mobile-detail-item">
+                        <span>EMI Date</span>
+                        <strong>{formatDate(loan.emi_date)}</strong>
+                      </div>
+                      <div className="mobile-detail-item">
+                        <span>Total EMI</span>
+                        <strong className="mobile-count">{loan.total_emi}</strong>
+                      </div>
+                      <div className="mobile-detail-item">
+                        <span>Remaining EMI</span>
+                        <strong className="mobile-count">{loan.remaining_emi}</strong>
+                      </div>
+                      <div className="mobile-detail-item">
+                        <span>Total Paid</span>
+                        <strong className="mobile-paid">{currencyCalculated(paidAmount)}</strong>
+                      </div>
+                      <div className="mobile-detail-item mobile-detail-wide">
+                        <span>Total Remaining</span>
+                        <strong className="mobile-remaining">
+                          {currencyCalculated(remainingAmount)}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mobile-card-actions">
+                    {editing ? (
+                      <>
+                        <button
+                          type="button"
+                          className="mobile-action-btn save-action"
+                          disabled={saving}
+                          onClick={() => saveEdit(loan.id)}
+                          title="Save"
+                        >
+                          <Save size={15} />
+                          <span>Save</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="mobile-action-btn cancel-action"
+                          disabled={saving}
+                          onClick={cancelEdit}
+                          title="Cancel"
+                        >
+                          <X size={15} />
+                          <span>Cancel</span>
+                        </button>
+                        <div className="mobile-action-spacer" />
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="mobile-action-btn pay-action"
+                          disabled={saving || Number(loan.remaining_emi || 0) <= 0}
+                          onClick={() => payEMI(loan)}
+                          title="Pay EMI"
+                        >
+                          <CreditCard size={15} />
+                          <span>Pay EMI</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="mobile-action-btn edit-action"
+                          disabled={saving}
+                          onClick={() => startEdit(loan)}
+                          title="Edit"
+                        >
+                          <Edit2 size={15} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="mobile-action-btn delete-action"
+                          disabled={saving}
+                          onClick={() => setDeleteId(loan.id)}
+                          title="Delete"
+                        >
+                          <Trash2 size={15} />
+                          <span>Delete</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* =================================================
+            ALL-TIME EMI CHART & DETAILS - PROPER SPACING
         ================================================= */}
 
         <div className="glass-card all-time-section">

@@ -801,7 +801,7 @@ const Overview = ({ navigationTarget }) => {
   );
 
   // =============================================
-  // PIE CHART COMPONENT - PROFESSIONAL LAYOUT
+  // PIE CHART COMPONENT - INCREASED SIZE
   // =============================================
   const PieChartComponent = ({ data, total, colors }) => {
     const totalValue = total || data.reduce((sum, d) => sum + d.amount, 0);
@@ -832,22 +832,22 @@ const Overview = ({ navigationTarget }) => {
     return (
       <div className="pie-chart-container">
         <div className="pie-chart-wrapper">
-          <svg width="170" height="170" viewBox="0 0 170 170">
+          <svg width="200" height="200" viewBox="0 0 200 200">
             {pieSegments.map((seg, i) => (
               <path 
                 key={i} 
-                d={describeArc(85, 85, 72, seg.startAngle, seg.startAngle + seg.angle)} 
+                d={describeArc(100, 100, 85, seg.startAngle, seg.startAngle + seg.angle)} 
                 fill={seg.color} 
                 className="pie-segment"
                 stroke="#06060f" 
-                strokeWidth="2"
+                strokeWidth="2.5"
               />
             ))}
-            <circle cx="85" cy="85" r="38" fill="#06060f" />
-            <text x="85" y="79" textAnchor="middle" fill="white" fontSize="13" fontWeight="800">
+            <circle cx="100" cy="100" r="45" fill="#06060f" />
+            <text x="100" y="93" textAnchor="middle" fill="white" fontSize="15" fontWeight="800">
               {formatCurrency(totalValue)}
             </text>
-            <text x="85" y="96" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="8" fontWeight="600">
+            <text x="100" y="113" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="9" fontWeight="600">
               Total
             </text>
           </svg>
@@ -904,7 +904,7 @@ const Overview = ({ navigationTarget }) => {
     <div className="overview-container">
       <style>{`
         /* ============================================
-           GLOBAL STYLES - INCREASED SIZES
+           GLOBAL STYLES
            ============================================ */
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
@@ -982,7 +982,7 @@ const Overview = ({ navigationTarget }) => {
         }
 
         /* ============================================
-           BUTTONS - Glass Effect - INCREASED SIZES
+           BUTTONS - Glass Effect
            ============================================ */
         .btn-glass {
           background: rgba(255,255,255,0.08);
@@ -1061,6 +1061,57 @@ const Overview = ({ navigationTarget }) => {
           padding: 0.5rem 1rem;
         }
         .btn-glass.btn-refresh:hover { background: rgba(124,58,237,0.20); }
+
+        /* ============================================
+           TABS - INCREASED SIZE
+           ============================================ */
+        .tabs {
+          display: flex;
+          gap: 0.8rem;
+          flex-wrap: wrap;
+          margin-bottom: 1.5rem;
+        }
+
+        .tab {
+          background: rgba(255,255,255,0.06);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 14px;
+          padding: 0.8rem 1.6rem;
+          font-size: 1rem;
+          font-weight: 700;
+          color: rgba(255,255,255,0.6);
+          cursor: pointer;
+          transition: all 0.25s ease;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          min-height: 52px;
+        }
+
+        .tab:hover { 
+          background: rgba(255,255,255,0.08); 
+          transform: translateY(-1px);
+        }
+
+        .tab.active {
+          background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(79,107,255,0.2));
+          border-color: rgba(167,139,250,0.6);
+          color: #FFFFFF;
+          box-shadow: 0 6px 24px rgba(124,58,237,0.18);
+        }
+
+        .tab svg {
+          width: 20px;
+          height: 20px;
+        }
+
+        .tab.active svg {
+          color: #C4B5FD;
+          filter: drop-shadow(0 0 8px rgba(196,181,253,0.4));
+        }
 
         /* ============================================
            CARDS
@@ -1342,20 +1393,20 @@ const Overview = ({ navigationTarget }) => {
         .badge-loan { background: rgba(124,58,237,0.12); color: #A78BFA; }
 
         /* ============================================
-           PIE CHART - PROFESSIONAL COMPACT LAYOUT
+           PIE CHART - INCREASED SIZE
            ============================================ */
         .pie-chart-container {
           display: flex;
           flex-wrap: wrap;
           align-items: center;
-          gap: 1.2rem;
+          gap: 1.5rem;
           padding: 0.2rem 0;
         }
 
         .pie-chart-wrapper {
           flex: 0 0 auto;
-          width: 170px;
-          height: 170px;
+          width: 200px;
+          height: 200px;
         }
 
         .pie-chart-wrapper svg {
@@ -1366,30 +1417,30 @@ const Overview = ({ navigationTarget }) => {
 
         .pie-legend {
           flex: 1;
-          min-width: 150px;
+          min-width: 160px;
           display: flex;
           flex-direction: column;
-          gap: 0.35rem;
+          gap: 0.4rem;
         }
 
         .legend-item {
           display: grid;
-          grid-template-columns: 12px minmax(0, 1fr) max-content max-content;
+          grid-template-columns: 14px minmax(0, 1fr) max-content max-content;
           align-items: center;
-          gap: 0.4rem;
-          font-size: 0.75rem;
-          padding: 0.2rem 0;
+          gap: 0.5rem;
+          font-size: 0.8rem;
+          padding: 0.25rem 0;
         }
 
         .legend-color {
-          width: 12px;
-          height: 12px;
-          border-radius: 3px;
+          width: 14px;
+          height: 14px;
+          border-radius: 4px;
           flex-shrink: 0;
         }
 
         .legend-label {
-          color: rgba(255,255,255,0.7);
+          color: rgba(255,255,255,0.75);
           font-weight: 600;
           white-space: nowrap;
           overflow: hidden;
@@ -1403,8 +1454,8 @@ const Overview = ({ navigationTarget }) => {
         }
 
         .legend-percentage {
-          color: rgba(255,255,255,0.35);
-          font-size: 0.65rem;
+          color: rgba(255,255,255,0.4);
+          font-size: 0.7rem;
           white-space: nowrap;
           text-align: right;
         }
@@ -1412,8 +1463,8 @@ const Overview = ({ navigationTarget }) => {
         .empty-chart {
           text-align: center;
           color: rgba(255,255,255,0.3);
-          padding: 1rem;
-          font-size: 0.85rem;
+          padding: 1.5rem;
+          font-size: 0.9rem;
         }
 
         /* ============================================
@@ -1462,40 +1513,6 @@ const Overview = ({ navigationTarget }) => {
         .month-selector select:focus {
           border-color: #7c3aed;
           box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
-        }
-
-        /* ============================================
-           TABS
-           ============================================ */
-        .tabs {
-          display: flex;
-          gap: 0.3rem;
-          flex-wrap: wrap;
-          margin-bottom: 0.8rem;
-        }
-        .tab {
-          background: rgba(255,255,255,0.06);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          border: 1px solid rgba(255,255,255,0.10);
-          border-radius: 9px;
-          padding: 0.45rem 1rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: rgba(255,255,255,0.6);
-          cursor: pointer;
-          transition: all 0.25s ease;
-          font-family: inherit;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        .tab:hover { background: rgba(255,255,255,0.04); }
-        .tab.active {
-          background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,107,255,0.15));
-          border-color: rgba(167,139,250,0.5);
-          color: #FFFFFF;
-          box-shadow: 0 4px 16px rgba(124,58,237,0.12);
         }
 
         /* ============================================
@@ -1561,6 +1578,19 @@ const Overview = ({ navigationTarget }) => {
         @media (max-width: 1024px) {
           .grid-4 { grid-template-columns: repeat(2, 1fr); }
           .grid-3 { grid-template-columns: repeat(2, 1fr); }
+          .tab {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.85rem;
+            min-height: 44px;
+          }
+          .tab svg {
+            width: 18px;
+            height: 18px;
+          }
+          .pie-chart-wrapper {
+            width: 170px;
+            height: 170px;
+          }
         }
 
         @media (max-width: 768px) {
@@ -1571,20 +1601,36 @@ const Overview = ({ navigationTarget }) => {
           .form-row { grid-template-columns: 1fr; }
           .app-header h1 { font-size: clamp(1rem, 3vw, 1.3rem); }
           .app-header p { font-size: 0.7rem; }
-          .tabs { display: grid; grid-template-columns: repeat(3, 1fr); }
-          .tab { width: 100%; padding: 0.45rem 0.25rem; font-size: 0.65rem; justify-content: center; }
+          
+          .tabs { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 0.4rem;
+          }
+          .tab { 
+            width: 100%; 
+            padding: 0.5rem 0.4rem; 
+            font-size: 0.75rem; 
+            justify-content: center;
+            min-height: 40px;
+          }
+          .tab svg {
+            width: 16px;
+            height: 16px;
+          }
+          
           .list-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
           .list-item .amount { font-size: clamp(0.7rem, 1.5vw, 0.8rem); }
 
           .pie-chart-container {
             flex-direction: column;
             align-items: center;
-            gap: 0.8rem;
+            gap: 1rem;
           }
 
           .pie-chart-wrapper {
-            width: 150px;
-            height: 150px;
+            width: 160px;
+            height: 160px;
           }
 
           .pie-legend {
@@ -1594,8 +1640,8 @@ const Overview = ({ navigationTarget }) => {
 
           .legend-item {
             grid-template-columns: 12px minmax(0, 1fr) max-content max-content;
-            font-size: 0.7rem;
-            gap: 0.3rem;
+            font-size: 0.75rem;
+            gap: 0.35rem;
           }
         }
 
@@ -1609,26 +1655,39 @@ const Overview = ({ navigationTarget }) => {
           .number-box .label { font-size: 0.55rem; }
           .section-header h3 { font-size: 0.8rem; }
           .btn-glass { font-size: 0.7rem; padding: 0.35rem 0.6rem; min-height: 32px; }
-          .tabs { grid-template-columns: repeat(2, 1fr); gap: 0.25rem; }
-          .tab { font-size: 0.6rem; padding: 0.35rem 0.2rem; }
+          
+          .tabs { 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 0.3rem; 
+          }
+          .tab { 
+            font-size: 0.65rem; 
+            padding: 0.4rem 0.3rem;
+            min-height: 36px;
+          }
+          .tab svg {
+            width: 14px;
+            height: 14px;
+          }
+          
           .list-item { padding: 0.5rem 0.6rem; border-radius: 10px; }
           .list-item .info .name { font-size: 0.75rem; }
           .list-item .info .detail { font-size: 0.6rem; }
           .list-item .amount { font-size: 0.8rem; }
 
           .pie-chart-wrapper {
-            width: 130px;
-            height: 130px;
+            width: 140px;
+            height: 140px;
           }
 
           .pie-legend {
-            gap: 0.25rem;
+            gap: 0.3rem;
           }
 
           .legend-item {
             grid-template-columns: 10px minmax(0, 1fr) max-content max-content;
-            font-size: 0.65rem;
-            gap: 0.25rem;
+            font-size: 0.7rem;
+            gap: 0.3rem;
             padding: 0.15rem 0;
           }
 
@@ -1638,7 +1697,7 @@ const Overview = ({ navigationTarget }) => {
           }
 
           .legend-percentage {
-            font-size: 0.6rem;
+            font-size: 0.65rem;
           }
 
           .month-selector { padding: 0.3rem 0.6rem; gap: 0.5rem; }
@@ -1654,16 +1713,27 @@ const Overview = ({ navigationTarget }) => {
           .number-box { padding: 0.4rem; }
           .number-box .value { font-size: 0.85rem; }
           .number-box .label { font-size: 0.5rem; }
-          .tabs { grid-template-columns: 1fr 1fr; }
-          .tab { font-size: 0.55rem; padding: 0.3rem 0.15rem; }
+          
+          .tabs { 
+            grid-template-columns: 1fr 1fr; 
+          }
+          .tab { 
+            font-size: 0.55rem; 
+            padding: 0.35rem 0.2rem;
+            min-height: 32px;
+          }
+          .tab svg {
+            width: 12px;
+            height: 12px;
+          }
 
           .pie-chart-wrapper {
-            width: 110px;
-            height: 110px;
+            width: 120px;
+            height: 120px;
           }
 
           .legend-item {
-            font-size: 0.55rem;
+            font-size: 0.6rem;
             grid-template-columns: 8px minmax(0, 1fr) max-content max-content;
             gap: 0.2rem;
           }
@@ -1750,26 +1820,26 @@ const Overview = ({ navigationTarget }) => {
       </div>
 
       {/* ============================================
-          TABS
+          TABS - INCREASED SIZE
           ============================================ */}
       <div className="tabs">
         <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
-          <PieChart size={15} /> Overview
+          <PieChart size={20} /> Overview
         </button>
         <button className={`tab ${activeTab === 'expenses' ? 'active' : ''}`} onClick={() => setActiveTab('expenses')}>
-          <CreditCard size={15} /> Expenses
+          <CreditCard size={20} /> Expenses
         </button>
         <button className={`tab ${activeTab === 'loans' ? 'active' : ''}`} onClick={() => setActiveTab('loans')}>
-          <HandCoins size={15} /> Loans
+          <HandCoins size={20} /> Loans
         </button>
         <button className={`tab ${activeTab === 'payments' ? 'active' : ''}`} onClick={() => setActiveTab('payments')}>
-          <Wallet size={15} /> Payments
+          <Wallet size={20} /> Payments
         </button>
         <button className={`tab ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')}>
-          <TrendingUp size={15} /> Performance
+          <TrendingUp size={20} /> Performance
         </button>
         <button className={`tab ${activeTab === 'summary' ? 'active' : ''}`} onClick={() => setActiveTab('summary')}>
-          <BarChart3 size={15} /> Summary
+          <BarChart3 size={20} /> Summary
         </button>
       </div>
 

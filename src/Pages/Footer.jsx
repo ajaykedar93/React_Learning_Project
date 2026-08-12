@@ -36,13 +36,13 @@ const Footer = () => {
             0 -8px 30px rgba(0, 0, 0, 0.18),
             0 0 30px rgba(96, 165, 250, 0.05),
             inset 0 1px 0 rgba(255, 255, 255, 0.025);
-          padding: 0.6rem 1rem;
+          padding: 0.35rem 0.7rem;
           display: flex;
           justify-content: center;
           align-items: center;
           transition: all 0.3s ease;
           z-index: 1000;
-          min-height: 72px;
+          min-height: 54px;
           /* Safe area for mobile */
           padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
           padding-bottom: calc(0.6rem + constant(safe-area-inset-bottom, 0px));
@@ -55,13 +55,14 @@ const Footer = () => {
 
         .footer-content {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem;
+          gap: 0.75rem;
           max-width: 1280px;
           width: 100%;
           padding: 0.1rem 0;
+          flex-wrap: nowrap;
         }
 
         /* ============================================
@@ -70,18 +71,18 @@ const Footer = () => {
         .footer-brand {
           display: flex;
           align-items: center;
-          gap: 1rem;
-          font-size: 1.6rem;
+          gap: 0.6rem;
+          font-size: 1rem;
           font-weight: 750;
           color: rgba(255, 255, 255, 0.94);
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           text-decoration: none;
           transition: all 0.3s ease;
           cursor: pointer;
-          padding: 0.5rem 1.8rem;
-          border-radius: 16px;
+          padding: 0.28rem 0.8rem;
+          border-radius: 10px;
           position: relative;
-          border: 3px solid rgba(96, 165, 250, 0.35);
+          border: 2px solid rgba(96, 165, 250, 0.35);
           background: rgba(96, 165, 250, 0.04);
           box-shadow: 0 0 20px rgba(96, 165, 250, 0.04);
         }
@@ -102,11 +103,11 @@ const Footer = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 58px;
-          height: 58px;
-          border-radius: 14px;
+          width: 36px;
+          height: 36px;
+          border-radius: 9px;
           background: rgba(239, 68, 68, 0.12);
-          border: 2.5px solid rgba(239, 68, 68, 0.25);
+          border: 2px solid rgba(239, 68, 68, 0.25);
           transition: all 0.3s ease;
           font-weight: 800;
           font-size: 0.95rem;
@@ -124,8 +125,8 @@ const Footer = () => {
         }
 
         .code-icon {
-          width: 32px;
-          height: 32px;
+          width: 20px;
+          height: 20px;
           color: #EF4444;
           transition: all 0.3s ease;
         }
@@ -135,7 +136,7 @@ const Footer = () => {
         }
 
         .footer-text {
-          font-size: 1.5rem;
+          font-size: 0.9rem;
           font-weight: 700;
           color: rgba(255, 255, 255, 0.8);
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
@@ -147,7 +148,7 @@ const Footer = () => {
           -webkit-text-fill-color: transparent;
           background-clip: text;
           font-weight: 900;
-          font-size: 1.8rem;
+          font-size: 1.05rem;
           letter-spacing: 0.01em;
           text-shadow: 0 0 22px rgba(96, 165, 250, 0.18);
         }
@@ -159,7 +160,7 @@ const Footer = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 2rem;
+          gap: 0.9rem;
         }
 
         .social-link {
@@ -180,11 +181,11 @@ const Footer = () => {
 
         /* Social Icons - EQUAL SIZE for both */
         .social-logo {
-          width: 34px;
-          height: 34px;
+          width: 22px;
+          height: 22px;
           display: block;
           object-fit: contain;
-          flex: 0 0 34px;
+          flex: 0 0 22px;
           background: transparent;
           border: none;
           border-radius: 50%;
@@ -244,6 +245,15 @@ const Footer = () => {
           transform: scale(1.1);
         }
 
+        /* Desktop/tablet: one row = Developed by → Instagram → WhatsApp */
+        .footer-content > .footer-brand {
+          flex: 0 1 auto;
+        }
+
+        .footer-content > .footer-socials {
+          flex: 0 0 auto;
+        }
+
         /* ============================================
            RESPONSIVE
            ============================================ */
@@ -264,7 +274,7 @@ const Footer = () => {
             font-size: 1.3rem;
           }
           .footer-text .highlight {
-            font-size: 1.5rem;
+            font-size: 0.9rem;
           }
           .social-logo {
             width: 30px;
@@ -281,7 +291,10 @@ const Footer = () => {
             padding-bottom: calc(0.5rem + constant(safe-area-inset-bottom, 0px));
           }
 
+          /* Mobile keeps the original stacked footer arrangement:
+             developed-by tagline first, social icons below it. */
           .footer-content {
+            flex-direction: column;
             gap: 0.4rem;
             padding: 0.05rem 0;
           }
@@ -290,7 +303,7 @@ const Footer = () => {
             padding: 0.35rem 1.2rem;
             font-size: 1.2rem;
             border-width: 2px;
-            border-radius: 14px;
+            border-radius: 9px;
             gap: 0.7rem;
           }
 
@@ -337,68 +350,34 @@ const Footer = () => {
           }
 
           .footer-brand {
-            padding: 0.25rem 0.8rem;
-            font-size: 0.95rem;
+            padding: 0.18rem 0.55rem;
+            font-size: 0.72rem;
             border-width: 2px;
-            border-radius: 12px;
-            gap: 0.6rem;
+            border-radius: 8px;
+            gap: 0.4rem;
           }
 
           .code-icon-wrapper {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-          }
-
-          .code-icon {
-            width: 20px;
-            height: 20px;
-          }
-
-          .footer-text {
-            font-size: 0.85rem;
-          }
-
-          .footer-text .highlight {
-            font-size: 1rem;
-          }
-
-          .footer-socials {
-            gap: 1.2rem;
-          }
-
-          .social-logo {
-            width: 24px;
-            height: 24px;
-            flex-basis: 24px;
-          }
-        }
-
-        @media (max-width: 360px) {
-          .footer-brand {
-            padding: 0.2rem 0.6rem;
-            font-size: 0.8rem;
-            border-radius: 10px;
-            gap: 0.5rem;
-          }
-
-          .code-icon-wrapper {
-            width: 30px;
-            height: 30px;
+            width: 27px;
+            height: 27px;
             border-radius: 8px;
           }
 
           .code-icon {
-            width: 17px;
-            height: 17px;
+            width: 15px;
+            height: 15px;
           }
 
           .footer-text {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
           }
 
           .footer-text .highlight {
-            font-size: 0.85rem;
+            font-size: 0.78rem;
+          }
+
+          .footer-socials {
+            gap: 0.75rem;
           }
 
           .social-logo {
@@ -406,9 +385,43 @@ const Footer = () => {
             height: 20px;
             flex-basis: 20px;
           }
+        }
+
+        @media (max-width: 360px) {
+          .footer-brand {
+            padding: 0.15rem 0.45rem;
+            font-size: 0.65rem;
+            border-radius: 7px;
+            gap: 0.35rem;
+          }
+
+          .code-icon-wrapper {
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+          }
+
+          .code-icon {
+            width: 13px;
+            height: 13px;
+          }
+
+          .footer-text {
+            font-size: 0.6rem;
+          }
+
+          .footer-text .highlight {
+            font-size: 0.7rem;
+          }
+
+          .social-logo {
+            width: 18px;
+            height: 18px;
+            flex-basis: 18px;
+          }
 
           .footer-socials {
-            gap: 0.8rem;
+            gap: 0.65rem;
           }
         }
 
@@ -437,7 +450,7 @@ const Footer = () => {
 
         /* Add padding to page content to prevent overlap with fixed footer */
         body {
-          padding-bottom: 100px !important;
+          padding-bottom: 75px !important;
         }
 
         @media (max-width: 768px) {

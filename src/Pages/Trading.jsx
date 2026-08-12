@@ -37,6 +37,7 @@ const Trading = ({ refreshTrigger }) => {
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [formMessage, setFormMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [reportFormat, setReportFormat] = useState('excel');
   const [userId] = useState(1);
 
   // =============================================
@@ -73,6 +74,11 @@ const Trading = ({ refreshTrigger }) => {
   const forexSegments = ['Forex', 'Commodity', 'Metal', 'Currency Pair', 'Index'];
   const tradeTypes = ['Buy', 'Sell'];
   const tradeStatus = ['Profit', 'Loss'];
+
+  // =============================================
+  // API BASE URL
+  // =============================================
+  const API_BASE = import.meta.env.VITE_API_BASE || 'https://express-project-learning-new.onrender.com';
 
   // =============================================
   // TOAST FUNCTIONS
@@ -128,7 +134,7 @@ const Trading = ({ refreshTrigger }) => {
       }
       setError(null);
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'https://express-project-learning-new.onrender.com'}/api/personal-trading/user/${userId}`);
+      const response = await fetch(`${API_BASE}/api/personal-trading/user/${userId}`);
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -230,9 +236,6 @@ const Trading = ({ refreshTrigger }) => {
       return Number.isFinite(value) ? value : 0;
     };
 
-    // Backward-compatible gross P&L:
-    // New API stores gross_profit_loss. Old rows only have profit_loss (net),
-    // so gross = net + brokerage for those rows.
     const getBrokerage = (trade) => {
       const value = Number(trade.brokerage);
       return Number.isFinite(value) ? value : 0;
@@ -252,8 +255,6 @@ const Trading = ({ refreshTrigger }) => {
     const totalGrossProfit = marketTrades.reduce((sum, t) => sum + Math.max(0, getGrossPL(t)), 0);
     const totalGrossLoss = marketTrades.reduce((sum, t) => sum + Math.abs(Math.min(0, getGrossPL(t))), 0);
 
-    // Net profit/loss is already stored after brokerage. Do NOT subtract
-    // brokerage a second time.
     const totalNetProfit = marketTrades.reduce((sum, t) => sum + Math.max(0, getNetPL(t)), 0);
     const totalNetLoss = marketTrades.reduce((sum, t) => sum + Math.abs(Math.min(0, getNetPL(t))), 0);
     const totalBrokerage = marketTrades.reduce((sum, t) => sum + getBrokerage(t), 0);
@@ -361,7 +362,6 @@ const Trading = ({ refreshTrigger }) => {
 
   // =============================================
   // LARGE TOTAL NET P&L CHART VALUES
-  // Keep these outside the chart IIFE so JSX can use them safely.
   // =============================================
   const totalChartProfit = Math.max(0, combinedStats.totalNetProfit || 0);
   const totalChartLoss = Math.max(0, combinedStats.totalNetLoss || 0);
@@ -445,12 +445,7 @@ const Trading = ({ refreshTrigger }) => {
       if (!formData.resultType) throw new Error('Result Type is required.');
       if (!Number.isFinite(manualAmount) || manualAmount <= 0) throw new Error('Total Profit / Loss Amount is required and must be greater than 0.');
 
-      // User-entered total result is the source of truth.
-      // Entry/Exit remain required and are stored for complete trade details.
       const grossPL = formData.resultType === 'Loss' ? -Math.abs(manualAmount) : Math.abs(manualAmount);
-
-      // Profit: Profit - Brokerage
-      // Loss:   Loss + Brokerage
       const netPL = grossPL > 0 ? grossPL - brokerage : -(Math.abs(grossPL) + brokerage);
       const calculatedStatus = netPL > 0 ? 'Profit' : netPL < 0 ? 'Loss' : 'Break-even';
 
@@ -476,7 +471,7 @@ const Trading = ({ refreshTrigger }) => {
         notes: formData.notes.trim()
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'https://express-project-learning-new.onrender.com'}/api/personal-trading/add`, {
+      const response = await fetch(`${API_BASE}/api/personal-trading/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -504,7 +499,7 @@ const Trading = ({ refreshTrigger }) => {
           broker: result.data?.broker ?? formData.broker,
           segment: result.data?.segment ?? formData.segment,
           name: result.data?.name ?? formData.name.trim(),
-          quantity: result.data?.quantity ?? finalQuantity,
+          quantity: result.data?.quantity ?? quantity,
           entry_price: result.data?.entry_price ?? (Number.isFinite(entry) ? entry : 0),
           exit_price: result.data?.exit_price ?? (Number.isFinite(exit) ? exit : 0)
         };
@@ -579,7 +574,7 @@ const Trading = ({ refreshTrigger }) => {
         notes: formData.notes.trim()
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'https://express-project-learning-new.onrender.com'}/api/personal-trading/update/${editingTrade.id}`, {
+      const response = await fetch(`${API_BASE}/api/personal-trading/update/${editingTrade.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -638,7 +633,7 @@ const Trading = ({ refreshTrigger }) => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'https://express-project-learning-new.onrender.com'}/api/personal-trading/delete/${id}`, {
+      const response = await fetch(`${API_BASE}/api/personal-trading/delete/${id}`, {
         method: 'DELETE'
       });
 
@@ -719,8 +714,9 @@ const Trading = ({ refreshTrigger }) => {
     }
   };
 
-
-  // Live form calculation. Manual Total Profit/Loss has priority over price-based P&L.
+  // =============================================
+  // LIVE FORM CALCULATION
+  // =============================================
   const getFormPreview = () => {
     const entry = parseFloat(formData.entryPrice);
     const exit = parseFloat(formData.exitPrice);
@@ -772,6 +768,153 @@ const Trading = ({ refreshTrigger }) => {
                        String(t.segment || '').toLowerCase().includes(searchQuery.toLowerCase());
     return searchMatch;
   });
+
+  // =============================================
+  // PERIOD REPORT EXPORT
+  // =============================================
+  const getReportPeriodText = () => {
+    const { startDate, endDate } = getDateRange();
+
+    if (filterType === 'daily') {
+      return `Daily Report - ${formatDate(startDate)}`;
+    }
+
+    if (filterType === 'weekly') {
+      const endInclusive = new Date(endDate);
+      endInclusive.setDate(endInclusive.getDate() - 1);
+      return `Weekly Report - ${formatDate(startDate)} to ${formatDate(endInclusive)}`;
+    }
+
+    const monthLabel =
+      months.find(m => m.value === selectedMonth)?.label || selectedMonth;
+
+    return `Monthly Report - ${monthLabel}`;
+  };
+
+  const getReportRows = () => {
+    return getFilteredTrades().map((trade) => {
+      const isForex =
+        FOREX_BROKERS.includes(trade.broker) ||
+        FOREX_SEGMENTS.includes(trade.segment);
+
+      const gross = Number(
+        trade.gross_profit_loss ?? trade.profit_loss ?? 0
+      );
+
+      const net = Number(trade.profit_loss ?? 0);
+
+      return {
+        Date: formatDate(trade.date),
+        Market: isForex ? 'Forex' : 'Indian',
+        Name: trade.name || '',
+        Broker: trade.broker || '',
+        Segment: trade.segment || '',
+        Type: trade.type || '',
+        'Lot Size': formatNumber(trade.quantity),
+        'Entry Price': formatCurrency(trade.entry_price, isForex),
+        'Exit Price': formatCurrency(trade.exit_price, isForex),
+        Gross: formatCurrency(gross, isForex),
+        Brokerage: formatCurrency(Number(trade.brokerage || 0), isForex),
+        'Net P&L': formatCurrency(net, isForex),
+        Status: net > 0 ? 'Profit' : net < 0 ? 'Loss' : 'Break-even',
+        Notes: trade.notes || ''
+      };
+    });
+  };
+
+  const reportSafe = (value) =>
+    String(value ?? '')
+      .replace(/\r?\n/g, ' ')
+      .trim();
+
+  const reportFileBase = () =>
+    `trading-journal-${filterType}-${new Date().toISOString().slice(0, 10)}`;
+
+  // =============================================
+  // DOWNLOAD REPORT - API INTEGRATION
+  // =============================================
+  const downloadReport = async () => {
+    try {
+      // Prepare API request parameters
+      const period = filterType;
+      const format = reportFormat;
+      
+      let dateValue = null;
+      let monthValue = null;
+      
+      if (period === 'daily' || period === 'weekly') {
+        dateValue = selectedDate.toISOString().split('T')[0];
+      } else if (period === 'monthly') {
+        monthValue = selectedMonth;
+      }
+      
+      // Build API URL
+      const url = new URL(`${API_BASE}/api/personal-trading/export/${userId}`);
+      url.searchParams.append('period', period);
+      url.searchParams.append('format', format);
+      
+      if (dateValue) {
+        url.searchParams.append('date', dateValue);
+      }
+      
+      if (monthValue) {
+        url.searchParams.append('month', monthValue);
+      }
+      
+      // Show loading toast
+      showToast('Generating report...', 'info', 5000);
+      
+      // Fetch the report
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': format === 'text' 
+            ? 'text/plain' 
+            : format === 'pdf' 
+              ? 'application/pdf' 
+              : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to download report (Status: ${response.status})`);
+      }
+      
+      // Determine filename and content type
+      const filename = `${period}-trading-report-${new Date().toISOString().slice(0, 10)}`;
+      let blob;
+      
+      if (format === 'text') {
+        const text = await response.text();
+        blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      } else if (format === 'pdf') {
+        const arrayBuffer = await response.arrayBuffer();
+        blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+      } else {
+        const arrayBuffer = await response.arrayBuffer();
+        blob = new Blob([arrayBuffer], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+      }
+      
+      // Download the file
+      const urlBlob = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.download = `${filename}.${format === 'text' ? 'txt' : format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(urlBlob);
+      
+      showToast('✅ Report downloaded successfully!', 'success');
+      
+    } catch (error) {
+      console.error('Download report error:', error);
+      showToast(error.message || 'Failed to download report', 'error');
+    }
+  };
 
   // =============================================
   // MONTHS FOR DROPDOWN
@@ -835,8 +978,6 @@ const Trading = ({ refreshTrigger }) => {
           padding: 1rem;
         }
 
-        /* Small end-page safe space for the fixed footer.
-           Keeps the final Trading details visible without a large gap. */
         .trading-end-safe-space {
           width: 100%;
           height: calc(54px + env(safe-area-inset-bottom, 0px));
@@ -867,11 +1008,6 @@ const Trading = ({ refreshTrigger }) => {
         @keyframes toastSlideDown {
           from { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.95); }
           to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-        }
-
-        @keyframes toastFadeOut {
-          from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-          to { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.95); }
         }
 
         .toast {
@@ -905,25 +1041,12 @@ const Trading = ({ refreshTrigger }) => {
           border-color: rgba(59, 130, 246, 0.3);
         }
 
-        .toast-icon {
-          flex-shrink: 0;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
+        .toast-icon { flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
         .toast-icon.success { color: #6EE7B7; }
         .toast-icon.error { color: #FCA5A5; }
         .toast-icon.info { color: #93C5FD; }
 
-        .toast-message {
-          font-size: 0.8rem;
-          font-weight: 500;
-          color: white;
-          flex: 1;
-        }
+        .toast-message { font-size: 0.8rem; font-weight: 500; color: white; flex: 1; }
 
         .toast-close {
           background: rgba(255,255,255,0.05);
@@ -975,9 +1098,9 @@ const Trading = ({ refreshTrigger }) => {
         }
 
         .glass-btn {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 10px;
+          background: linear-gradient(145deg, rgba(255,255,255,0.11), rgba(255,255,255,0.055));
+          border: 1px solid rgba(255,255,255,0.20);
+          border-radius: 9px;
           color: white;
           cursor: pointer;
           transition: all 0.3s ease;
@@ -990,36 +1113,25 @@ const Trading = ({ refreshTrigger }) => {
           gap: 0.4rem;
         }
         .glass-btn:hover {
-          background: rgba(124, 58, 237, 0.3);
-          border-color: rgba(196, 181, 253, 0.62);
-          transform: translateY(-2px);
+          background: linear-gradient(145deg, rgba(124,58,237,0.24), rgba(255,255,255,0.08));
+          border-color: rgba(255,255,255,0.34);
+          box-shadow: 0 8px 26px rgba(0,0,0,0.18);
+          transform: translateY(-1px);
         }
         .glass-btn:active { transform: scale(0.95); }
-        .glass-btn.primary {
-          background: rgba(124, 58, 237, 0.15);
-          border-color: rgba(124, 58, 237, 0.3);
-          color: #A78BFA;
-        }
-        .glass-btn.primary:hover { background: rgba(124, 58, 237, 0.25); }
-        .glass-btn.danger {
-          background: rgba(239, 68, 68, 0.15);
-          border-color: rgba(239, 68, 68, 0.3);
-          color: #FCA5A5;
-        }
-        .glass-btn.danger:hover { background: rgba(239, 68, 68, 0.25); }
-        .glass-btn.success {
-          background: rgba(16, 185, 129, 0.15);
-          border-color: rgba(16, 185, 129, 0.3);
-          color: #6EE7B7;
-        }
-        .glass-btn.success:hover { background: rgba(16, 185, 129, 0.25); }
+        .glass-btn.primary { background: rgba(124,58,237,0.15); border-color: rgba(124,58,237,0.3); color: #A78BFA; }
+        .glass-btn.primary:hover { background: rgba(124,58,237,0.25); }
+        .glass-btn.danger { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #FCA5A5; }
+        .glass-btn.danger:hover { background: rgba(239,68,68,0.25); }
+        .glass-btn.success { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6EE7B7; }
+        .glass-btn.success:hover { background: rgba(16,185,129,0.25); }
 
         .refresh-btn {
           display: inline-flex;
           align-items: center;
           gap: 0.4rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
           border-radius: 10px;
           color: white;
           cursor: pointer;
@@ -1029,46 +1141,28 @@ const Trading = ({ refreshTrigger }) => {
           font-size: 0.75rem;
           font-weight: 600;
         }
-        .refresh-btn:hover {
-          background: rgba(124, 58, 237, 0.3);
-          border-color: rgba(196, 181, 253, 0.62);
-          transform: translateY(-2px);
-        }
+        .refresh-btn:hover { background: rgba(124,58,237,0.3); border-color: rgba(196,181,253,0.62); transform: translateY(-2px); }
         .refresh-btn:active { transform: scale(0.95); }
         .refresh-btn.spinning .refresh-icon { animation: spin 1s linear infinite; }
 
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .stat-box {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.15);
           border-radius: 12px;
           padding: 0.8rem;
           text-align: center;
           transition: all 0.3s ease;
         }
-        .stat-box:hover {
-          background: rgba(124, 58, 237, 0.18);
-          border-color: rgba(167, 139, 250, 0.5);
-          transform: translateY(-2px);
-        }
+        .stat-box:hover { background: rgba(124,58,237,0.18); border-color: rgba(167,139,250,0.5); transform: translateY(-2px); }
         .stat-value { font-size: 1.4rem; font-weight: 800; }
         .net-pnl-value { font-size: 1.55rem !important; font-weight: 900; letter-spacing: 0.01em; text-shadow: 0 0 16px currentColor; }
-        .stat-label {
-          font-size: 0.65rem;
-          color: rgba(255, 255, 255, 0.72);
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-top: 0.2rem;
-        }
+        .stat-label { font-size: 0.65rem; color: rgba(255,255,255,0.72); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.2rem; }
 
         .edit-input {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
           border-radius: 10px;
           padding: 0.5rem 0.7rem;
           color: white;
@@ -1079,16 +1173,12 @@ const Trading = ({ refreshTrigger }) => {
           font-family: 'Plus Jakarta Sans', sans-serif;
           transition: all 0.3s ease;
         }
-        .edit-input:focus {
-          border-color: rgba(196, 181, 253, 0.72);
-          box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
-          background: rgba(124, 58, 237, 0.16);
-        }
-        .edit-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+        .edit-input:focus { border-color: rgba(196,181,253,0.72); box-shadow: 0 0 20px rgba(124,58,237,0.1); background: rgba(124,58,237,0.16); }
+        .edit-input::placeholder { color: rgba(255,255,255,0.3); }
 
         .edit-select {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
           border-radius: 10px;
           padding: 0.5rem 0.7rem;
           color: white;
@@ -1113,131 +1203,53 @@ const Trading = ({ refreshTrigger }) => {
           border: 1px solid rgba(255,255,255,0.08);
           animation: fadeIn 0.2s ease;
         }
-        .form-message.success {
-          background: rgba(16,185,129,0.12);
-          border-color: rgba(16,185,129,0.28);
-          color: #A7F3D0;
-        }
-        .form-message.error {
-          background: rgba(239,68,68,0.12);
-          border-color: rgba(239,68,68,0.28);
-          color: #FECACA;
-        }
-        .details-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 0.55rem;
-        }
-        .detail-item {
-          min-width: 0;
-          padding: 0.65rem;
-          border-radius: 10px;
-          background: rgba(255,255,255,0.045);
-          border: 1px solid rgba(255,255,255,0.07);
-        }
-        .detail-item .detail-label {
-          display: block;
-          font-size: 0.5rem;
-          color: rgba(255,255,255,0.38);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-bottom: 0.22rem;
-        }
-        .detail-item .detail-value {
-          display: block;
-          font-size: 0.7rem;
-          font-weight: 700;
-          color: rgba(255,255,255,0.9);
-          overflow-wrap: anywhere;
-          word-break: break-word;
-        }
-        .detail-notes {
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-          word-break: break-word;
-        }
-        .detail-action-row {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-        .mobile-detail-btn {
-          display: none;
-        }
-        .required-mark { color: #FB7185; margin-left: 2px; }
-        .optional-mark { color: rgba(255,255,255,0.35); font-weight: 400; }
-        @media (max-width: 700px) {
-          .modal-overlay {
-            align-items: flex-start;
-            padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
-            overflow-y: auto;
-          }
-          .modal-content {
-            width: 100%;
-            max-width: none;
-            max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
-            margin: 0 auto;
-            padding: 17px 13px 14px;
-            border-radius: 18px;
-            overflow-y: auto;
-            overscroll-behavior: contain;
-          }
-          .form-grid { grid-template-columns: 1fr; gap: 10px; }
-          .form-group.full { grid-column: auto; }
-          .form-actions {
-            position: sticky;
-            bottom: 0;
-            z-index: 4;
-            background: linear-gradient(180deg, rgba(12,12,30,0), rgba(12,12,30,0.98) 25%);
-            padding-top: 14px;
-            padding-bottom: max(3px, env(safe-area-inset-bottom));
-          }
-          .form-actions button { flex: 1; min-height: 42px; }
-          .preview-grid { grid-template-columns: repeat(2, 1fr); }
-          .details-grid { grid-template-columns: 1fr; }
-          .mobile-detail-btn { display: inline-flex; }
-          .desktop-table-wrap { display: none !important; }
-          .toast-container {
-            top: max(8px, env(safe-area-inset-top));
-            max-width: calc(100% - 16px);
-          }
-          .toast { width: 100%; padding: 0.7rem 0.8rem; }
-          .trading-container { padding: 0.65rem; border-radius: 14px; }
-          .glass-card { padding: 0.85rem; }
-          .stat-value { font-size: 1.15rem; }
-          .net-pnl-value { font-size: 1.3rem !important; }
-        }
+        .form-message.success { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.28); color: #A7F3D0; }
+        .form-message.error { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.28); color: #FECACA; }
+
+        /* =============================================
+           DETAILS MODAL
+        ============================================= */
         .modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(20px);
-          z-index: 9999;
+          width: 100%;
+          height: 100%;
+          min-height: 100dvh;
+          background: rgba(3, 4, 16, 0.74);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          z-index: 99999;
           display: flex;
           align-items: center;
           justify-content: center;
-          animation: fadeIn 0.3s ease;
-          padding: 20px;
+          padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+          overflow: auto;
+          animation: popupBackdropIn 0.2s ease;
+          box-sizing: border-box;
         }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
+
         .modal-content {
-          background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 24px;
-          padding: 24px;
+          background: linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045));
+          border: 1px solid rgba(255,255,255,0.32);
+          border-radius: 22px;
+          padding: 22px;
           max-width: 600px;
           width: 100%;
-          max-height: 90vh;
+          max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - max(24px, env(safe-area-inset-bottom)));
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 14px;
           position: relative;
-          box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+          box-shadow: 0 40px 120px rgba(0,0,0,0.60), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 42px rgba(167,139,250,0.10);
+          color: #fff;
+          animation: popupCardIn 0.22s ease;
+          box-sizing: border-box;
         }
+
+        @keyframes popupBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popupCardIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
         .modal-close-btn {
           position: absolute;
           top: 12px;
@@ -1254,69 +1266,35 @@ const Trading = ({ refreshTrigger }) => {
           cursor: pointer;
           transition: all 0.2s ease;
         }
-        .modal-close-btn:hover {
-          background: rgba(239, 68, 68, 0.2);
-          border-color: rgba(239, 68, 68, 0.3);
-        }
+        .modal-close-btn:hover { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3); }
 
-        .form-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
         .form-group.full { grid-column: 1 / -1; }
-        .form-label {
-          font-size: 0.7rem;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.72);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
+        .form-label { font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.72); text-transform: uppercase; letter-spacing: 0.05em; }
 
-        .calculation-preview {\n          background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(16,185,129,0.05));\n          border: 1px solid rgba(196,181,253,0.16);\n          border-radius: 12px;\n          padding: 0.75rem;\n        }\n        .preview-header { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.55rem; font-size:0.62rem; font-weight:800; }\n        .preview-source { font-size:0.48rem; color:rgba(255,255,255,0.38); font-weight:600; }\n        .preview-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.45rem; }\n        .preview-grid > div { background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.45rem; }\n        .preview-grid span { display:block; font-size:0.45rem; color:rgba(255,255,255,0.4); text-transform:uppercase; margin-bottom:0.18rem; }\n        .preview-grid strong { font-size:0.68rem; font-weight:800; }\n        .preview-rule { margin-top:0.5rem; font-size:0.48rem; line-height:1.5; color:rgba(255,255,255,0.48); }\n\n        .form-actions {
-          display: flex;
-          gap: 12px;
-          justify-content: flex-end;
-          margin-top: 8px;
+        .calculation-preview {
+          background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(16,185,129,0.05));
+          border: 1px solid rgba(196,181,253,0.16);
+          border-radius: 12px;
+          padding: 0.75rem;
         }
-        .form-actions button {
-          padding: 0.6rem 1.5rem;
-          border-radius: 10px;
-          border: none;
-          font-weight: 700;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .form-actions .save-btn {
-          background: linear-gradient(135deg, #7C3AED, #6D28D9);
-          color: white;
-          box-shadow: 0 8px 30px rgba(124, 58, 237, 0.3);
-        }
-        .form-actions .save-btn:hover {
-          box-shadow: 0 12px 40px rgba(124, 58, 237, 0.4);
-          transform: scale(1.02);
-        }
-        .form-actions .cancel-btn {
-          background: rgba(255, 255, 255, 0.05);
-          color: rgba(255, 255, 255, 0.6);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .form-actions .cancel-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: white;
-        }
+        .preview-header { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.55rem; font-size:0.62rem; font-weight:800; }
+        .preview-source { font-size:0.48rem; color:rgba(255,255,255,0.38); font-weight:600; }
+        .preview-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.45rem; }
+        .preview-grid > div { background:rgba(255,255,255,0.045); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.45rem; }
+        .preview-grid span { display:block; font-size:0.45rem; color:rgba(255,255,255,0.4); text-transform:uppercase; margin-bottom:0.18rem; }
+        .preview-grid strong { font-size:0.68rem; font-weight:800; }
+        .preview-rule { margin-top:0.5rem; font-size:0.48rem; line-height:1.5; color:rgba(255,255,255,0.48); }
 
-        .pie-segment {
-          transition: all 0.3s ease;
-          cursor: pointer;
-        }
+        .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
+        .form-actions button { padding: 0.42rem 0.8rem; min-height: 33px; border-radius: 8px; border: none; font-weight: 700; font-size: 0.72rem; cursor: pointer; transition: all 0.3s ease; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .form-actions .save-btn { background: linear-gradient(135deg, #7C3AED, #6D28D9); color: white; box-shadow: 0 8px 30px rgba(124,58,237,0.3); }
+        .form-actions .save-btn:hover { box-shadow: 0 12px 40px rgba(124,58,237,0.4); transform: scale(1.02); }
+        .form-actions .cancel-btn { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.08); }
+        .form-actions .cancel-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+
+        .pie-segment { transition: all 0.3s ease; cursor: pointer; }
         .pie-segment:hover { filter: brightness(1.3); }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -1333,88 +1311,146 @@ const Trading = ({ refreshTrigger }) => {
         .text-center { text-align: center; }
         .w-full { width: 100%; }
 
-        .bar-chart-container {
-          display: flex;
-          align-items: flex-end;
-          height: 120px;
-          gap: 4px;
-          padding: 0 4px;
-          width: 100%;
-          overflow-x: auto;
-          min-height: 120px;
-        }
-        .bar-wrapper {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          flex: 1;
-          min-width: 20px;
-          max-width: 40px;
-        }
-        .bar {
-          width: 100%;
-          border-radius: 4px 4px 0 0;
-          min-height: 2px;
-          transition: all 0.3s ease;
+        .professional-bar-chart {
           position: relative;
+          height: 190px;
+          padding: 18px 10px 22px 42px;
+          border-radius: 14px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018));
+          border: 1px solid rgba(255,255,255,0.08);
+          overflow-x: auto;
+          overflow-y: hidden;
         }
-        .bar:hover {
-          opacity: 0.8;
-          transform: scaleY(1.02);
-          transform-origin: bottom;
+
+        .professional-bars {
+          position: relative;
+          height: 145px;
+          min-width: 300px;
+          display: flex;
+          align-items: stretch;
+          justify-content: space-between;
+          gap: 6px;
+          padding: 0 6px;
         }
-        .bar-label {
+
+        .professional-bars::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 50%;
+          border-top: 1px solid rgba(255,255,255,0.22);
+          pointer-events: none;
+        }
+
+        .professional-bar-item {
+          position: relative;
+          flex: 1 0 28px;
+          min-width: 28px;
+          max-width: 50px;
+          height: 100%;
+          display: grid;
+          grid-template-rows: 1fr auto 1fr;
+          align-items: stretch;
+          z-index: 1;
+        }
+
+        .bar-value-top, .bar-value-bottom {
+          display: flex;
+          justify-content: center;
+          align-items: flex-end;
+          min-width: 0;
           font-size: 0.45rem;
-          color: rgba(255, 255, 255, 0.3);
-          margin-top: 2px;
-          text-align: center;
+          font-weight: 800;
+          color: rgba(255,255,255,0.62);
           white-space: nowrap;
-          overflow: visible;
-          max-width: none;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        .bar-value {
-          font-size: 0.45rem;
-          font-weight: 600;
-          margin-bottom: 2px;
-        }
-\n        .market-chart-head {\n          display: flex;\n          align-items: center;\n          justify-content: space-between;\n          gap: 0.5rem;\n          margin-bottom: 0.35rem;\n        }\n        .chart-title { font-size: 0.62rem; font-weight: 800; color: rgba(255,255,255,0.9); }\n        .chart-subtitle { font-size: 0.48rem; color: rgba(255,255,255,0.38); margin-top: 1px; }\n        .chart-legend { display: flex; gap: 0.45rem; font-size: 0.48rem; color: rgba(255,255,255,0.55); }\n        .chart-legend span { display: inline-flex; align-items: center; gap: 0.2rem; }\n        .legend-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }\n        .profit-dot { background: #10B981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }\n        .loss-dot { background: #F43F5E; box-shadow: 0 0 8px rgba(244,63,94,0.5); }\n        .professional-bar-chart {\n          height: 145px;\n          position: relative;\n          padding: 16px 6px 20px 26px;\n          border-radius: 10px;\n          background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012));\n          border: 1px solid rgba(255,255,255,0.06);\n          overflow-x: auto;\n        }\n        .professional-bars {\n          height: 108px;\n          min-width: 260px;\n          display: flex;\n          align-items: stretch;\n          justify-content: space-around;\n          gap: 5px;\n          position: relative;\n        }\n        .professional-bars::before {\n          content: '';\n          position: absolute;\n          left: 0; right: 0; top: 50%;\n          border-top: 1px dashed rgba(255,255,255,0.18);\n          pointer-events: none;\n        }\n        .professional-bar-item {\n          flex: 1 0 24px;\n          min-width: 24px;\n          max-width: 42px;\n          height: 100%;\n          display: flex;\n          flex-direction: column;\n          align-items: center;\n          position: relative;\n          z-index: 1;\n        }\n        .bar-value-top {\n          height: 17px;\n          font-size: 0.43rem;\n          font-weight: 800;\n          white-space: nowrap;\n          overflow: hidden;\n          max-width: 100%;\n          text-overflow: ellipsis;\n        }\n        .bar-track {\n          height: 82px;\n          width: 100%;\n          display: flex;\n          flex-direction: column;\n          position: relative;\n        }\n        .professional-bar {\n          width: 70%;\n          margin-left: 15%;\n          min-height: 3px;\n          border-radius: 5px;\n          transition: height 0.35s ease, transform 0.2s ease;\n          box-shadow: 0 0 12px rgba(16,185,129,0.18);\n        }\n        .professional-bar.profit { background: linear-gradient(180deg, #34D399, #059669); }\n        .professional-bar.loss { background: linear-gradient(180deg, #FB7185, #E11D48); box-shadow: 0 0 12px rgba(244,63,94,0.18); }\n        .professional-bar:hover { transform: scaleX(1.18); }\n        .bar-date-label {\n          height: 14px;\n          margin-top: 2px;\n          font-size: 0.42rem;\n          color: rgba(255,255,255,0.38);\n          white-space: nowrap;\n          transform: rotate(-18deg);\n          transform-origin: center top;\n        }\n        .bar-axis-label { position: absolute; left: 5px; font-size: 0.4rem; color: rgba(255,255,255,0.28); }\n        .bar-axis-label.top { top: 5px; }\n        .bar-axis-label.bottom { bottom: 5px; }\n        .bar-zero-line { position: absolute; left: 25px; right: 6px; top: 50%; border-top: 1px solid rgba(255,255,255,0.08); }\n        .empty-chart { height: 145px; display:flex; align-items:center; justify-content:center; border:1px dashed rgba(255,255,255,0.08); border-radius:10px; color:rgba(255,255,255,0.3); font-size:0.55rem; }\n
-        .segment-item {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 10px;
-          padding: 0.5rem;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-        .segment-item:hover {
-          background: rgba(124, 58, 237, 0.18);
-          border-color: rgba(167, 139, 250, 0.5);
-          transform: translateY(-2px);
-        }
-        .segment-name { font-size: 0.7rem; font-weight: 600; color: white; }
-        .segment-trades { font-size: 0.6rem; color: rgba(255, 255, 255, 0.7); }
-        .segment-pl { font-size: 0.75rem; font-weight: 700; }
 
-        .market-card {
-          border: 1px solid rgba(196,181,253,0.28);
-          border-radius: 16px;
-          padding: 1rem;
-          transition: all 0.3s ease;
-        }
-        .market-card:hover {
-          border-color: rgba(196,181,253,0.62);
-        }
-        .market-card.indian { border-color: rgba(16, 185, 129, 0.2); }
-        .market-card.forex { border-color: rgba(245, 158, 11, 0.2); }
+        .bar-value-bottom { align-items: flex-start; }
 
-        .market-header {
+        .bar-track {
+          position: relative;
+          height: 72px;
+          display: grid;
+          grid-template-rows: 1fr 1fr;
+        }
+
+        .professional-bar-half { position: relative; display: flex; align-items: flex-end; justify-content: center; min-height: 0; }
+        .professional-bar-half.loss-half { align-items: flex-start; }
+
+        .professional-bar {
+          width: min(72%, 30px);
+          min-height: 3px;
+          border-radius: 6px;
+          transition: height 0.28s ease, transform 0.18s ease, filter 0.18s ease;
+          box-shadow: 0 0 12px rgba(16,185,129,0.14);
+        }
+
+        .professional-bar.profit { background: linear-gradient(180deg, #34D399, #059669); }
+        .professional-bar.loss { background: linear-gradient(180deg, #FB7185, #E11D48); box-shadow: 0 0 12px rgba(244,63,94,0.14); }
+        .professional-bar:hover { transform: scaleX(1.14); filter: brightness(1.08); }
+
+        .bar-date-label {
+          height: 22px;
+          margin-top: 3px;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.75rem;
-          font-size: 1rem;
-          font-weight: 700;
+          justify-content: center;
+          color: rgba(255,255,255,0.40);
+          font-size: 0.43rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
+
+        .bar-axis-label {
+          position: absolute;
+          left: 8px;
+          color: rgba(255,255,255,0.28);
+          font-size: 0.42rem;
+          pointer-events: none;
+        }
+
+        .bar-axis-label.top { top: 8px; }
+        .bar-axis-label.middle { top: calc(50% - 5px); color: rgba(255,255,255,0.42); }
+        .bar-axis-label.bottom { bottom: 8px; }
+
+        .bar-zero-line {
+          position: absolute;
+          left: 42px;
+          right: 10px;
+          top: 50%;
+          border-top: 1px solid rgba(255,255,255,0.18);
+          pointer-events: none;
+        }
+
+        .market-chart-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.5rem;
+          margin-bottom: 0.35rem;
+        }
+        .chart-title { font-size: 0.62rem; font-weight: 800; color: rgba(255,255,255,0.9); }
+        .chart-subtitle { font-size: 0.48rem; color: rgba(255,255,255,0.38); margin-top: 1px; }
+        .chart-legend { display: flex; gap: 0.45rem; font-size: 0.48rem; color: rgba(255,255,255,0.55); }
+        .chart-legend span { display: inline-flex; align-items: center; gap: 0.2rem; }
+        .legend-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        .profit-dot { background: #10B981; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+        .loss-dot { background: #F43F5E; box-shadow: 0 0 8px rgba(244,63,94,0.5); }
+
+        .empty-chart { text-align: center; color: rgba(255,255,255,0.3); padding: 1rem; font-size: 0.75rem; }
+
+        .market-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem; }
+
+        .market-card { border: 1px solid rgba(196,181,253,0.28); border-radius: 16px; padding: 1rem; transition: all 0.3s ease; }
+        .market-card:hover { border-color: rgba(196,181,253,0.62); }
+        .market-card.indian { border-color: rgba(16,185,129,0.2); }
+        .market-card.forex { border-color: rgba(245,158,11,0.2); }
+
+        .market-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 1rem; font-weight: 700; }
         .market-header.indian { color: #6EE7B7; }
         .market-header.forex { color: #FBBF24; }
 
@@ -1425,7 +1461,7 @@ const Trading = ({ refreshTrigger }) => {
           margin-bottom: 0.75rem;
         }
         .market-stat {
-          background: rgba(255, 255, 255, 0.09);
+          background: rgba(255,255,255,0.09);
           border: 1px solid rgba(255,255,255,0.1);
           border-radius: 8px;
           padding: 0.4rem;
@@ -1433,11 +1469,174 @@ const Trading = ({ refreshTrigger }) => {
         }
         .market-stat-value { font-size: 0.9rem; font-weight: 700; }
         .market-stat-value.net-pnl-value { font-size: 1.18rem; }
-        .market-stat-label {
-          font-size: 0.5rem;
-          color: rgba(255, 255, 255, 0.72);
-          text-transform: uppercase;
+        .market-stat-label { font-size: 0.5rem; color: rgba(255,255,255,0.72); text-transform: uppercase; }
+
+        .filter-toggle {
+          display: flex;
+          gap: 0.3rem;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 10px;
+          padding: 0.2rem;
         }
+        .filter-toggle button {
+          background: transparent;
+          border: none;
+          color: rgba(255,255,255,0.72);
+          padding: 0.3rem 0.7rem;
+          border-radius: 8px;
+          font-size: 0.65rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .filter-toggle button.active {
+          background: rgba(124,58,237,0.38);
+          color: #E9D5FF;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 14px rgba(124,58,237,0.18);
+        }
+        .filter-toggle button:hover { color: white; }
+
+        .report-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 0.75rem;
+          padding: 0.65rem 0.75rem;
+        }
+
+        .report-toolbar-left, .report-toolbar-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .report-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #A78BFA;
+          background: rgba(124,58,237,0.12);
+          border: 1px solid rgba(124,58,237,0.25);
+          flex-shrink: 0;
+        }
+
+        .report-title { color: rgba(255,255,255,0.88); font-size: 0.68rem; font-weight: 800; }
+        .report-subtitle { color: rgba(255,255,255,0.38); font-size: 0.52rem; margin-top: 2px; overflow-wrap: anywhere; }
+
+        .report-format-select {
+          min-width: 118px;
+          height: 32px;
+          padding: 0 9px;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.05);
+          color: white;
+          outline: none;
+          font-size: 0.62rem;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .report-format-select option { background: #0a0a1f; color: white; }
+
+        .report-download-btn {
+          height: 32px;
+          padding: 0.3rem 0.65rem !important;
+          font-size: 0.62rem !important;
+          white-space: nowrap;
+        }
+
+        .details-modal-content {
+          width: min(94vw, 820px);
+          border-color: rgba(255,255,255,0.38);
+          max-width: 820px;
+          max-height: min(88vh, 760px);
+          padding: 18px;
+          gap: 12px;
+          border-radius: 20px;
+        }
+
+        .details-modal-head { padding-right: 42px; }
+        .details-modal-kicker { font-size: 0.48rem; font-weight: 800; color: rgba(255,255,255,0.36); letter-spacing: 0.12em; text-transform: uppercase; }
+        .details-modal-head h2 { margin: 0.2rem 0 0; font-size: 1.08rem; line-height: 1.25; font-weight: 850; color: #fff; overflow-wrap: anywhere; }
+
+        .details-summary-strip {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 10px;
+        }
+
+        .details-summary-item {
+          min-width: 0;
+          padding: 9px 10px;
+          border-radius: 11px;
+          border: 1px solid rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.035);
+          text-align: center;
+        }
+
+        .details-summary-item span {
+          display: block;
+          font-size: 0.48rem;
+          color: rgba(255,255,255,0.4);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 3px;
+        }
+
+        .details-summary-item strong {
+          display: block;
+          font-size: 0.74rem;
+          font-weight: 850;
+          overflow-wrap: anywhere;
+        }
+
+        .details-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+        .detail-item {
+          min-width: 0;
+          min-height: 58px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          text-align: center;
+          padding: 9px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.045);
+          border: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .detail-item .detail-label {
+          display: block;
+          font-size: 0.5rem;
+          color: rgba(255,255,255,0.38);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 0.22rem;
+        }
+
+        .detail-item .detail-value {
+          display: block;
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: rgba(255,255,255,0.9);
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .details-notes-card { min-height: 72px; }
+        .details-notes-card .detail-value { line-height: 1.45; }
+
+        .mobile-show { display: none; }
+        .desktop-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .desktop-table-wrap table { min-width: 980px; }
+        .desktop-table-wrap th { color: rgba(255,255,255,0.72) !important; border-bottom-color: rgba(196,181,253,0.24) !important; }
 
         .trade-card-mobile {
           background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
@@ -1455,7 +1654,7 @@ const Trading = ({ refreshTrigger }) => {
           padding: 0.15rem 0;
         }
         .trade-card-mobile .label {
-          color: rgba(255, 255, 255, 0.72);
+          color: rgba(255,255,255,0.72);
           font-size: 0.6rem;
           font-weight: 600;
           text-transform: uppercase;
@@ -1471,70 +1670,24 @@ const Trading = ({ refreshTrigger }) => {
           word-break: break-word;
         }
         .trade-card-mobile .net-pnl-inline { font-size: 0.82rem; font-weight: 900; text-shadow: 0 0 10px currentColor; }
-        .desktop-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .desktop-table-wrap table { min-width: 980px; }
-        .desktop-table-wrap th { color: rgba(255,255,255,0.72) !important; border-bottom-color: rgba(196,181,253,0.24) !important; }
-        .market-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.5rem; }
 
-        .filter-toggle {
-          display: flex;
-          gap: 0.3rem;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 10px;
-          padding: 0.2rem;
-        }
-        .filter-toggle button {
-          background: transparent;
-          border: none;
-          color: rgba(255, 255, 255, 0.72);
-          padding: 0.3rem 0.7rem;
-          border-radius: 8px;
-          font-size: 0.65rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .filter-toggle button.active {
-          background: rgba(124, 58, 237, 0.38);
-          color: #E9D5FF;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 14px rgba(124,58,237,0.18);
-        }
-        .filter-toggle button:hover {
-          color: white;
-        }
-
-        .mobile-show { display: none; }
+        .mobile-detail-btn { display: none; }
 
         @media (max-width: 768px) {
           .mobile-show { display: block !important; }
           .desktop-table-wrap { display: none !important; }
           .market-stats { grid-template-columns: repeat(2, 1fr); }
           .market-sections { grid-template-columns: 1fr; }
-          .bar-chart-container { height: 80px; gap: 2px; }
-          .bar-wrapper { min-width: 12px; }
-          .bar-label { font-size: 0.5rem; }
-          .bar-value { font-size: 0.45rem; }
           .professional-bar-chart { height: 135px; }
           .professional-bars { min-width: 240px; height: 100px; }
           .bar-value-top { font-size: 0.38rem; }
           .trade-card-mobile .label { flex-basis: 34%; }
           .trade-card-mobile .value { font-size: 0.68rem; }
           .filter-toggle button { padding: 0.2rem 0.5rem; font-size: 0.55rem; }
-        }
-
-        @media (max-width: 1024px) {
-          .trading-container { padding: 0; }
+          .mobile-detail-btn { display: inline-flex !important; }
           .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
-          .glass-card { padding: 1rem; }
-        }
-
-        @media (max-width: 768px) {
-          .trading-container { padding: 0; }
-          .grid-4 { grid-template-columns: 1fr 1fr !important; gap: 0.4rem !important; }
-          .grid-3 { grid-template-columns: 1fr 1fr !important; gap: 0.4rem !important; }
-          .grid-2 { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
+          .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
+          .grid-2 { grid-template-columns: 1fr !important; }
           .glass-card { padding: 0.75rem; border-radius: 14px; }
           .stat-value { font-size: 1.1rem !important; }
           .stat-label { font-size: 0.55rem !important; }
@@ -1545,9 +1698,12 @@ const Trading = ({ refreshTrigger }) => {
           .modal-close-btn { top: 8px; right: 8px; width: 30px; height: 30px; }
           .glass-btn { padding: 0.3rem 0.6rem; font-size: 0.65rem; }
           .refresh-btn { padding: 0.3rem 0.6rem; font-size: 0.65rem; }
+          .report-toolbar { flex-direction: column; align-items: stretch; }
+          .report-toolbar-left, .report-toolbar-right { justify-content: center; }
         }
 
         @media (max-width: 480px) {
+          .modal-overlay { padding: max(12px, env(safe-area-inset-top)) 8px max(20px, env(safe-area-inset-bottom)) 8px; }
           .trading-container { padding: 0; }
           .grid-4 { grid-template-columns: 1fr 1fr !important; gap: 0.3rem !important; }
           .grid-3 { grid-template-columns: 1fr !important; gap: 0.3rem !important; }
@@ -1556,29 +1712,31 @@ const Trading = ({ refreshTrigger }) => {
           .stat-label { font-size: 0.5rem !important; }
           .stat-box { padding: 0.3rem; }
           .modal-content { padding: 12px; max-width: 98%; }
-          .form-actions button { padding: 0.4rem 1rem; font-size: 0.75rem; }
+          .details-modal-content { width: min(97vw, 430px); padding: 11px; }
+          .details-summary-item strong { font-size: 0.61rem; }
+          .details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .report-format-select, .report-download-btn { font-size: 0.58rem !important; }
+          .form-actions button { padding: 0.38rem 0.75rem; min-height: 32px; font-size: 0.68rem; }
           .edit-input { font-size: 0.75rem; padding: 0.3rem 0.5rem; }
           .edit-select { font-size: 0.75rem; padding: 0.3rem 0.5rem; }
         }
 
-        ::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
+        @media (max-width: 360px) {
+          .details-grid { grid-template-columns: 1fr; }
+          .trade-card-mobile .row { flex-direction: column; align-items: stretch; gap: 0.2rem; }
+          .trade-card-mobile .value { text-align: left; }
+          .trade-card-mobile .label { flex-basis: auto; }
         }
-        ::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: rgba(124, 58, 237, 0.3);
-          border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(124, 58, 237, 0.5);
-        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.5); }
+
+        .required-mark { color: #FB7185; margin-left: 2px; }
+        .optional-mark { color: rgba(255,255,255,0.35); font-weight: 400; }
       `}</style>
 
-      {/* ✅ ADDED: id="trading-journal" for navbar navigation */}
       <div id="trading-journal" className="trading-container">
 
         {/* =============================================
@@ -1599,6 +1757,10 @@ const Trading = ({ refreshTrigger }) => {
             </div>
           </div>
         )}
+
+        {/* =============================================
+            DELETE CONFIRMATION
+        ============================================= */}
         {deleteTradeId !== null && (
           <div className="trade-confirm-dialog" role="alertdialog" aria-live="assertive">
             <AlertTriangle size={20} color="#FCD34D" style={{ margin: '0 auto' }} />
@@ -1610,66 +1772,104 @@ const Trading = ({ refreshTrigger }) => {
           </div>
         )}
 
+        {/* =============================================
+            TRADE DETAILS MODAL
+        ============================================= */}
         {selectedTrade && (() => {
           const trade = selectedTrade;
-          const isForex = FOREX_BROKERS.includes(trade.broker) || FOREX_SEGMENTS.includes(trade.segment);
-          const gross = Number(trade.gross_profit_loss);
-          const net = Number(trade.profit_loss);
+
+          const isForex =
+            FOREX_BROKERS.includes(trade.broker) ||
+            FOREX_SEGMENTS.includes(trade.segment);
+
+          const gross = Number(
+            trade.gross_profit_loss ?? trade.profit_loss ?? 0
+          );
+
+          const net = Number(trade.profit_loss ?? 0);
           const brokerage = Number(trade.brokerage || 0);
-          const status = net > 0 ? 'Profit' : net < 0 ? 'Loss' : 'Break-even';
+
+          const status =
+            net > 0 ? 'Profit' : net < 0 ? 'Loss' : 'Break-even';
+
+          const detailRows = [
+            ['Date', formatDate(trade.date)],
+            ['Market', isForex ? '🌍 Forex' : '🇮🇳 Indian'],
+            ['Broker', trade.broker || '—'],
+            ['Segment', trade.segment || '—'],
+            ['Type', trade.type || '—'],
+            ['Lot Size', formatNumber(trade.quantity)],
+            ['Entry Price', formatCurrency(trade.entry_price, isForex)],
+            ['Exit Price', formatCurrency(trade.exit_price, isForex)],
+            ['Gross Result', formatCurrency(gross, isForex)],
+            ['Brokerage', formatCurrency(brokerage, isForex)],
+            ['Final Net P&L', formatCurrency(net, isForex)],
+            ['Status', status],
+            ['Calculation', trade.calculation_mode === 'manual' ? 'Manual Total Result' : 'Entry / Exit Price'],
+            ['Result Amount', formatCurrency(trade.result_amount ?? (gross !== 0 ? Math.abs(gross) : 0), isForex)]
+          ];
 
           return (
             <div className="modal-overlay" onClick={() => setSelectedTrade(null)}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '620px' }}>
-                <button className="modal-close-btn" onClick={() => setSelectedTrade(null)}>
-                  <X size={18} />
+              <div className="modal-content details-modal-content" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="modal-close-btn" onClick={() => setSelectedTrade(null)} aria-label="Close trade details" title="Close">
+                  <X size={17} />
                 </button>
 
-                <div style={{ paddingRight: '40px' }}>
-                  <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    Trade Details
+                <div className="details-modal-head">
+                  <div className="details-modal-kicker">TRADE DETAILS</div>
+                  <h2>{trade.name || 'Trade'}</h2>
+
+                  <div className="details-summary-strip">
+                    <div className="details-summary-item">
+                      <span>Net P&amp;L</span>
+                      <strong style={{ color: net >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+                        {formatCurrency(net, isForex)}
+                      </strong>
+                    </div>
+                    <div className="details-summary-item">
+                      <span>Status</span>
+                      <strong style={{ color: status === 'Profit' ? '#6EE7B7' : status === 'Loss' ? '#FCA5A5' : '#CBD5E1' }}>
+                        {status}
+                      </strong>
+                    </div>
+                    <div className="details-summary-item">
+                      <span>Result Type</span>
+                      <strong>{trade.result_type || '—'}</strong>
+                    </div>
                   </div>
-                  <h2 style={{ marginTop: '0.18rem', fontSize: '1.05rem', fontWeight: '800', color: 'white', overflowWrap: 'anywhere' }}>
-                    {trade.name || 'Trade'}
-                  </h2>
                 </div>
 
                 <div className="details-grid">
-                  <div className="detail-item"><span className="detail-label">Date</span><span className="detail-value">{formatDate(trade.date)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Market</span><span className="detail-value">{isForex ? '🌍 Forex' : '🇮🇳 Indian'}</span></div>
-                  <div className="detail-item"><span className="detail-label">Broker</span><span className="detail-value">{trade.broker || '—'}</span></div>
-                  <div className="detail-item"><span className="detail-label">Segment</span><span className="detail-value">{trade.segment || '—'}</span></div>
-                  <div className="detail-item"><span className="detail-label">Type</span><span className="detail-value" style={{ color: trade.type === 'Buy' ? '#6EE7B7' : '#FCA5A5' }}>{trade.type || '—'}</span></div>
-                  <div className="detail-item"><span className="detail-label">Lot Size</span><span className="detail-value">{formatNumber(trade.quantity)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Entry Price</span><span className="detail-value">{formatCurrency(trade.entry_price, isForex)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Exit Price</span><span className="detail-value">{formatCurrency(trade.exit_price, isForex)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Gross Result</span><span className="detail-value" style={{ color: gross >= 0 ? '#6EE7B7' : '#FCA5A5' }}>{formatCurrency(gross, isForex)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Brokerage</span><span className="detail-value" style={{ color: '#FCD34D' }}>{formatCurrency(brokerage, isForex)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Final Net P&L</span><span className="detail-value" style={{ color: net >= 0 ? '#6EE7B7' : '#FCA5A5', fontSize: '0.85rem' }}>{formatCurrency(net, isForex)}</span></div>
-                  <div className="detail-item"><span className="detail-label">Status</span><span className="detail-value" style={{ color: status === 'Profit' ? '#6EE7B7' : status === 'Loss' ? '#FCA5A5' : '#CBD5E1' }}>{status}</span></div>
-                  <div className="detail-item"><span className="detail-label">Calculation</span><span className="detail-value">{trade.calculation_mode === 'manual' ? 'Manual Total Result' : 'Entry / Exit Price'}</span></div>
-                  <div className="detail-item"><span className="detail-label">Result Amount</span><span className="detail-value">{formatCurrency(trade.result_amount ?? (gross !== 0 ? Math.abs(gross) : 0), isForex)}</span></div>
+                  {detailRows.map(([label, value], index) => (
+                    <div className="detail-item" key={`${label}-${index}`}>
+                      <span className="detail-label">{label}</span>
+                      <span className="detail-value" style={{
+                        color: label === 'Gross Result' ? (gross >= 0 ? '#6EE7B7' : '#FCA5A5')
+                          : label === 'Brokerage' ? '#FCD34D'
+                          : label === 'Type' ? (trade.type === 'Buy' ? '#6EE7B7' : '#FCA5A5')
+                          : undefined
+                      }}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="detail-item">
+                <div className="detail-item details-notes-card">
                   <span className="detail-label">Notes</span>
-                  <span className="detail-value detail-notes">{trade.notes || 'No additional notes.'}</span>
-                </div>
-
-                <div className="detail-action-row">
-                  <button className="glass-btn" onClick={() => { setSelectedTrade(null); handleEdit(trade); }}>
-                    <Edit2 size={13} /> Edit
-                  </button>
-                  <button className="glass-btn danger" onClick={() => { setSelectedTrade(null); deleteTrade(trade.id); }}>
-                    <Trash2 size={13} /> Delete
-                  </button>
+                  <span className="detail-value detail-notes">
+                    {trade.notes || 'No additional notes.'}
+                  </span>
                 </div>
               </div>
             </div>
           );
         })()}
 
-        {/* HEADER */}
+        {/* =============================================
+            HEADER
+        ============================================= */}
         <div className="flex justify-between items-center flex-wrap" style={{ gap: '0.75rem', marginBottom: '1rem' }}>
           <div>
             <h1 style={{ fontSize: '1.4rem', fontWeight: '800', background: 'linear-gradient(135deg, #FFFFFF, #A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -1699,30 +1899,17 @@ const Trading = ({ refreshTrigger }) => {
           </div>
         </div>
 
-        {/* FILTER SECTION */}
+        {/* =============================================
+            FILTER SECTION
+        ============================================= */}
         <div className="glass-card" style={{ marginBottom: '0.75rem', padding: '0.75rem' }}>
           <div className="flex justify-between items-center flex-wrap" style={{ gap: '0.5rem' }}>
             <div className="flex items-center" style={{ gap: '0.5rem' }}>
               <Clock size={16} color="#2EA8FF" />
               <div className="filter-toggle">
-                <button 
-                  className={filterType === 'monthly' ? 'active' : ''}
-                  onClick={() => setFilterType('monthly')}
-                >
-                  📆 Monthly
-                </button>
-                <button 
-                  className={filterType === 'daily' ? 'active' : ''}
-                  onClick={() => setFilterType('daily')}
-                >
-                  📊 Daily
-                </button>
-                <button 
-                  className={filterType === 'weekly' ? 'active' : ''}
-                  onClick={() => setFilterType('weekly')}
-                >
-                  📈 Weekly
-                </button>
+                <button className={filterType === 'monthly' ? 'active' : ''} onClick={() => setFilterType('monthly')}>📆 Monthly</button>
+                <button className={filterType === 'daily' ? 'active' : ''} onClick={() => setFilterType('daily')}>📊 Daily</button>
+                <button className={filterType === 'weekly' ? 'active' : ''} onClick={() => setFilterType('weekly')}>📈 Weekly</button>
               </div>
             </div>
             <div className="flex items-center" style={{ gap: '0.5rem' }}>
@@ -1782,7 +1969,44 @@ const Trading = ({ refreshTrigger }) => {
           </div>
         </div>
 
-        {/* COMBINED SUMMARY STATS */}
+        {/* =============================================
+            REPORT EXPORT
+        ============================================= */}
+        <div className="glass-card report-toolbar">
+          <div className="report-toolbar-left">
+            <div className="report-icon"><BarChart3 size={15} /></div>
+            <div>
+              <div className="report-title">Period Report</div>
+              <div className="report-subtitle">{getReportPeriodText()}</div>
+            </div>
+          </div>
+
+          <div className="report-toolbar-right">
+            <select
+              className="report-format-select"
+              value={reportFormat}
+              onChange={(e) => setReportFormat(e.target.value)}
+              aria-label="Report format"
+            >
+              <option value="pdf">PDF</option>
+              <option value="excel">Excel</option>
+              <option value="text">Text</option>
+            </select>
+
+            <button
+              type="button"
+              className="glass-btn primary report-download-btn"
+              onClick={downloadReport}
+            >
+              <ArrowUpRight size={13} />
+              Export
+            </button>
+          </div>
+        </div>
+
+        {/* =============================================
+            COMBINED SUMMARY STATS
+        ============================================= */}
         <div className="grid-4" style={{ marginBottom: '0.5rem' }}>
           <div className="stat-box" style={{ padding: '0.5rem' }}>
             <div className="stat-value" style={{ color: '#A78BFA', fontSize: '1.2rem' }}>{combinedStats.totalTrades}</div>
@@ -1806,7 +2030,9 @@ const Trading = ({ refreshTrigger }) => {
           </div>
         </div>
 
-        {/* INDIAN & FOREX MARKET SECTIONS */}
+        {/* =============================================
+            INDIAN & FOREX MARKET SECTIONS
+        ============================================= */}
         <div className="market-sections">
           
           {/* INDIAN MARKET */}
@@ -1888,8 +2114,6 @@ const Trading = ({ refreshTrigger }) => {
                 <div className="empty-chart">No Indian market P&L data for this period</div>
               )}
             </div>
-
-
           </div>
 
           {/* FOREX MARKET */}
@@ -1971,14 +2195,11 @@ const Trading = ({ refreshTrigger }) => {
                 <div className="empty-chart">No Forex market P&L data for this period</div>
               )}
             </div>
-
-
           </div>
         </div>
 
-
         {/* =============================================
-            LARGE TOTAL PROFIT / LOSS / NET CHART
+            TOTAL P&L OVERVIEW CHART
         ============================================= */}
         <div className="glass-card" style={{ marginBottom: '0.75rem', padding: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
@@ -2018,20 +2239,8 @@ const Trading = ({ refreshTrigger }) => {
 
                 return (
                   <svg width="220" height="220" viewBox="0 0 220 220">
-                    <path
-                      d={describeArc(110, 110, 82, 0, profitAngle)}
-                      fill="#10B981"
-                      stroke="#06060f"
-                      strokeWidth="3"
-                      className="pie-segment"
-                    />
-                    <path
-                      d={describeArc(110, 110, 82, profitAngle, profitAngle + lossAngle)}
-                      fill="#F43F5E"
-                      stroke="#06060f"
-                      strokeWidth="3"
-                      className="pie-segment"
-                    />
+                    <path d={describeArc(110, 110, 82, 0, profitAngle)} fill="#10B981" stroke="#06060f" strokeWidth="3" className="pie-segment" />
+                    <path d={describeArc(110, 110, 82, profitAngle, profitAngle + lossAngle)} fill="#F43F5E" stroke="#06060f" strokeWidth="3" className="pie-segment" />
                     <circle cx="110" cy="110" r="55" fill="#06060f" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
                     <text x="110" y="103" textAnchor="middle" fill={combinedStats.netPL >= 0 ? '#6EE7B7' : '#FCA5A5'} fontSize="16" fontWeight="900">
                       {formatCurrency(combinedStats.netPL)}
@@ -2047,21 +2256,15 @@ const Trading = ({ refreshTrigger }) => {
             <div style={{ minWidth: '220px', flex: '1 1 260px', maxWidth: '420px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div className="stat-box">
-                  <div className="stat-value" style={{ color: '#6EE7B7' }}>
-                    {formatCurrency(combinedStats.totalNetProfit)}
-                  </div>
+                  <div className="stat-value" style={{ color: '#6EE7B7' }}>{formatCurrency(combinedStats.totalNetProfit)}</div>
                   <div className="stat-label">Net Profit</div>
                 </div>
                 <div className="stat-box">
-                  <div className="stat-value" style={{ color: '#FCA5A5' }}>
-                    {formatCurrency(combinedStats.totalNetLoss)}
-                  </div>
+                  <div className="stat-value" style={{ color: '#FCA5A5' }}>{formatCurrency(combinedStats.totalNetLoss)}</div>
                   <div className="stat-label">Net Loss</div>
                 </div>
                 <div className="stat-box">
-                  <div className="stat-value" style={{ color: '#FCD34D' }}>
-                    {formatCurrency(combinedStats.totalBrokerage)}
-                  </div>
+                  <div className="stat-value" style={{ color: '#FCD34D' }}>{formatCurrency(combinedStats.totalBrokerage)}</div>
                   <div className="stat-label">Brokerage</div>
                 </div>
                 <div className="stat-box">
@@ -2075,22 +2278,20 @@ const Trading = ({ refreshTrigger }) => {
               <div style={{ marginTop: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', marginBottom: '0.3rem' }}>
                   <span style={{ color: '#6EE7B7' }}>● Profit</span>
-                  <strong style={{ color: '#6EE7B7' }}>
-                    {totalChartProfitPercent.toFixed(1)}%
-                  </strong>
+                  <strong style={{ color: '#6EE7B7' }}>{totalChartProfitPercent.toFixed(1)}%</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem' }}>
                   <span style={{ color: '#FCA5A5' }}>● Loss</span>
-                  <strong style={{ color: '#FCA5A5' }}>
-                    {totalChartLossPercent.toFixed(1)}%
-                  </strong>
+                  <strong style={{ color: '#FCA5A5' }}>{totalChartLossPercent.toFixed(1)}%</strong>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* TRADE LIST */}
+        {/* =============================================
+            TRADE LIST
+        ============================================= */}
         <div className="glass-card" style={{ padding: '0.75rem' }}>
           <h3 style={{ fontSize: '0.75rem', fontWeight: '700', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#F59E0B' }}>
             <Activity size={14} /> Trades ({displayTrades.length})
@@ -2152,27 +2353,13 @@ const Trading = ({ refreshTrigger }) => {
                           </td>
                           <td style={{ padding: '0.25rem 0.3rem', textAlign: 'center' }}>
                             <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'center' }}>
-                              <button
-                                className="glass-btn"
-                                onClick={() => setSelectedTrade(trade)}
-                                style={{ padding: '0.15rem 0.3rem', fontSize: '0.5rem' }}
-                                title="View details"
-                              >
+                              <button className="glass-btn" onClick={() => setSelectedTrade(trade)} style={{ padding: '0.15rem 0.3rem', fontSize: '0.5rem' }} title="View details">
                                 <Info size={10} />
                               </button>
-                              <button
-                                className="glass-btn"
-                                onClick={() => handleEdit(trade)}
-                                style={{ padding: '0.15rem 0.3rem', fontSize: '0.5rem' }}
-                                title="Edit trade"
-                              >
+                              <button className="glass-btn" onClick={() => handleEdit(trade)} style={{ padding: '0.15rem 0.3rem', fontSize: '0.5rem' }} title="Edit trade">
                                 <Edit2 size={10} />
                               </button>
-                              <button 
-                                className="glass-btn danger" 
-                                onClick={() => deleteTrade(trade.id)}
-                                style={{ padding: '0.15rem 0.3rem', fontSize: '0.5rem' }}
-                              >
+                              <button className="glass-btn danger" onClick={() => deleteTrade(trade.id)} style={{ padding: '0.15rem 0.3rem', fontSize: '0.5rem' }}>
                                 <Trash2 size={10} />
                               </button>
                             </div>
@@ -2191,78 +2378,32 @@ const Trading = ({ refreshTrigger }) => {
                   const isProfit = parseFloat(trade.profit_loss) > 0;
                   return (
                     <div key={trade.id} className="trade-card-mobile">
-                      <div className="row">
-                        <span className="label">Date</span>
-                        <span className="value" style={{ color: 'rgba(255,255,255,0.8)' }}>{formatDate(trade.date)}</span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Market</span>
-                        <span className="value" style={{ color: isForex ? '#FBBF24' : '#6EE7B7' }}>
-                          {isForex ? '🌍 Forex' : '🇮🇳 Indian'}
+                      <div className="row"><span className="label">Date</span><span className="value" style={{ color: 'rgba(255,255,255,0.8)' }}>{formatDate(trade.date)}</span></div>
+                      <div className="row"><span className="label">Market</span><span className="value" style={{ color: isForex ? '#FBBF24' : '#6EE7B7' }}>{isForex ? '🌍 Forex' : '🇮🇳 Indian'}</span></div>
+                      <div className="row"><span className="label">Name</span><span className="value" style={{ color: 'white' }}>{trade.name}</span></div>
+                      <div className="row"><span className="label">Broker</span><span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.broker}</span></div>
+                      <div className="row"><span className="label">Segment</span><span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.segment}</span></div>
+                      <div className="row"><span className="label">Type</span><span className="value" style={{ color: trade.type === 'Buy' ? '#6EE7B7' : '#FCA5A5' }}>{trade.type}</span></div>
+                      <div className="row"><span className="label">Lot / Entry / Exit</span><span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        {formatNumber(trade.quantity)} / {formatCurrency(trade.entry_price, isForex)} / {formatCurrency(trade.exit_price, isForex)}
+                      </span></div>
+                      <div className="row"><span className="label">Gross / Brokerage / Net</span><span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                        {formatCurrency(trade.gross_profit_loss || trade.profit_loss, isForex)} / {formatCurrency(trade.brokerage || 0, isForex)} / 
+                        <span className="net-pnl-inline" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>
+                          {formatCurrency(trade.profit_loss, isForex)}
                         </span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Name</span>
-                        <span className="value" style={{ color: 'white' }}>{trade.name}</span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Broker</span>
-                        <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.broker}</span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Segment</span>
-                        <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.segment}</span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Type</span>
-                        <span className="value" style={{ color: trade.type === 'Buy' ? '#6EE7B7' : '#FCA5A5' }}>{trade.type}</span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Lot / Entry / Exit</span>
-                        <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                          {formatNumber(trade.quantity)} / {formatCurrency(trade.entry_price, isForex)} / {formatCurrency(trade.exit_price, isForex)}
-                        </span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Gross / Brokerage / Net</span>
-                        <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                          {formatCurrency(trade.gross_profit_loss || trade.profit_loss, isForex)} / {formatCurrency(trade.brokerage || 0, isForex)} / 
-                          <span className="net-pnl-inline" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>
-                            {formatCurrency(trade.profit_loss, isForex)}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="row">
-                        <span className="label">Status</span>
-                        <span className="value" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>{isProfit ? 'Profit' : 'Loss'}</span>
-                      </div>
-                      {trade.notes && (
-                        <div className="row">
-                          <span className="label">Notes</span>
-                          <span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.notes}</span>
-                        </div>
-                      )}
+                      </span></div>
+                      <div className="row"><span className="label">Status</span><span className="value" style={{ color: isProfit ? '#6EE7B7' : '#FCA5A5' }}>{isProfit ? 'Profit' : 'Loss'}</span></div>
+                      {trade.notes && <div className="row"><span className="label">Notes</span><span className="value" style={{ color: 'rgba(255,255,255,0.6)' }}>{trade.notes}</span></div>}
                       <div className="row" style={{ marginTop: '0.2rem', paddingTop: '0.2rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button
-                            className="glass-btn mobile-detail-btn"
-                            onClick={() => setSelectedTrade(trade)}
-                            style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}
-                          >
+                          <button className="glass-btn mobile-detail-btn" onClick={() => setSelectedTrade(trade)} style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}>
                             <Info size={10} /> Details
                           </button>
-                          <button
-                            className="glass-btn"
-                            onClick={() => handleEdit(trade)}
-                            style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}
-                          >
+                          <button className="glass-btn" onClick={() => handleEdit(trade)} style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}>
                             <Edit2 size={10} /> Edit
                           </button>
-                          <button 
-                            className="glass-btn danger" 
-                            onClick={() => deleteTrade(trade.id)}
-                            style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}
-                          >
+                          <button className="glass-btn danger" onClick={() => deleteTrade(trade.id)} style={{ padding: '0.15rem 0.4rem', fontSize: '0.55rem' }}>
                             <Trash2 size={10} /> Delete
                           </button>
                         </div>
@@ -2297,18 +2438,10 @@ const Trading = ({ refreshTrigger }) => {
 
               {/* Market Type Selector */}
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <button 
-                  className={`glass-btn ${formData.marketType === 'indian' ? 'success' : ''}`}
-                  onClick={() => handleMarketTypeChange('indian')}
-                  style={{ flex: 1, justifyContent: 'center' }}
-                >
+                <button className={`glass-btn ${formData.marketType === 'indian' ? 'success' : ''}`} onClick={() => handleMarketTypeChange('indian')} style={{ flex: 1, justifyContent: 'center' }}>
                   🇮🇳 Indian
                 </button>
-                <button 
-                  className={`glass-btn ${formData.marketType === 'forex' ? 'primary' : ''}`}
-                  onClick={() => handleMarketTypeChange('forex')}
-                  style={{ flex: 1, justifyContent: 'center' }}
-                >
+                <button className={`glass-btn ${formData.marketType === 'forex' ? 'primary' : ''}`} onClick={() => handleMarketTypeChange('forex')} style={{ flex: 1, justifyContent: 'center' }}>
                   🌍 Forex
                 </button>
               </div>
@@ -2316,123 +2449,56 @@ const Trading = ({ refreshTrigger }) => {
               <div className="form-grid">
                 <div className="form-group">
                   <label className="form-label">Date<span className="required-mark">*</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="date" 
-                    value={formData.date} 
-                    onChange={(e) => setFormData({...formData, date: e.target.value})} 
-                  />
+                  <input className="edit-input" type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Broker<span className="required-mark">*</span></label>
-                  <select 
-                    className="edit-select" 
-                    value={formData.broker} 
-                    onChange={(e) => setFormData({...formData, broker: e.target.value})}
-                  >
-                    {formData.marketType === 'indian' 
-                      ? indianBrokers.map(b => <option key={b} value={b}>{b}</option>)
-                      : forexBrokers.map(b => <option key={b} value={b}>{b}</option>)
-                    }
+                  <select className="edit-select" value={formData.broker} onChange={(e) => setFormData({...formData, broker: e.target.value})}>
+                    {formData.marketType === 'indian' ? indianBrokers.map(b => <option key={b} value={b}>{b}</option>) : forexBrokers.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Segment<span className="required-mark">*</span></label>
-                  <select 
-                    className="edit-select" 
-                    value={formData.segment} 
-                    onChange={(e) => setFormData({...formData, segment: e.target.value})}
-                  >
-                    {(formData.marketType === 'indian' ? indianSegments : forexSegments).map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
+                  <select className="edit-select" value={formData.segment} onChange={(e) => setFormData({...formData, segment: e.target.value})}>
+                    {(formData.marketType === 'indian' ? indianSegments : forexSegments).map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Trade Name<span className="required-mark">*</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="text" 
-                    placeholder={formData.marketType === 'indian' ? "e.g. RELIANCE, NIFTY" : "e.g. EURUSD, GOLD"} 
-                    value={formData.name} 
-                    onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                  />
+                  <input className="edit-input" type="text" placeholder={formData.marketType === 'indian' ? "e.g. RELIANCE, NIFTY" : "e.g. EURUSD, GOLD"} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Type<span className="required-mark">*</span></label>
-                  <select 
-                    className="edit-select" 
-                    value={formData.type} 
-                    onChange={(e) => setFormData({...formData, type: e.target.value})}
-                  >
+                  <select className="edit-select" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
                     {tradeTypes.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Lot Size<span className="required-mark">*</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="text" 
-                    inputMode="decimal"
-                    placeholder={formData.marketType === 'indian' ? "Enter lot size" : "Enter lot size (0.01)"} 
-                    value={formData.lotSize} 
-                    onChange={(e) => handleNumberChange('lotSize', e.target.value)} 
-                  />
+                  <input className="edit-input" type="text" inputMode="decimal" placeholder={formData.marketType === 'indian' ? "Enter lot size" : "Enter lot size (0.01)"} value={formData.lotSize} onChange={(e) => handleNumberChange('lotSize', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Entry Price<span className="required-mark">*</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="text" 
-                    inputMode="decimal"
-                    placeholder="Enter entry price" 
-                    value={formData.entryPrice} 
-                    onChange={(e) => handleNumberChange('entryPrice', e.target.value)} 
-                  />
+                  <input className="edit-input" type="text" inputMode="decimal" placeholder="Enter entry price" value={formData.entryPrice} onChange={(e) => handleNumberChange('entryPrice', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Exit Price<span className="required-mark">*</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="text" 
-                    inputMode="decimal"
-                    placeholder="Enter exit price" 
-                    value={formData.exitPrice} 
-                    onChange={(e) => handleNumberChange('exitPrice', e.target.value)} 
-                  />
+                  <input className="edit-input" type="text" inputMode="decimal" placeholder="Enter exit price" value={formData.exitPrice} onChange={(e) => handleNumberChange('exitPrice', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Brokerage<span className="required-mark">*</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="text" 
-                    inputMode="decimal"
-                    placeholder={formData.marketType === 'indian' ? "Enter brokerage (₹)" : "Enter brokerage ($)"} 
-                    value={formData.brokerage} 
-                    onChange={(e) => handleNumberChange('brokerage', e.target.value)} 
-                  />
+                  <input className="edit-input" type="text" inputMode="decimal" placeholder={formData.marketType === 'indian' ? "Enter brokerage (₹)" : "Enter brokerage ($)"} value={formData.brokerage} onChange={(e) => handleNumberChange('brokerage', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Result Type<span className="required-mark">*</span></label>
-                  <select
-                    className="edit-select"
-                    value={formData.resultType}
-                    onChange={(e) => setFormData({ ...formData, resultType: e.target.value })}
-                  >
+                  <select className="edit-select" value={formData.resultType} onChange={(e) => setFormData({...formData, resultType: e.target.value})}>
                     <option value="Profit">Profit</option>
                     <option value="Loss">Loss</option>
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Total Profit / Loss Amount<span className="required-mark">*</span></label>
-                  <input
-                    className="edit-input"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder={formData.marketType === 'indian' ? 'Enter total result' : 'Enter total result'}
-                    value={formData.resultAmount}
-                    onChange={(e) => handleNumberChange('resultAmount', e.target.value)}
-                  />
+                  <input className="edit-input" type="text" inputMode="decimal" placeholder={formData.marketType === 'indian' ? 'Enter total result' : 'Enter total result'} value={formData.resultAmount} onChange={(e) => handleNumberChange('resultAmount', e.target.value)} />
                 </div>
                 <div className="form-group full">
                   {(() => {
@@ -2463,21 +2529,13 @@ const Trading = ({ refreshTrigger }) => {
 
                 <div className="form-group full">
                   <label className="form-label">Notes <span className="optional-mark">(optional)</span></label>
-                  <input 
-                    className="edit-input" 
-                    type="text" 
-                    placeholder="Add notes..." 
-                    value={formData.notes} 
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                  />
+                  <input className="edit-input" type="text" placeholder="Add notes..." value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
                 </div>
               </div>
 
               {formMessage && (
                 <div className={`form-message ${formMessage.type}`} role="alert">
-                  {formMessage.type === 'success'
-                    ? <CheckCircle size={17} />
-                    : <XCircle size={17} />}
+                  {formMessage.type === 'success' ? <CheckCircle size={17} /> : <XCircle size={17} />}
                   <span>{formMessage.message}</span>
                 </div>
               )}
