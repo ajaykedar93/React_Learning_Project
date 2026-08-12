@@ -1,11 +1,10 @@
 import React from 'react';
-import { Heart } from 'lucide-react';
 import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
-    // Code Icon `</>` using SVG
+  // Code Icon `</>` using SVG - Red Color
   const CodeIcon = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 18L22 12L16 6" />
@@ -17,6 +16,9 @@ const Footer = () => {
   return (
     <>
       <style>{`
+        /* ============================================
+           FOOTER CONTAINER
+           ============================================ */
         .footer-container {
           width: 100%;
           background:
@@ -27,11 +29,12 @@ const Footer = () => {
             );
           backdrop-filter: blur(22px);
           -webkit-backdrop-filter: blur(22px);
-          border-top: 1px solid rgba(139, 92, 246, 0.22);
+          border-top: 2px solid rgba(96, 165, 250, 0.4);
           box-shadow:
             0 -8px 30px rgba(0, 0, 0, 0.18),
+            0 0 30px rgba(96, 165, 250, 0.05),
             inset 0 1px 0 rgba(255, 255, 255, 0.025);
-          padding: 0.45rem 1rem;
+          padding: 0.6rem 1rem;
           display: flex;
           justify-content: center;
           align-items: center;
@@ -40,78 +43,75 @@ const Footer = () => {
           position: relative;
           bottom: 0;
           z-index: 100;
-          /* Safe area for mobile navigation */
-          padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
-          padding-bottom: calc(0.45rem + constant(safe-area-inset-bottom, 0px));
+          min-height: 60px;
+          /* Safe area for mobile */
+          padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+          padding-bottom: calc(0.6rem + constant(safe-area-inset-bottom, 0px));
         }
 
         .footer-container:hover {
-          border-top-color: rgba(124, 58, 237, 0.3);
+          border-top-color: rgba(96, 165, 250, 0.6);
+          box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18), 0 0 40px rgba(96, 165, 250, 0.08);
         }
 
         .footer-content {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 2.2rem;
-          flex-wrap: wrap;
           justify-content: center;
+          gap: 0.6rem;
           max-width: 1280px;
           width: 100%;
+          padding: 0.2rem 0;
         }
 
+        /* ============================================
+           TAG LINE WITH SKY BLUE BORDER BOX
+           INCREASED SIZE
+           ============================================ */
         .footer-brand {
           display: flex;
           align-items: center;
-          gap: 0.8rem;
-          font-size: 1.18rem;
+          gap: 0.9rem;
+          font-size: 1.3rem;
           font-weight: 750;
           color: rgba(255, 255, 255, 0.94);
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           text-decoration: none;
           transition: all 0.3s ease;
           cursor: pointer;
-          padding: 0.35rem 0.7rem;
-          border-radius: 10px;
+          padding: 0.4rem 1.2rem;
+          border-radius: 14px;
           position: relative;
+          border: 2.5px solid rgba(96, 165, 250, 0.35);
+          background: rgba(96, 165, 250, 0.04);
+          box-shadow: 0 0 20px rgba(96, 165, 250, 0.04);
         }
 
         .footer-brand:hover {
-          color: #A78BFA;
-          transform: translateY(-2px);
+          border-color: rgba(96, 165, 250, 0.6);
+          background: rgba(96, 165, 250, 0.08);
+          box-shadow: 0 0 30px rgba(96, 165, 250, 0.08);
+          transform: translateY(-1px);
         }
 
         .footer-brand:active {
-          transform: scale(0.95);
+          transform: scale(0.97);
         }
 
-        /* Click Ripple Effect */
-        .footer-brand::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 10px;
-          background: rgba(124, 58, 237, 0.1);
-          opacity: 0;
-          transition: all 0.3s ease;
-        }
-
-        .footer-brand:active::after {
-          opacity: 1;
-          transform: scale(1.05);
-        }
-
+        /* Code Icon Wrapper - Red Color - Increased Size */
         .code-icon-wrapper {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 46px;
-          height: 46px;
-          border-radius: 13px;
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
           background: rgba(239, 68, 68, 0.12);
-          border: 1.5px solid rgba(239, 68, 68, 0.25);
+          border: 2px solid rgba(239, 68, 68, 0.25);
           transition: all 0.3s ease;
           font-weight: 800;
-          font-size: 0.92rem;
+          font-size: 0.95rem;
           color: #EF4444;
           font-family: 'Courier New', monospace;
           position: relative;
@@ -121,33 +121,13 @@ const Footer = () => {
         .footer-brand:hover .code-icon-wrapper {
           background: rgba(239, 68, 68, 0.2);
           border-color: rgba(239, 68, 68, 0.5);
-          box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
-          transform: rotate(-3deg) scale(1.05);
-        }
-
-        .footer-brand:active .code-icon-wrapper {
-          transform: scale(0.92);
-        }
-
-        /* Code Icon Click Ripple */
-        .code-icon-wrapper::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 13px;
-          background: rgba(239, 68, 68, 0.15);
-          opacity: 0;
-          transition: all 0.3s ease;
-        }
-
-        .code-icon-wrapper:active::after {
-          opacity: 1;
-          transform: scale(1.1);
+          box-shadow: 0 0 30px rgba(239, 68, 68, 0.15);
+          transform: rotate(-2deg) scale(1.04);
         }
 
         .code-icon {
-          width: 25px;
-          height: 25px;
+          width: 26px;
+          height: 26px;
           color: #EF4444;
           transition: all 0.3s ease;
         }
@@ -156,69 +136,43 @@ const Footer = () => {
           color: #F87171;
         }
 
+        /* Tag Text - Increased Size */
         .footer-text {
-          font-size: 1.12rem;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.7);
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.8);
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
         }
 
         .footer-text .highlight {
-          background: linear-gradient(135deg, #C4B5FD, #8B5CF6, #6366F1);
+          background: linear-gradient(135deg, #93C5FD, #60A5FA, #3B82F6);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          font-weight: 850;
-          font-size: 1.26rem;
+          font-weight: 900;
+          font-size: 1.35rem;
           letter-spacing: 0.01em;
-          text-shadow: 0 0 22px rgba(139, 92, 246, 0.18);
+          text-shadow: 0 0 22px rgba(96, 165, 250, 0.18);
         }
 
-        .footer-heart {
-          display: inline-flex;
-          align-items: center;
-          color: #F43F5E;
-          transition: all 0.3s ease;
-          animation: heartbeat 1.5s ease-in-out infinite;
-          cursor: pointer;
-          padding: 0.3rem;
-          border-radius: 50%;
-        }
-
-        .footer-heart:hover {
-          transform: scale(1.2);
-          background: rgba(244, 63, 94, 0.1);
-        }
-
-        .footer-heart:active {
-          transform: scale(0.85);
-        }
-
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.15); }
-        }
-
-        .footer-divider {
-          width: 2px;
-          height: 30px;
-          background: rgba(255, 255, 255, 0.08);
-          border-radius: 2px;
-        }
-
+        /* ============================================
+           SOCIAL LINKS - INCREASED SIZE
+           ============================================ */
         .footer-socials {
           display: flex;
           align-items: center;
-          gap: 1.1rem;
+          justify-content: center;
+          gap: 2rem;
         }
 
         .social-link {
-          display: inline-flex;
+          display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 0.65rem;
-          padding: 0.2rem 0.25rem;
-          border-radius: 12px;
-          color: rgba(255, 255, 255, 0.78);
+          gap: 0.2rem;
+          padding: 0.15rem 0.2rem;
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.6);
           transition: all 0.3s ease;
           border: none;
           background: transparent;
@@ -226,12 +180,12 @@ const Footer = () => {
           text-decoration: none;
           font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
           cursor: pointer;
-          font-weight: 650;
-          font-size: 0.98rem;
+          font-weight: 600;
+          font-size: 0.8rem;
           position: relative;
-          overflow: visible;
         }
 
+        /* Social Icons - Increased Size */
         .social-logo {
           width: 34px;
           height: 34px;
@@ -241,196 +195,318 @@ const Footer = () => {
           background: transparent;
           border: none;
           border-radius: 50%;
-          transition: transform 0.3s ease, filter 0.3s ease;
+          transition: transform 0.3s ease;
         }
 
-        .social-link:hover .social-logo {
-          transform: scale(1.1);
+        /* Instagram - Original Color */
+        .social-link.instagram .social-logo {
+          color: #E1306C;
+          fill: #E1306C;
         }
 
         .social-link.instagram:hover .social-logo {
-          filter: drop-shadow(0 0 9px rgba(225, 48, 108, 0.45));
+          transform: scale(1.15);
+          filter: drop-shadow(0 0 12px rgba(225, 48, 108, 0.5));
         }
 
-        .social-link.whatsapp:hover .social-logo {
-          filter: drop-shadow(0 0 9px rgba(37, 211, 102, 0.45));
-        }
-
-        /* Social Link Hover Effects */
-        .social-link:hover {
-          transform: translateY(-2px);
-        }
-
-        .social-link:active {
-          transform: scale(0.97);
-        }
-
-        .social-link.instagram {
+        .social-link.instagram .icon-text {
           color: #E1306C;
-          border-color: rgba(225, 48, 108, 0.2);
-        }
-
-        .social-link.instagram:hover {
-          background: linear-gradient(45deg, rgba(225, 48, 108, 0.15), rgba(252, 175, 69, 0.1));
-          border-color: rgba(225, 48, 108, 0.4);
-          box-shadow: 0 6px 25px rgba(225, 48, 108, 0.25);
-          color: #E1306C;
-        }
-
-        .social-link.whatsapp {
-          color: #25D366;
-          border-color: rgba(37, 211, 102, 0.2);
-        }
-
-        .social-link.whatsapp:hover {
-          background: rgba(37, 211, 102, 0.12);
-          border-color: rgba(37, 211, 102, 0.4);
-          box-shadow: 0 6px 25px rgba(37, 211, 102, 0.25);
-          color: #25D366;
-        }
-
-        .social-link .icon-text {
-          font-size: 0.98rem;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.7);
-          transition: all 0.3s ease;
-        }
-
-        .social-link:hover .icon-text {
-          color: white;
+          font-size: 0.8rem;
         }
 
         .social-link.instagram:hover .icon-text {
           color: #E1306C;
+          text-shadow: 0 0 20px rgba(225, 48, 108, 0.2);
+        }
+
+        /* WhatsApp - Original Color */
+        .social-link.whatsapp .social-logo {
+          color: #25D366;
+          fill: #25D366;
+        }
+
+        .social-link.whatsapp:hover .social-logo {
+          transform: scale(1.15);
+          filter: drop-shadow(0 0 12px rgba(37, 211, 102, 0.5));
+        }
+
+        .social-link.whatsapp .icon-text {
+          color: #25D366;
+          font-size: 0.8rem;
         }
 
         .social-link.whatsapp:hover .icon-text {
           color: #25D366;
+          text-shadow: 0 0 20px rgba(37, 211, 102, 0.2);
         }
 
+        .social-link:hover {
+          transform: translateY(-1px);
+        }
+
+        .social-link:active {
+          transform: scale(0.95);
+        }
+
+        .social-link .icon-text {
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-align: center;
+          line-height: 1.2;
+          max-width: 100px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          transition: all 0.3s ease;
+        }
+
+        /* ============================================
+           YEAR - INCREASED SIZE
+           ============================================ */
         .footer-year {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.2);
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.15);
           font-weight: 500;
           letter-spacing: 0.05em;
+          margin-top: 0.1rem;
         }
 
-        /* Mobile Navigation Safe Space */
-        @media (max-width: 768px) {
-          .footer-container {
-            padding: 0.25rem 0.6rem;
-            padding-bottom: calc(0.18rem + env(safe-area-inset-bottom, 0px));
-            padding-bottom: calc(0.18rem + constant(safe-area-inset-bottom, 0px));
-          }
-          .footer-content {
-            gap: 0.75rem;
-          }
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 992px) {
           .footer-brand {
-            font-size: 0.84rem;
+            padding: 0.35rem 1rem;
+            font-size: 1.15rem;
           }
           .code-icon-wrapper {
-            width: 32px;
-            height: 32px;
+            width: 42px;
+            height: 42px;
           }
           .code-icon {
-            width: 17px;
-            height: 17px;
+            width: 22px;
+            height: 22px;
           }
           .footer-text {
-            font-size: 0.76rem;
+            font-size: 1.05rem;
           }
           .footer-text .highlight {
-            font-size: 0.86rem;
+            font-size: 1.2rem;
           }
-          .social-link {
-            padding: 0.18rem 0.2rem;
-            font-size: 0.72rem;
+        }
+
+        @media (max-width: 768px) {
+          .footer-container {
+            padding: 0.5rem 0.6rem;
+            min-height: auto;
+            padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.5rem + constant(safe-area-inset-bottom, 0px));
           }
+
+          .footer-content {
+            gap: 0.5rem;
+            padding: 0.1rem 0;
+          }
+
+          .footer-brand {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.95rem;
+            border-width: 2px;
+            border-radius: 12px;
+            gap: 0.6rem;
+          }
+
+          .code-icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+          }
+
+          .code-icon {
+            width: 19px;
+            height: 19px;
+          }
+
+          .footer-text {
+            font-size: 0.88rem;
+          }
+
+          .footer-text .highlight {
+            font-size: 1rem;
+          }
+
+          .footer-socials {
+            gap: 1.5rem;
+          }
+
           .social-logo {
-            width: 30px;
-            height: 30px;
-            flex-basis: 30px;
+            width: 28px;
+            height: 28px;
+            flex-basis: 28px;
           }
+
           .social-link .icon-text {
-            font-size: 0.72rem;
+            font-size: 0.65rem;
+            max-width: 80px;
           }
-          .footer-divider {
-            display: none;
+
+          .social-link {
+            font-size: 0.65rem;
           }
+
           .footer-year {
-            font-size: 0.62rem;
-          }
-          .footer-heart {
-            transform: scale(0.78);
+            font-size: 0.7rem;
           }
         }
 
         @media (max-width: 480px) {
           .footer-container {
-            padding: 0.18rem 0.45rem;
-            padding-bottom: calc(0.18rem + env(safe-area-inset-bottom, 0px));
-            padding-bottom: calc(0.18rem + constant(safe-area-inset-bottom, 0px));
+            padding: 0.4rem 0.4rem;
+            padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.4rem + constant(safe-area-inset-bottom, 0px));
           }
+
           .footer-content {
-            gap: 0.45rem;
+            gap: 0.4rem;
           }
+
           .footer-brand {
-            font-size: 0.72rem;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.8rem;
+            border-width: 1.5px;
+            border-radius: 10px;
+            gap: 0.5rem;
           }
+
           .code-icon-wrapper {
-            width: 27px;
-            height: 27px;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
           }
+
           .code-icon {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
           }
+
           .footer-text {
-            font-size: 0.66rem;
+            font-size: 0.75rem;
           }
+
           .footer-text .highlight {
-            font-size: 0.74rem;
+            font-size: 0.85rem;
           }
-          .social-link {
-            padding: 0.15rem 0.18rem;
-            font-size: 0.62rem;
+
+          .footer-socials {
+            gap: 1.2rem;
           }
+
           .social-logo {
-            width: 27px;
-            height: 27px;
-            flex-basis: 27px;
+            width: 24px;
+            height: 24px;
+            flex-basis: 24px;
           }
+
           .social-link .icon-text {
-            display: inline;
-            font-size: 0.58rem;
-            overflow-wrap: anywhere;
+            font-size: 0.55rem;
+            max-width: 65px;
           }
+
           .social-link {
-            padding: 0.15rem 0.18rem;
+            font-size: 0.55rem;
           }
-          .footer-heart {
-            transform: scale(0.7);
-          }
+
           .footer-year {
-            display: none;
-          }
-          .footer-divider {
-            display: none;
+            font-size: 0.6rem;
           }
         }
 
-        /* Special handling for devices with bottom navigation */
+        @media (max-width: 360px) {
+          .footer-brand {
+            padding: 0.15rem 0.4rem;
+            font-size: 0.7rem;
+            border-radius: 8px;
+            gap: 0.4rem;
+          }
+
+          .code-icon-wrapper {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+          }
+
+          .code-icon {
+            width: 13px;
+            height: 13px;
+          }
+
+          .footer-text {
+            font-size: 0.65rem;
+          }
+
+          .footer-text .highlight {
+            font-size: 0.72rem;
+          }
+
+          .social-logo {
+            width: 20px;
+            height: 20px;
+            flex-basis: 20px;
+          }
+
+          .social-link .icon-text {
+            font-size: 0.48rem;
+            max-width: 55px;
+          }
+
+          .footer-socials {
+            gap: 0.8rem;
+          }
+
+          .footer-year {
+            font-size: 0.55rem;
+          }
+        }
+
+        /* Safe area support */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
           .footer-container {
-            padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+          }
+        }
+
+        @media (max-width: 768px) {
+          @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .footer-container {
+              padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+            }
+          }
+        }
+
+        @media (max-width: 480px) {
+          @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            .footer-container {
+              padding-bottom: calc(0.4rem + env(safe-area-inset-bottom, 0px));
+            }
           }
         }
       `}</style>
 
       <footer className="footer-container">
         <div className="footer-content">
-          {/* Left: Brand - Code Icon `</>` */}
-          <a href="#" className="footer-brand">
+          {/* ============================================
+              TAG LINE WITH SKY BLUE BORDER BOX
+              Red Code Icon `</>` - Increased Size
+              Click opens: https://react-myapp-omega.vercel.app/
+          ============================================ */}
+          <a 
+            href="https://react-myapp-omega.vercel.app/" 
+            className="footer-brand"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Visit Ajay Kedar's portfolio"
+            title="Visit Portfolio"
+          >
             <div className="code-icon-wrapper">
               <CodeIcon />
             </div>
@@ -439,18 +515,14 @@ const Footer = () => {
             </span>
           </a>
 
-          <div className="footer-divider" />
-
-          {/* Center: Heart */}
-          <div className="footer-heart">
-            <Heart size={20} fill="#F43F5E" stroke="none" />
-          </div>
-
-          <div className="footer-divider" />
-
-          {/* Right: Social Links - Instagram & WhatsApp */}
+          {/* ============================================
+              SOCIAL LINKS - ORIGINAL COLORS
+              Increased Size
+              Instagram: #E1306C
+              WhatsApp: #25D366
+          ============================================ */}
           <div className="footer-socials">
-            {/* Instagram */}
+            {/* Instagram - Original Color */}
             <a 
               href="https://instagram.com/ajay_kedar_1" 
               className="social-link instagram" 
@@ -463,7 +535,7 @@ const Footer = () => {
               <span className="icon-text">@ajay_kedar_1</span>
             </a>
 
-            {/* WhatsApp */}
+            {/* WhatsApp - Original Color */}
             <a 
               href="https://wa.me/919370470095" 
               className="social-link whatsapp" 

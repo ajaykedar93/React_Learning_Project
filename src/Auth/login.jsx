@@ -445,15 +445,16 @@ export default function Login() {
               {errors.password && <div className="error-text">{errors.password}</div>}
             </div>
 
-            {/* Options */}
+            {/* Options - Remember Me & Forgot Password */}
             <div className="form-options">
               <label className="checkbox-label">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
+                  className="custom-checkbox"
                 />
-                <span>Remember me</span>
+                <span className="checkbox-text">Remember me</span>
               </label>
               <Link className="forgot-link" to="/forgot">
                 Forgot password?
@@ -797,7 +798,7 @@ const css = `
   }
 
   /* ============================================
-     FORM OPTIONS
+     FORM OPTIONS - PROFESSIONAL CHECKBOX
      ============================================ */
   .form-options {
     display: flex;
@@ -809,28 +810,76 @@ const css = `
   .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: 12px;
+    gap: 8px;
+    font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.5);
     cursor: pointer;
     transition: color 0.3s ease;
+    user-select: none;
   }
 
   .checkbox-label:hover {
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7);
   }
 
-  .checkbox-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: #7C3AED;
-    border-radius: 4px;
+  .custom-checkbox {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 5px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    outline: none;
+    flex-shrink: 0;
+  }
+
+  .custom-checkbox:hover {
+    border-color: rgba(124, 58, 237, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .custom-checkbox:checked {
+    background: linear-gradient(135deg, #7C3AED, #EC4899);
+    border-color: #7C3AED;
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  }
+
+  .custom-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .custom-checkbox:focus {
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+  }
+
+  .checkbox-text {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .checkbox-label:hover .checkbox-text {
+    color: rgba(255, 255, 255, 0.7);
   }
 
   .forgot-link {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: rgba(124, 58, 237, 0.7);
     text-decoration: none;
