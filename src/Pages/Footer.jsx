@@ -2,8 +2,6 @@ import React from 'react';
 import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
 
 const Footer = () => {
-  const currentYear = new Date().getFullYear();
-
   // Code Icon `</>` using SVG - Red Color
   const CodeIcon = () => (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -68,7 +66,6 @@ const Footer = () => {
 
         /* ============================================
            TAG LINE WITH SKY BLUE BORDER BOX
-           INCREASED SIZE
            ============================================ */
         .footer-brand {
           display: flex;
@@ -100,7 +97,7 @@ const Footer = () => {
           transform: scale(0.97);
         }
 
-        /* Code Icon Wrapper - Red Color - INCREASED */
+        /* Code Icon Wrapper - Red Color */
         .code-icon-wrapper {
           display: flex;
           align-items: center;
@@ -137,7 +134,6 @@ const Footer = () => {
           color: #F87171;
         }
 
-        /* Tag Text - INCREASED */
         .footer-text {
           font-size: 1.5rem;
           font-weight: 700;
@@ -157,7 +153,7 @@ const Footer = () => {
         }
 
         /* ============================================
-           SOCIAL LINKS - INCREASED ICON SIZE
+           SOCIAL LINKS - EQUAL SIZE ICONS
            ============================================ */
         .footer-socials {
           display: flex;
@@ -182,7 +178,7 @@ const Footer = () => {
           position: relative;
         }
 
-        /* Social Icons - INCREASED SIZE */
+        /* Social Icons - EQUAL SIZE for both */
         .social-logo {
           width: 34px;
           height: 34px;
@@ -246,17 +242,6 @@ const Footer = () => {
         .social-link:hover::after {
           opacity: 1;
           transform: scale(1.1);
-        }
-
-        /* ============================================
-           YEAR - INCREASED
-           ============================================ */
-        .footer-year {
-          font-size: 0.85rem;
-          color: rgba(255, 255, 255, 0.12);
-          font-weight: 500;
-          letter-spacing: 0.05em;
-          margin-top: 0.05rem;
         }
 
         /* ============================================
@@ -337,10 +322,6 @@ const Footer = () => {
             height: 28px;
             flex-basis: 28px;
           }
-
-          .footer-year {
-            font-size: 0.7rem;
-          }
         }
 
         @media (max-width: 480px) {
@@ -391,10 +372,6 @@ const Footer = () => {
             height: 24px;
             flex-basis: 24px;
           }
-
-          .footer-year {
-            font-size: 0.6rem;
-          }
         }
 
         @media (max-width: 360px) {
@@ -432,10 +409,6 @@ const Footer = () => {
 
           .footer-socials {
             gap: 0.8rem;
-          }
-
-          .footer-year {
-            font-size: 0.5rem;
           }
         }
 
@@ -484,8 +457,6 @@ const Footer = () => {
         <div className="footer-content">
           {/* ============================================
               TAG LINE WITH SKY BLUE BORDER BOX
-              BIG SIZE - INCREASED
-              Red Code Icon `</>`
               Click opens: https://react-myapp-omega.vercel.app/
           ============================================ */}
           <a 
@@ -505,13 +476,13 @@ const Footer = () => {
           </a>
 
           {/* ============================================
-              SOCIAL LINKS - ONLY ICONS
-              INCREASED SIZE
+              SOCIAL LINKS - EQUAL SIZE ICONS
               Instagram: #E1306C
               WhatsApp: #25D366
+              Both icons are exactly 34px
           ============================================ */}
           <div className="footer-socials">
-            {/* Instagram - Original Color */}
+            {/* Instagram */}
             <a 
               href="https://instagram.com/ajay_kedar_1" 
               className="social-link instagram" 
@@ -523,7 +494,7 @@ const Footer = () => {
               <FaInstagram className="social-logo" aria-hidden="true" />
             </a>
 
-            {/* WhatsApp - Original Color */}
+            {/* WhatsApp - wa.me URL works on all devices */}
             <a 
               href="https://wa.me/919370470095" 
               className="social-link whatsapp" 
@@ -535,9 +506,6 @@ const Footer = () => {
               <FaWhatsapp className="social-logo" aria-hidden="true" />
             </a>
           </div>
-
-          {/* Year */}
-          <span className="footer-year">{currentYear}</span>
         </div>
       </footer>
     </>
