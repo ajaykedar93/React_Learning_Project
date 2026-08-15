@@ -4,59 +4,64 @@ import Home from "./Pages/Home";
 import Login from "./Auth/login";
 import Register from "./Auth/register";
 import Forgot from "./Auth/forgot";
+import Portfolio from "./Pages/Portfolio";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // ✅ Protected Route Component
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: '#06060f',
-        color: '#A78BFA',
-        fontSize: '1.2rem'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          background: "#06060f",
+          color: "#A78BFA",
+          fontSize: "1.2rem",
+        }}
+      >
         Loading...
       </div>
     );
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 }
 
 // ✅ Public Route - redirects to home if already logged in
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: '#06060f',
-        color: '#A78BFA',
-        fontSize: '1.2rem'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          background: "#06060f",
+          color: "#A78BFA",
+          fontSize: "1.2rem",
+        }}
+      >
         Loading...
       </div>
     );
   }
-  
+
   if (user) {
     return <Navigate to="/" replace />;
   }
-  
+
   return children;
 }
 
@@ -65,44 +70,69 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* ✅ Public Routes - accessible without login */}
-          <Route 
-            path="/login" 
+
+          {/* =========================
+              PUBLIC ROUTES
+          ========================= */}
+
+          {/* Portfolio - PUBLIC, no login required */}
+          <Route
+            path="/portfolio"
+            element={<Portfolio />}
+          />
+
+          {/* Login */}
+          <Route
+            path="/login"
             element={
               <PublicRoute>
                 <Login />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/register" 
+
+          {/* Register */}
+          <Route
+            path="/register"
             element={
               <PublicRoute>
                 <Register />
               </PublicRoute>
-            } 
+            }
           />
-          <Route 
-            path="/forgot" 
+
+          {/* Forgot Password */}
+          <Route
+            path="/forgot"
             element={
               <PublicRoute>
                 <Forgot />
               </PublicRoute>
-            } 
+            }
           />
-          
-          {/* ✅ Protected Routes - require login */}
-          <Route 
-            path="/" 
+
+          {/* =========================
+              PROTECTED ROUTES
+          ========================= */}
+
+          <Route
+            path="/"
             element={
               <ProtectedRoute>
                 <Home />
               </ProtectedRoute>
-            } 
+            }
           />
-          
-          {/* ✅ Fallback - redirect to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+
+          {/* =========================
+              FALLBACK
+          ========================= */}
+
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>

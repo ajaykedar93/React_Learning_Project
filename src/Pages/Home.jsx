@@ -9,6 +9,7 @@ import Loans from './Loans';
 import Trading from './Trading';
 import Footer from './Footer';
 
+
 const Home = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
