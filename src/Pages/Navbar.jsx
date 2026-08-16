@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, LogOut, X, Menu, ChevronDown } from 'lucide-react';
+import { Search, LogOut, X } from 'lucide-react';
 
 const Navbar = ({ onSearch, onLogout, onNavigate }) => {
   const [searchText, setSearchText] = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
 
   // Sections that actually exist on the Home page.
-  // Every item uses the same id for dropdown + search navigation.
   const sections = [
     { id: 'financial-review', label: 'Financial Overview', tab: 'overview' },
     { id: 'expenses', label: 'Expenses', tab: 'expenses' },
@@ -21,21 +18,6 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
     { id: 'trading-journal', label: 'Trading Journal' },
     { id: 'profile-card', label: 'Profile Card' }
   ];
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, []);
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -52,7 +34,6 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
   const handleSearchResult = (sectionId) => {
     setSearchText('');
     setShowMobileSearch(false);
-    setShowDropdown(false);
     if (onNavigate) {
       onNavigate(sectionId);
     }
@@ -67,36 +48,6 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-  };
-
-  const handleNavigate = (sectionId) => {
-    setShowDropdown(false);
-    if (onNavigate) {
-      onNavigate(sectionId);
-    } else {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        // ✅ Dynamic navbar height for mobile
-        const navbar = document.querySelector('.navbar');
-        const navbarHeight = navbar ? navbar.offsetHeight : 70;
-        const isMobile = window.innerWidth <= 768;
-        const extraPadding = isMobile ? 15 : 0;
-        
-        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-        const offsetPosition = elementPosition - navbarHeight - extraPadding;
-        
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-      }
-    }
-  };
-
-  const toggleDropdown = () => {
-    setShowDropdown(!showDropdown);
-    // Close mobile search if open
-    if (showMobileSearch) setShowMobileSearch(false);
   };
 
   return (
@@ -155,117 +106,6 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-        }
-
-        /* =============================================
-           DROPDOWN NAVIGATION
-        ============================================= */
-        .nav-dropdown {
-          position: relative;
-          display: inline-block;
-        }
-
-        .nav-dropdown-btn {
-          background: rgba(255, 255, 255, 0.18);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.25);
-          border-radius: 12px;
-          padding: 0 1rem;
-          height: 42px;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #FFFFFF;
-          font-weight: 600;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          white-space: nowrap;
-        }
-
-        .nav-dropdown-btn:hover {
-          background: rgba(255, 255, 255, 0.28);
-          border-color: rgba(255, 255, 255, 0.45);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .nav-dropdown-btn:active {
-          transform: scale(0.95);
-        }
-
-        .nav-dropdown-menu {
-          position: absolute;
-          top: calc(100% + 8px);
-          left: 0;
-          min-width: 280px;
-          max-height: 400px;
-          overflow-y: auto;
-          background: rgba(20, 20, 40, 0.95);
-          backdrop-filter: blur(25px);
-          -webkit-backdrop-filter: blur(25px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 16px;
-          padding: 0.5rem;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-          animation: dropdownSlide 0.25s ease;
-          z-index: 200;
-        }
-
-        @keyframes dropdownSlide {
-          from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .nav-dropdown-menu::-webkit-scrollbar {
-          width: 4px;
-        }
-        .nav-dropdown-menu::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-        .nav-dropdown-menu::-webkit-scrollbar-thumb {
-          background: rgba(124, 58, 237, 0.4);
-          border-radius: 10px;
-        }
-
-        .nav-dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          padding: 0.6rem 0.8rem;
-          border-radius: 10px;
-          color: rgba(255, 255, 255, 0.8);
-          font-size: 0.8rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .nav-dropdown-item:hover {
-          background: rgba(124, 58, 237, 0.25);
-          color: #FFFFFF;
-        }
-
-        .nav-dropdown-item .dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          flex-shrink: 0;
-          background: rgba(255, 255, 255, 0.2);
-        }
-
-        .nav-dropdown-item:hover .dot {
-          background: #A78BFA;
-        }
-
-        .nav-dropdown-divider {
-          height: 1px;
-          background: rgba(255, 255, 255, 0.06);
-          margin: 0.3rem 0.5rem;
         }
 
         /* =============================================
@@ -361,37 +201,9 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           font: 500 0.75rem 'Plus Jakarta Sans', sans-serif;
         }
 
-
         /* =============================================
-           ICON & LOGOUT BUTTONS
+           LOGOUT BUTTON
         ============================================= */
-        .icon-btn {
-          background: rgba(255, 255, 255, 0.18);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.25);
-          border-radius: 12px;
-          width: 42px;
-          height: 42px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          color: #FFFFFF;
-          transition: all 0.3s ease;
-        }
-
-        .icon-btn:hover {
-          background: rgba(255, 255, 255, 0.28);
-          border-color: rgba(255, 255, 255, 0.45);
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-        }
-
-        .icon-btn:active {
-          transform: scale(0.95);
-        }
-
         .logout-btn {
           background: linear-gradient(135deg, #FF5A6E, #F43F5E);
           border: 1px solid rgba(255, 255, 255, 0.25);
@@ -437,7 +249,7 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           border-bottom: 1px solid rgba(255, 255, 255, 0.2);
           padding: 1rem 1.5rem;
           display: flex;
-          align-items: center;
+          flex-direction: column;
           gap: 0.75rem;
           z-index: 99;
           animation: slideDown 0.3s ease;
@@ -518,6 +330,32 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
         }
 
         /* =============================================
+           MOBILE SEARCH TOGGLE BUTTON
+        ============================================= */
+        .mobile-search-btn {
+          display: none;
+          background: rgba(255, 255, 255, 0.18);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          border-radius: 12px;
+          width: 42px;
+          height: 42px;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #FFFFFF;
+          transition: all 0.3s ease;
+        }
+
+        .mobile-search-btn:hover {
+          background: rgba(255, 255, 255, 0.28);
+          border-color: rgba(255, 255, 255, 0.45);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        /* =============================================
            RESPONSIVE
         ============================================= */
         @media (max-width: 1024px) {
@@ -534,18 +372,18 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           .search-box.desktop-search { display: none; }
           .dashboard-title { font-size: 1.1rem; }
           .navbar-right { gap: 0.5rem; }
-          .nav-dropdown-btn span { display: none; }
-          .nav-dropdown-btn { padding: 0 0.75rem; height: 38px; }
           .logout-btn span { display: none; }
-          .logout-btn { padding: 0; width: 38px; height: 38px; justify-content: center; }
-          .icon-btn { width: 38px; height: 38px; }
-          .nav-dropdown-menu { 
-            min-width: 240px; 
-            right: 0; 
-            left: auto;
-            max-height: 300px;
+          .logout-btn { 
+            padding: 0; 
+            width: 42px; 
+            height: 42px; 
+            justify-content: center; 
           }
-          .mobile-search-btn { display: flex !important; }
+          .mobile-search-btn { 
+            display: flex !important; 
+            width: 42px;
+            height: 42px;
+          }
           .mobile-search-dropdown {
             top: calc(68px + env(safe-area-inset-top, 0px));
           }
@@ -558,16 +396,14 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
             min-height: calc(62px + env(safe-area-inset-top, 0px));
           }
           .dashboard-title { font-size: 0.95rem; }
-          .icon-btn { width: 34px; height: 34px; }
-          .logout-btn { width: 34px; height: 34px; }
-          .nav-dropdown-btn { height: 34px; padding: 0 0.5rem; font-size: 0.7rem; }
-          .nav-dropdown-menu { 
-            min-width: 200px; 
-            max-height: 250px;
-            right: 0;
-            left: auto;
+          .logout-btn { 
+            width: 38px; 
+            height: 38px; 
           }
-          .nav-dropdown-item { font-size: 0.7rem; padding: 0.4rem 0.6rem; }
+          .mobile-search-btn { 
+            width: 38px;
+            height: 38px;
+          }
           .mobile-search-dropdown {
             top: calc(62px + env(safe-area-inset-top, 0px));
             padding: 0.75rem 1rem;
@@ -576,12 +412,8 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
 
         .mobile-search-btn { display: none; }
 
-
         /*
          * Mobile camera / notch safe area:
-         * The navbar keeps its original gradient and now reserves the top
-         * device inset before the Dashboard row. Nothing is placed under
-         * the camera/notch.
          */
         .navbar-safe-spacer {
           display: block;
@@ -645,41 +477,11 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
           </div>
         </div>
 
-        {/* RIGHT: Navigation Dropdown + Logout */}
+        {/* RIGHT: Search (Mobile) + Logout */}
         <div className="navbar-right">
-          {/* Navigation Dropdown */}
-          <div className="nav-dropdown" ref={dropdownRef}>
-            <button 
-              className="nav-dropdown-btn" 
-              onClick={toggleDropdown}
-              aria-label="Toggle navigation menu"
-            >
-              <Menu size={18} color="#FFFFFF" />
-              <span>Navigate</span>
-              <ChevronDown size={14} color="#FFFFFF" />
-            </button>
-
-            {showDropdown && (
-              <div className="nav-dropdown-menu">
-                {sections.map((section, index) => (
-                  <div key={section.id}>
-                    <div 
-                      className="nav-dropdown-item" 
-                      onClick={() => handleNavigate(section.id)}
-                    >
-                      <span className="dot" />
-                      {section.label}
-                    </div>
-                    {index === 0 && <div className="nav-dropdown-divider" />}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Mobile Search Toggle */}
           <button
-            className="icon-btn mobile-search-btn"
+            className="mobile-search-btn"
             onClick={() => setShowMobileSearch(!showMobileSearch)}
             aria-label="Toggle mobile search"
           >
@@ -741,11 +543,8 @@ const Navbar = ({ onSearch, onLogout, onNavigate }) => {
         )}
       </nav>
 
-      {/* Safe space below the fixed navbar.
-          Prevents the first dashboard row/content from sitting underneath
-          the enlarged mobile notch-safe navbar. */}
+      {/* Safe space below the fixed navbar */}
       <div className="navbar-safe-spacer" aria-hidden="true" />
-
     </>
   );
 };

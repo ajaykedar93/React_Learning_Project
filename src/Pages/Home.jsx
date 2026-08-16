@@ -1,3 +1,4 @@
+// Home.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +9,12 @@ import Transactions from './Transactions';
 import Loans from './Loans';
 import Trading from './Trading';
 import Footer from './Footer';
-
+import Expense from './Expense';
+import LoanBorrow from './LoanBorrow';
+import Payment from './Payment';
+import Performance from './Performance';
+import Summary from './Summary';
+import ExportDetails from './ExportDetails';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -18,10 +24,29 @@ const Home = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [navigationTarget, setNavigationTarget] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile');
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
   const refreshTimerRef = useRef(null);
   const isMountedRef = useRef(true);
   const refreshInProgress = useRef(false);
   const refreshCountRef = useRef(0);
+  const tabContainerRef = useRef(null);
+
+  // Tab configuration - ProfileCard is now first
+  const tabs = [
+    { id: 'profile', label: 'Profile', icon: '👤', component: ProfileCard },
+    { id: 'overview', label: 'Overview', icon: '📊', component: Overview },
+    { id: 'expense', label: 'Expense', icon: '💳', component: Expense },
+    { id: 'loan-borrow', label: 'Loan & Borrow', icon: '💰', component: LoanBorrow },
+    { id: 'payment', label: 'Payments', icon: '💎', component: Payment },
+    { id: 'performance', label: 'Performance', icon: '📈', component: Performance },
+    { id: 'summary', label: 'Summary', icon: '📋', component: Summary },
+    { id: 'transactions', label: 'Transactions', icon: '📝', component: Transactions },
+    { id: 'trading', label: 'Trading', icon: '📊', component: Trading },
+    { id: 'loans', label: 'Loans', icon: '🏦', component: Loans },
+    { id: 'export', label: 'Export', icon: '📤', component: ExportDetails },
+  ];
 
   // =============================================
   // LOGOUT HANDLER
@@ -40,89 +65,41 @@ const Home = () => {
   };
 
   // =============================================
-  // SECTION NAVIGATION
+  // TAB NAVIGATION
   // =============================================
-  const handleNavigate = (sectionId) => {
-    console.log(`📍 Navigating to: ${sectionId}`);
-    setNavigationTarget(sectionId);
-
-    const overviewTabs = {
-      'financial-review': 'overview',
-      'expenses': 'expenses',
-      'loans': 'loans',
-      'payments': 'payments',
-      'performance': 'performance',
-      'summary': 'summary'
-    };
-
-    // Overview controls its own tab and scroll.
-    if (overviewTabs[sectionId]) {
-      return;
-    }
-
-    const scrollToVisibleSection = (attempt = 0) => {
-      const elements = Array.from(
-        document.querySelectorAll(`[data-section="${sectionId}"]`)
-      );
-
-      const element = elements.find((item) => {
-        const style = window.getComputedStyle(item);
-        return style.display !== 'none' &&
-               style.visibility !== 'hidden' &&
-               item.getBoundingClientRect().height > 0;
-      });
-
-      if (!element) {
-        // Backward compatibility with any existing unique id.
-        const fallback = document.getElementById(sectionId);
-        if (fallback && fallback.getBoundingClientRect().height > 0) {
-          scrollToElement(fallback);
-          return;
-        }
-
-        if (attempt < 10) {
-          setTimeout(() => scrollToVisibleSection(attempt + 1), 100 + attempt * 80);
-        }
-        return;
-      }
-
-      scrollToElement(element);
-    };
-
-    const scrollToElement = (element) => {
-      const navbar = document.querySelector('.navbar');
-      const navbarHeight = navbar ? navbar.getBoundingClientRect().height : 70;
-      const footer = document.querySelector('.footer-wrapper');
-      const footerHeight = footer ? footer.getBoundingClientRect().height : 0;
-      const extra = window.innerWidth <= 480 ? 18 : window.innerWidth <= 768 ? 22 : 24;
-
-      const rect = element.getBoundingClientRect();
-      const top = Math.max(
-        0,
-        rect.top + window.scrollY - navbarHeight - extra
-      );
-
-      window.scrollTo({ top, behavior: 'smooth' });
-
-      element.classList.add('section-nav-highlight');
-      setTimeout(() => element.classList.remove('section-nav-highlight'), 1200);
-
-      // Keep the target above the fixed footer on short screens.
-      if (footerHeight > 0 && window.innerHeight < 650) {
-        setTimeout(() => {
-          const current = element.getBoundingClientRect();
-          if (current.bottom > window.innerHeight - footerHeight - 10) {
-            window.scrollBy({
-              top: current.bottom - (window.innerHeight - footerHeight - 10),
-              behavior: 'smooth'
-            });
-          }
-        }, 450);
-      }
-    };
-
-    setTimeout(() => scrollToVisibleSection(), 80);
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setNavigationTarget(tabId);
+    
+    // Scroll to top when changing tabs
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // =============================================
+  // CHECK SCROLL POSITION FOR ARROWS
+  // =============================================
+  const checkScrollPosition = () => {
+    const container = tabContainerRef.current;
+    if (!container) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setShowLeftArrow(scrollLeft > 20);
+    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 20);
+  };
+
+  useEffect(() => {
+    const container = tabContainerRef.current;
+    if (container) {
+      checkScrollPosition();
+      container.addEventListener('scroll', checkScrollPosition);
+      window.addEventListener('resize', checkScrollPosition);
+      
+      return () => {
+        container.removeEventListener('scroll', checkScrollPosition);
+        window.removeEventListener('resize', checkScrollPosition);
+      };
+    }
+  }, []);
 
   // =============================================
   // SILENT BACKGROUND REFRESH
@@ -167,6 +144,8 @@ const Home = () => {
     };
   }, [refreshPage]);
 
+  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || ProfileCard;
+
   return (
     <>
       <style>{`
@@ -199,6 +178,8 @@ const Home = () => {
 
         .home-container {
           --footer-space: 48px;
+          --navbar-height: 70px;
+          --tabs-height: 0px;
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -206,8 +187,7 @@ const Home = () => {
           min-height: 100vh;
           width: 100%;
           overflow-x: hidden;
-          padding-top: calc(70px + env(safe-area-inset-top, 0px));
-          /* Keep page content above the fixed footer. */
+          padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
           padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
         }
 
@@ -221,37 +201,193 @@ const Home = () => {
         }
 
         /* =============================================
-           SECTION ANCHOR - GUARANTEED SCROLL
+           PROFESSIONAL TAB NAVIGATION
         ============================================= */
-        .section-anchor {
-          display: block;
-          width: 100%;
+        .tab-navigation-wrapper {
           position: relative;
-          scroll-margin-top: 80px;
-          min-height: 10px;
+          margin-bottom: 1.5rem;
+          width: 100%;
+          padding: 0 35px;
         }
 
-        .section-nav-highlight {
-          animation: sectionNavHighlight 1.2s ease;
+        .tab-navigation {
+          display: flex;
+          gap: 0.5rem;
+          padding: 0.75rem 1rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          flex-wrap: nowrap;
+          backdrop-filter: blur(10px);
+          scroll-behavior: smooth;
         }
 
-        @keyframes sectionNavHighlight {
-          0% { outline: 2px solid rgba(167,139,250,0); outline-offset: 8px; }
-          25% { outline: 2px solid rgba(167,139,250,0.9); outline-offset: 8px; }
-          100% { outline: 2px solid rgba(167,139,250,0); outline-offset: 8px; }
+        .tab-navigation::-webkit-scrollbar {
+          display: none;
         }
 
-        @media (max-width: 768px) {
-          .section-anchor {
-            scroll-margin-top: calc(65px + env(safe-area-inset-top, 0px));
-            min-height: 5px;
+        /* Scroll indicators */
+        .scroll-indicator {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 32px;
+          height: 32px;
+          background: rgba(6, 6, 15, 0.9);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          color: rgba(255, 255, 255, 0.7);
+          cursor: pointer;
+          z-index: 10;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          font-size: 1.2rem;
+          font-weight: 300;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .scroll-indicator:hover {
+          background: rgba(6, 6, 15, 0.98);
+          color: #fff;
+          border-color: rgba(124, 58, 237, 0.4);
+          transform: translateY(-50%) scale(1.05);
+        }
+
+        .scroll-indicator:active {
+          transform: translateY(-50%) scale(0.95);
+        }
+
+        .scroll-indicator.left {
+          left: 0;
+        }
+
+        .scroll-indicator.right {
+          right: 0;
+        }
+
+        .scroll-indicator.visible {
+          display: flex;
+        }
+
+        .tab-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.6rem 1.2rem;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 10px;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.75rem;
+          font-weight: 600;
+          font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+          min-height: 40px;
+          position: relative;
+          flex-shrink: 0;
+        }
+
+        .tab-button:hover {
+          color: rgba(255, 255, 255, 0.8);
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.08);
+          transform: translateY(-1px);
+        }
+
+        /* FRESH NEW ACTIVE COLOR - Vibrant Cyan/Teal gradient */
+        .tab-button.active {
+          color: #fff;
+          background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(16, 185, 129, 0.15));
+          border-color: rgba(6, 182, 212, 0.35);
+          box-shadow: 0 4px 25px rgba(6, 182, 212, 0.15), inset 0 1px 0 rgba(6, 182, 212, 0.1);
+        }
+
+        .tab-button.active::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 15%;
+          right: 15%;
+          height: 2.5px;
+          background: linear-gradient(90deg, #06b6d4, #10b981, #06b6d4);
+          background-size: 200% 100%;
+          border-radius: 2px;
+          animation: shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
           }
         }
 
-        @media (max-width: 480px) {
-          .section-anchor {
-            scroll-margin-top: calc(55px + env(safe-area-inset-top, 0px));
-            min-height: 5px;
+        .tab-button.active .tab-icon {
+          filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.3));
+        }
+
+        .tab-icon {
+          font-size: 1.1rem;
+          line-height: 1;
+          transition: all 0.3s ease;
+        }
+
+        .tab-label {
+          font-size: 0.7rem;
+          letter-spacing: 0.3px;
+          transition: all 0.3s ease;
+        }
+
+        .tab-button.active .tab-label {
+          color: #67e8f9;
+        }
+
+        .tab-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          background: rgba(6, 182, 212, 0.15);
+          border-radius: 20px;
+          font-size: 0.55rem;
+          color: rgba(255, 255, 255, 0.5);
+          margin-left: 2px;
+          transition: all 0.3s ease;
+        }
+
+        .tab-button.active .tab-count {
+          background: rgba(6, 182, 212, 0.25);
+          color: #67e8f9;
+        }
+
+        /* =============================================
+           CONTENT AREA
+        ============================================= */
+        .tab-content {
+          width: 100%;
+          animation: fadeSlideIn 0.4s ease;
+        }
+
+        @keyframes fadeSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
           }
         }
 
@@ -316,119 +452,8 @@ const Home = () => {
           100% { transform: rotate(360deg) scale(1); }
         }
 
-        .refresh-text {
-          transition: all 0.3s ease;
-          font-weight: 400;
-          letter-spacing: 0.5px;
-        }
-
-        .refresh-text.refreshing {
-          color: #FCD34D;
-        }
-
-        /* =============================================
-           DESKTOP LAYOUT
-        ============================================= */
-        .desktop-layout {
-          display: grid !important;
-          grid-template-columns: 1fr 380px;
-          gap: 1.5rem;
-          margin-top: 1rem;
-          margin-bottom: 1.5rem;
-          align-items: start;
-          width: 100%;
-        }
-
-        .content-wrapper {
-          min-width: 0;
-          display: flex;
-          flex-direction: column;
-          width: 100%;
-          overflow: hidden;
-        }
-
-        .content-wrapper > * {
-          width: 100%;
-          max-width: 100%;
-          overflow: visible;
-        }
-
-        .profile-wrapper {
-          width: 100%;
-          max-width: 380px;
-          position: sticky;
-          top: 1rem;
-        }
-
-        .profile-wrapper > * {
-          width: 100%;
-          max-width: 100%;
-        }
-
-        .full-width-sections {
-          width: 100%;
-          display: flex !important;
-          flex-direction: column;
-          gap: 1rem;
-          margin-top: 0.5rem;
-        }
-
-        .full-width-section {
-          width: 100%;
-          overflow: hidden;
-        }
-
-        .full-width-section > * {
-          width: 100%;
-          max-width: 100%;
-          overflow: visible;
-        }
-
-        .mobile-layout {
-          display: none !important;
-          flex-direction: column;
-          gap: 1rem;
-          margin-top: 1rem;
-          width: 100%;
-        }
-
-        .mobile-layout > * {
-          width: 100%;
-          max-width: 100%;
-        }
-
-        .mobile-profile-wrapper {
-          width: 100%;
-          max-width: 100%;
-        }
-
-        .mobile-profile-wrapper > * {
-          width: 100%;
-          max-width: 100%;
-        }
-
-        .mobile-content-wrapper {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .mobile-content-wrapper > * {
-          width: 100%;
-          max-width: 100%;
-        }
-
-        .home-end-safe-space {
-          width: 100%;
-          height: 2px;
-          flex-shrink: 0;
-        }
-
         /* =============================================
            FIXED FOOTER
-           Always visible at the bottom without covering
-           page content or mobile navigation controls.
         ============================================= */
         .footer-wrapper {
           position: fixed;
@@ -451,237 +476,292 @@ const Home = () => {
           margin: 0 !important;
         }
 
-        @media (max-width: 768px) {
+        /* =============================================
+           RESPONSIVE DESIGN - All Screen Sizes
+        ============================================= */
+        
+        /* Large Screens (1200px+) */
+        @media (min-width: 1200px) {
           .home-main {
-            padding: 0.5rem 0.75rem 1rem;
+            padding: 1.5rem 2rem 2rem;
+          }
+          
+          .tab-navigation-wrapper {
+            padding: 0 40px;
           }
 
+          .tab-navigation {
+            padding: 0.75rem 1.25rem;
+            gap: 0.6rem;
+          }
+          
+          .tab-button {
+            padding: 0.7rem 1.5rem;
+            font-size: 0.8rem;
+            min-height: 44px;
+          }
+          
+          .tab-label {
+            font-size: 0.75rem;
+          }
+          
+          .tab-icon {
+            font-size: 1.2rem;
+          }
+        }
+
+        /* Desktop (1024px - 1199px) */
+        @media (max-width: 1199px) and (min-width: 1025px) {
+          .tab-navigation-wrapper {
+            padding: 0 38px;
+          }
+
+          .tab-navigation {
+            padding: 0.6rem 1rem;
+            gap: 0.4rem;
+          }
+          
+          .tab-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.7rem;
+            min-height: 38px;
+          }
+          
+          .tab-label {
+            font-size: 0.65rem;
+          }
+        }
+
+        /* Tablet (768px - 1024px) */
+        @media (max-width: 1024px) {
+          .tab-navigation-wrapper {
+            padding: 0 35px;
+          }
+
+          .tab-navigation {
+            padding: 0.5rem 0.75rem;
+            gap: 0.3rem;
+            border-radius: 14px;
+          }
+          
+          .tab-button {
+            padding: 0.5rem 0.8rem;
+            font-size: 0.7rem;
+            min-height: 36px;
+            border-radius: 8px;
+          }
+          
+          .tab-label {
+            font-size: 0.65rem;
+          }
+          
+          .tab-icon {
+            font-size: 1rem;
+          }
+        }
+
+        /* =============================================
+           MOBILE VIEW - FULL PAGE CONTENT + HORIZONTAL TABS
+        ============================================= */
+        @media (max-width: 768px) {
           .home-container {
-            --footer-space: 52px;
-            padding-top: calc(55px + env(safe-area-inset-top, 0px));
+            --navbar-height: 55px;
+            --footer-space: 58px;
+            padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
             padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
+            min-height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
+            overflow-y: visible;
           }
 
-          .desktop-layout {
-            display: none !important;
+          .home-main {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+            margin: 0;
+            overflow: visible;
           }
 
-          .full-width-sections {
-            display: none !important;
+          .tab-navigation-wrapper {
+            position: relative;
+            top: auto;
+            z-index: 50;
+            width: 100%;
+            margin: 0;
+            padding: 10px 34px;
+            background: #06060f;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
           }
 
-          .mobile-layout {
-            display: flex !important;
+          .tab-navigation {
+            width: 100%;
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 8px;
+            padding: 7px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border-radius: 14px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
+            scrollbar-width: none;
           }
 
-          .mobile-content-wrapper {
-            gap: 0.75rem;
+          .tab-navigation::-webkit-scrollbar {
+            display: none;
+          }
+
+          .tab-button {
+            flex: 0 0 auto;
+            min-width: 125px;
+            min-height: 48px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            scroll-snap-align: start;
+          }
+
+          .tab-icon {
+            font-size: 19px;
+            flex-shrink: 0;
+          }
+
+          .tab-label {
+            font-size: 12px;
+            white-space: nowrap;
+          }
+
+          .tab-content {
+            position: relative;
+            width: 100%;
+            min-width: 0;
+            display: block;
+            padding: 18px 12px 30px;
+            overflow: visible;
+            animation: fadeSlideIn 0.25s ease;
+          }
+
+          .tab-content > * {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+          }
+
+          .scroll-indicator {
+            width: 30px;
+            height: 30px;
+            font-size: 20px;
+            z-index: 100;
+          }
+
+          .scroll-indicator.left {
+            left: 2px;
+          }
+
+          .scroll-indicator.right {
+            right: 2px;
+          }
+
+          .scroll-indicator.visible {
+            display: flex;
+          }
+
+          .footer-wrapper {
+            min-height: var(--footer-space);
+            height: var(--footer-space);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
           }
 
           .refresh-indicator {
             bottom: calc(var(--footer-space) + 8px + env(safe-area-inset-bottom, 0px));
             right: 10px;
-            padding: 0.15rem 0.5rem;
-            font-size: 0.45rem;
-          }
-
-          .refresh-dot {
-            width: 3px;
-            height: 3px;
           }
         }
 
+        /* Small Mobile */
         @media (max-width: 480px) {
-          .home-main {
-            padding: 0.3rem 0.5rem 1rem;
+          .tab-navigation-wrapper {
+            padding: 9px 30px;
           }
 
-          .home-container {
-            --footer-space: 52px;
-            padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
+          .tab-navigation {
+            gap: 7px;
+            padding: 6px;
           }
 
-          .mobile-layout {
-            gap: 0.5rem;
+          .tab-button {
+            min-width: 120px;
+            min-height: 47px;
+            padding: 9px 14px;
+            font-size: 12px;
           }
 
-          .mobile-content-wrapper {
-            gap: 0.5rem;
+          .tab-icon {
+            font-size: 18px;
           }
 
-          .refresh-indicator {
-            bottom: calc(var(--footer-space) + 6px + env(safe-area-inset-bottom, 0px));
-            right: 8px;
-            padding: 0.1rem 0.4rem;
-            font-size: 0.4rem;
+          .tab-label {
+            font-size: 11.5px;
           }
 
-          .refresh-dot {
-            width: 3px;
-            height: 3px;
+          .tab-content {
+            padding: 16px 10px 28px;
           }
         }
 
-        @media (max-width: 1024px) and (min-width: 769px) {
-          .home-main {
-            padding: 0.75rem 1rem 1.5rem;
+        /* Very Small Mobile */
+        @media (max-width: 380px) {
+          .tab-navigation-wrapper {
+            padding: 8px 27px;
           }
-          .desktop-layout {
-            grid-template-columns: 1fr 340px;
-            gap: 1rem;
+
+          .tab-button {
+            min-width: 112px;
+            min-height: 45px;
+            padding: 8px 12px;
           }
-          .profile-wrapper {
-            max-width: 340px;
+
+          .tab-icon {
+            font-size: 17px;
+          }
+
+          .tab-label {
+            font-size: 11px;
+          }
+
+          .tab-content {
+            padding: 15px 9px 26px;
           }
         }
 
-        @media (min-width: 1400px) {
-          .home-main {
-            max-width: 1600px;
-            padding: 1.5rem 2rem 2rem;
+        /* =============================================
+           DESKTOP - Hide scroll indicators, normal padding
+        ============================================= */
+        @media (min-width: 769px) {
+          .scroll-indicator {
+            display: none !important;
           }
-          .desktop-layout {
-            grid-template-columns: 1fr 420px;
-            gap: 2rem;
+          
+          .tab-navigation-wrapper {
+            padding: 0 0 !important;
           }
-          .profile-wrapper {
-            max-width: 420px;
+
+          .tab-content {
+            padding: 0 !important;
           }
         }
 
-        @media (min-width: 1800px) {
-          .home-main {
-            max-width: 1800px;
-            padding: 2rem 3rem 2.5rem;
-          }
-          .desktop-layout {
-            grid-template-columns: 1fr 450px;
-            gap: 2.5rem;
-          }
-          .profile-wrapper {
-            max-width: 450px;
-          }
-        }
-
-        .glass-card {
-          width: 100% !important;
-          max-width: 100% !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
-        }
-
-        .table-wrapper {
-          width: 100%;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        table {
-          width: 100%;
-          min-width: 600px;
-          border-collapse: collapse;
-        }
-
-        .number-box {
-          width: 100%;
-          max-width: 100%;
-          overflow: hidden;
-          box-sizing: border-box;
-        }
-
-        .grid-4 {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 0.5rem;
-          width: 100%;
-        }
-
-        .grid-3 {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0.5rem;
-          width: 100%;
-        }
-
-        .grid-2 {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 0.5rem;
-          width: 100%;
-        }
-
-        .stat-value {
-          font-size: 1.4rem;
-          font-weight: 800;
-        }
-
-        .stat-label {
-          font-size: 0.65rem;
-          color: rgba(255, 255, 255, 0.4);
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-top: 0.2rem;
-        }
-
-        @media (max-width: 1024px) {
-          .grid-4 {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-          .grid-3 {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .grid-4 {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 0.4rem !important;
-          }
-          .grid-3 {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 0.4rem !important;
-          }
-          .grid-2 {
-            grid-template-columns: 1fr !important;
-            gap: 0.4rem !important;
-          }
-          .stat-value {
-            font-size: 1.1rem !important;
-          }
-          .stat-label {
-            font-size: 0.55rem !important;
-          }
-          .number-box {
-            padding: 0.5rem !important;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .grid-4 {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 0.3rem !important;
-          }
-          .grid-3 {
-            grid-template-columns: 1fr !important;
-            gap: 0.3rem !important;
-          }
-          .stat-value {
-            font-size: 0.9rem !important;
-          }
-          .stat-label {
-            font-size: 0.5rem !important;
-          }
-          .number-box {
-            padding: 0.3rem !important;
-            border-radius: 10px !important;
-          }
-          .glass-card {
-            padding: 0.4rem !important;
-            border-radius: 10px !important;
-          }
-        }
-
+        /* Scrollbar styling */
         ::-webkit-scrollbar {
           width: 4px;
           height: 4px;
@@ -693,35 +773,71 @@ const Home = () => {
         }
 
         ::-webkit-scrollbar-thumb {
-          background: rgba(124, 58, 237, 0.3);
+          background: rgba(6, 182, 212, 0.3);
           border-radius: 10px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-          background: rgba(124, 58, 237, 0.5);
+          background: rgba(6, 182, 212, 0.5);
         }
 
-        .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(20px);
-          z-index: 9999;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          animation: fadeIn 0.3s ease;
-          padding: 20px;
+        /* Touch-friendly improvements */
+        @media (hover: none) {
+          .tab-button:hover {
+            transform: none;
+            background: transparent;
+          }
+          
+          .tab-button:active {
+            transform: scale(0.95);
+          }
+
+          .scroll-indicator:hover {
+            transform: translateY(-50%) scale(1);
+          }
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
+        /* Landscape phone support */
+        @media (max-height: 500px) and (orientation: landscape) {
+          .home-container {
+            --navbar-height: 50px;
+            --tabs-height: 56px;
+            padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
+          }
+          
+          .tab-navigation-wrapper {
+            padding: 0.3rem 28px;
+            top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
+          }
 
-        .modal-content {
-          position: relative;
-          z-index: 10000;
+          .tab-navigation {
+            padding: 0.25rem 0.4rem;
+          }
+          
+          .tab-button {
+            min-height: 32px;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.6rem;
+            min-width: 85px;
+          }
+
+          .tab-icon {
+            font-size: 0.85rem;
+          }
+
+          .tab-label {
+            font-size: 0.55rem;
+          }
+          
+          .tab-content {
+            padding: 0.5rem 0.5rem 1rem;
+          }
+
+          .scroll-indicator {
+            width: 24px;
+            height: 24px;
+            font-size: 0.75rem;
+          }
         }
       `}</style>
 
@@ -729,7 +845,7 @@ const Home = () => {
         <Navbar 
           onSearch={setSearchQuery} 
           onLogout={handleLogout}
-          onNavigate={handleNavigate}
+          onNavigate={handleTabChange}
         />
 
         <main className="home-main">
@@ -737,10 +853,10 @@ const Home = () => {
             <div style={{
               padding: '0.4rem 0.8rem',
               marginBottom: '0.6rem',
-              background: 'rgba(124,58,237,0.15)',
+              background: 'rgba(6,182,212,0.12)',
               borderRadius: '6px',
-              border: '1px solid rgba(124,58,237,0.3)',
-              color: '#A5B4FC',
+              border: '1px solid rgba(6,182,212,0.2)',
+              color: '#67e8f9',
               fontSize: '0.75rem',
               textAlign: 'center',
               width: '100%',
@@ -751,67 +867,63 @@ const Home = () => {
             </div>
           )}
 
-          {/* =============================================
-              DESKTOP LAYOUT - Overview + Profile Side by Side
-              With proper section anchors for scrolling
-          ============================================= */}
-          <div className="desktop-layout">
-            <div className="content-wrapper">
-              {/* Overview contains many sections with IDs */}
-              <Overview refreshTrigger={refreshTrigger} navigationTarget={navigationTarget} />
+          {/* Professional Tab Navigation with Scroll - Sticky on mobile */}
+          <div className="tab-navigation-wrapper">
+            <button 
+              className={`scroll-indicator left ${showLeftArrow ? 'visible' : ''}`}
+              onClick={() => {
+                const container = tabContainerRef.current;
+                if (container) {
+                  container.scrollBy({ left: -250, behavior: 'smooth' });
+                }
+              }}
+              aria-label="Scroll tabs left"
+            >
+              ‹
+            </button>
+
+            <div className="tab-navigation" id="tabNavigation" ref={tabContainerRef}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => handleTabChange(tab.id)}
+                  aria-label={`Switch to ${tab.label} tab`}
+                >
+                  <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
+                  <span className="tab-label">{tab.label}</span>
+                  {tab.count && <span className="tab-count">{tab.count}</span>}
+                </button>
+              ))}
             </div>
-            <div className="profile-wrapper" data-section="profile-card">
-              {/* Profile Card with id="profile-card" */}
-              <ProfileCard refreshTrigger={refreshTrigger} />
-            </div>
+
+            <button 
+              className={`scroll-indicator right ${showRightArrow ? 'visible' : ''}`}
+              onClick={() => {
+                const container = tabContainerRef.current;
+                if (container) {
+                  container.scrollBy({ left: 250, behavior: 'smooth' });
+                }
+              }}
+              aria-label="Scroll tabs right"
+            >
+              ›
+            </button>
           </div>
 
-          {/* =============================================
-              FULL WIDTH SECTIONS - Desktop Only
-              Each has its own ID for scrolling
-          ============================================= */}
-          <div className="full-width-sections">
-            <div data-section="transactions" className="section-anchor">
-              <Transactions refreshTrigger={refreshTrigger} />
-            </div>
-            <div data-section="loan-details" className="section-anchor">
-              <Loans refreshTrigger={refreshTrigger} />
-            </div>
-            <div data-section="trading-journal" className="section-anchor">
-              <Trading refreshTrigger={refreshTrigger} />
-            </div>
-          </div>
-
-          {/* =============================================
-              MOBILE LAYOUT - Profile on TOP
-          ============================================= */}
-          <div className="mobile-layout">
-            <div className="mobile-profile-wrapper" data-section="profile-card">
-              <ProfileCard refreshTrigger={refreshTrigger} />
-            </div>
-            <div className="mobile-content-wrapper">
-              <Overview refreshTrigger={refreshTrigger} navigationTarget={navigationTarget} />
-              <div data-section="transactions" className="section-anchor">
-                <Transactions refreshTrigger={refreshTrigger} />
-              </div>
-              <div data-section="loan-details" className="section-anchor">
-                <Loans refreshTrigger={refreshTrigger} />
-              </div>
-              <div data-section="trading-journal" className="section-anchor">
-                <Trading refreshTrigger={refreshTrigger} />
-              </div>
-            </div>
+          {/* Tab Content - Scrollable */}
+          <div className="tab-content" role="tabpanel">
+            <ActiveComponent 
+              refreshTrigger={refreshTrigger} 
+              navigationTarget={navigationTarget}
+              searchQuery={searchQuery}
+            />
           </div>
         </main>
 
         <div className="footer-wrapper">
           <Footer />
         </div>
-
-        <div
-          className="home-end-safe-space"
-          aria-hidden="true"
-        />
 
         {/* Refresh Indicator */}
         <div className={`refresh-indicator ${isRefreshing ? 'active' : ''}`}>

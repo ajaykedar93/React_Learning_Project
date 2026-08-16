@@ -1444,6 +1444,18 @@ const ProfileCard = () => {
                 )}
               </InfoRow>
 
+              {/* Portfolio — opens the existing portfolio page at /portfolio. */}
+              <InfoRow
+                icon={<Globe size={14} color="#67E8F9" />}
+                iconBg="rgba(34,211,238,0.10)"
+                label="Portfolio"
+                value="View Portfolio"
+              >
+                <a href="/portfolio" style={linkBtn} aria-label="Open Portfolio">
+                  <ExternalLink size={13} color="#67E8F9" />
+                </a>
+              </InfoRow>
+
               <InfoRow icon={<Phone size={14} color="#6EE7B7" />} iconBg="rgba(16,185,129,0.1)" label="Primary Phone" value={data.phone1} isEditing={isEditing} onChange={(v) => handleChange('phone1', v)}>
                 <CopyBtn onClick={() => handleCopy(data.phone1 || 'Not set', 'p1')} copied={copiedField === 'p1'} />
               </InfoRow>
