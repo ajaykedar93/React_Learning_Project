@@ -41,6 +41,24 @@ const today = () => {
   return d.toISOString().slice(0, 10);
 };
 
+// Display dates everywhere in the details as: 1 Jan 2026
+const formatDisplayDate = (date) => {
+  if (!date) return "-";
+
+  const raw = String(date).slice(0, 10);
+  const [year, month, day] = raw.split("-").map(Number);
+
+  if (!year || !month || !day) return date;
+
+  const d = new Date(year, month - 1, day);
+
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 const monthValue = () => today().slice(0, 7);
 
 const daysBetween = (from, to) => {
@@ -73,6 +91,9 @@ const remainingText = (date) => {
 
 const normalizeRows = (result) => {
   const rows =
+    result?.data?.rows ||
+    result?.data?.loans ||
+    result?.data?.borrow ||
     result?.data ||
     result?.loans ||
     result?.borrow ||
@@ -83,6 +104,17 @@ const normalizeRows = (result) => {
   return Array.isArray(rows) ? rows : [];
 };
 
+const normalizeDateForInput = (value) => {
+  if (!value) return "";
+  const raw = String(value);
+  return raw.includes("T") ? raw.slice(0, 10) : raw.slice(0, 10);
+};
+
+const normalizeType = (value) => {
+  const type = String(value || "").trim().toLowerCase();
+  return type === "loan" ? "Loan" : "Borrow";
+};
+
 const LoanBorrow = () => {
   const [month, setMonth] = useState(monthValue());
   const [typeFilter, setTypeFilter] = useState("All");
@@ -90,11 +122,12 @@ const LoanBorrow = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = React.useRef(null);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
   const [page, setPage] = useState(1);
 
   const [form, setForm] = useState({
@@ -114,33 +147,57 @@ const LoanBorrow = () => {
       : {}),
   });
 
+  const showToast = (type, text) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ type, text });
+    toastTimerRef.current = setTimeout(() => setToast(null), 2800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      setError("");
+      setToast(null);
 
       const response = await fetch(
-        `${API_BASE_URL}/api/loan-borrow?month=${encodeURIComponent(month)}`,
+        `${API_BASE_URL}/api/loan-borrow?month=${encodeURIComponent(month)}&t=${Date.now()}`,
         {
           method: "GET",
           headers: headers(),
         }
       );
 
-      const result = await response.json();
+      const rawText = await response.text();
+      let result = {};
 
-      if (!response.ok || result.success === false) {
+      try {
+        result = rawText ? JSON.parse(rawText) : {};
+      } catch {
         throw new Error(
-          result.message || "Failed to load loan and borrow details."
+          rawText || `Server returned HTTP ${response.status}.`
         );
       }
 
-      setRows(normalizeRows(result));
+      if (!response.ok || result.success === false) {
+        throw new Error(
+          result.message ||
+          result.error ||
+          `Failed to load loan and borrow details. HTTP ${response.status}.`
+        );
+      }
+
+      const normalized = normalizeRows(result);
+      setRows(normalized);
       setPage(1);
     } catch (err) {
       console.error("Loan/Borrow GET error:", err);
-      setError(err.message || "Failed to load loan and borrow details.");
-      setRows([]);
+      showToast("error", err.message || "Failed to load loan and borrow details.");
+      // Keep the last successfully loaded details visible on a transient GET error.
     } finally {
       setLoading(false);
     }
@@ -175,34 +232,38 @@ const LoanBorrow = () => {
       emi: "",
       notes: "",
     });
-    setError("");
-    setMessage("");
     setShowForm(true);
   };
 
   const openEdit = (item) => {
-    setEditingId(item.id);
+    setEditingId(item.id ?? item.loan_id ?? item.borrow_id);
 
     setForm({
-      type: item.type || "Borrow",
-      name: item.name || item.person_name || "",
-      amount: String(item.amount ?? ""),
-      loanDate:
-        item.loan_date ||
-        item.start_date ||
-        item.loanDate ||
-        today(),
-      returnDate:
-        item.return_date ||
-        item.end_date ||
-        item.returnDate ||
+      type: normalizeType(item.type ?? item.loan_type ?? item.entry_type),
+      name:
+        item.name ??
+        item.person_name ??
+        item.personName ??
+        item.loan_name ??
         "",
-      emi: String(item.emi ?? item.emi_amount ?? ""),
-      notes: item.notes || "",
+      amount: String(item.amount ?? item.loan_amount ?? ""),
+      loanDate: normalizeDateForInput(
+        item.loan_date ??
+        item.start_date ??
+        item.loanDate ??
+        item.startDate
+      ) || today(),
+      returnDate: normalizeDateForInput(
+        item.return_date ??
+        item.end_date ??
+        item.returnDate ??
+        item.endDate
+      ),
+      emi: String(item.emi ?? item.emi_amount ?? item.monthly_payment ?? ""),
+      notes: item.notes ?? item.description ?? "",
     });
 
-    setError("");
-    setMessage("");
+    setToast(null);
     setShowForm(true);
   };
 
@@ -212,17 +273,18 @@ const LoanBorrow = () => {
     const amount = Number(form.amount);
 
     if (!form.name.trim()) {
-      setError("Please enter the person or loan name.");
+      showToast("error", "Please enter the person or loan name.");
       return;
     }
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Please enter a valid amount.");
+      showToast("error", "Please enter a valid amount.");
       return;
     }
 
     if (!form.loanDate) {
-      setError(
+      showToast(
+        "error",
         form.type === "Loan"
           ? "Please select loan start date."
           : "Please select borrow date."
@@ -231,7 +293,8 @@ const LoanBorrow = () => {
     }
 
     if (!form.returnDate) {
-      setError(
+      showToast(
+        "error",
         form.type === "Loan"
           ? "Please select loan end date."
           : "Please select return date."
@@ -240,14 +303,12 @@ const LoanBorrow = () => {
     }
 
     if (form.returnDate < form.loanDate) {
-      setError("Return/end date cannot be before the start date.");
+      showToast("error", "Return/end date cannot be before the start date.");
       return;
     }
 
     try {
       setSaving(true);
-      setError("");
-      setMessage("");
 
       const isEdit = Boolean(editingId);
 
@@ -271,16 +332,27 @@ const LoanBorrow = () => {
         }
       );
 
-      const result = await response.json();
+      const rawText = await response.text();
+      let result = {};
+
+      try {
+        result = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        throw new Error(
+          rawText || `Server returned HTTP ${response.status}.`
+        );
+      }
 
       if (!response.ok || result.success === false) {
         throw new Error(
           result.message ||
-            `Failed to ${isEdit ? "update" : "add"} entry.`
+          result.error ||
+          `Failed to ${isEdit ? "update" : "add"} entry.`
         );
       }
 
-      setMessage(
+      showToast(
+        "success",
         isEdit
           ? "Loan/Borrow updated successfully."
           : "Loan/Borrow added successfully."
@@ -290,20 +362,21 @@ const LoanBorrow = () => {
       await loadData();
     } catch (err) {
       console.error("Loan/Borrow save error:", err);
-      setError(err.message || "Unable to save entry.");
+      showToast("error", err.message || "Unable to save entry.");
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteItem = async (id) => {
-    if (!window.confirm("Delete this loan/borrow entry permanently?")) {
-      return;
-    }
+  const askDelete = (id) => setDeleteId(id);
+
+  const deleteItem = async () => {
+    const id = deleteId;
+    if (!id) return;
+
+    setDeleteId(null);
 
     try {
-      setError("");
-      setMessage("");
 
       const response = await fetch(
         `${API_BASE_URL}/api/loan-borrow/${id}`,
@@ -313,19 +386,30 @@ const LoanBorrow = () => {
         }
       );
 
-      const result = await response.json();
+      const rawText = await response.text();
+      let result = {};
 
-      if (!response.ok || result.success === false) {
+      try {
+        result = rawText ? JSON.parse(rawText) : {};
+      } catch {
         throw new Error(
-          result.message || "Failed to delete entry."
+          rawText || `Server returned HTTP ${response.status}.`
         );
       }
 
-      setMessage("Entry deleted successfully.");
+      if (!response.ok || result.success === false) {
+        throw new Error(
+          result.message ||
+          result.error ||
+          "Failed to delete entry."
+        );
+      }
+
+      showToast("success", "Entry deleted successfully.");
       await loadData();
     } catch (err) {
       console.error("Loan/Borrow delete error:", err);
-      setError(err.message || "Unable to delete entry.");
+      showToast("error", err.message || "Unable to delete entry.");
     }
   };
 
@@ -426,20 +510,19 @@ const LoanBorrow = () => {
         </div>
       </header>
 
-      {error && (
-        <div className="notice error">
-          <span>{error}</span>
-          <button onClick={() => setError("")}>
-            <X size={15} />
-          </button>
-        </div>
-      )}
-
-      {message && (
-        <div className="notice success">
-          <span>{message}</span>
-          <button onClick={() => setMessage("")}>
-            <X size={15} />
+      {toast && (
+        <div className={`toast-notification ${toast.type}`} role="status">
+          <span className="toast-icon">
+            {toast.type === "success" ? "✓" : "!"}
+          </span>
+          <span className="toast-text">{toast.text}</span>
+          <button
+            type="button"
+            className="toast-close"
+            onClick={() => setToast(null)}
+            aria-label="Close notification"
+          >
+            <X size={14} />
           </button>
         </div>
       )}
@@ -551,8 +634,10 @@ const LoanBorrow = () => {
                       <div className="loan-info">
                         <div className="name-row">
                           <h3>
-                            {item.name ||
-                              item.person_name ||
+                            {item.name ??
+                              item.person_name ??
+                              item.personName ??
+                              item.loan_name ??
                               "-"}
                           </h3>
                           <span
@@ -568,12 +653,12 @@ const LoanBorrow = () => {
 
                         <div className="date-row">
                           <span>
-                            Start: {startDate || "-"}
+                            Start: {formatDisplayDate(startDate)}
                           </span>
                           <span>
                             {type === "Loan"
-                              ? `End: ${endDate || "-"}`
-                              : `Return: ${endDate || "-"}`}
+                              ? `End: ${formatDisplayDate(endDate)}`
+                              : `Return: ${formatDisplayDate(endDate)}`}
                           </span>
                         </div>
 
@@ -607,7 +692,7 @@ const LoanBorrow = () => {
                         </button>
                         <button
                           className="delete"
-                          onClick={() => deleteItem(item.id)}
+                          onClick={() => askDelete(item.id)}
                           title="Delete"
                         >
                           <Trash2 size={14} />
@@ -649,6 +734,39 @@ const LoanBorrow = () => {
           </>
         )}
       </section>
+
+      {deleteId && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setDeleteId(null);
+          }}
+        >
+          <div className="confirm-modal" role="dialog" aria-modal="true">
+            <div className="confirm-icon danger">
+              <Trash2 size={20} />
+            </div>
+            <h3>Delete entry?</h3>
+            <p>This action cannot be undone.</p>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="cancel-button"
+                onClick={() => setDeleteId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="delete-confirm-button"
+                onClick={deleteItem}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div
@@ -844,7 +962,9 @@ const styles = `
 .loan-page {
   width: 100%;
   min-height: 100%;
+  box-sizing: border-box;
   padding: 18px;
+  overflow-x: hidden;
   color: #fff;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -947,6 +1067,109 @@ const styles = `
 .save-button:hover {
   transform: translateY(-1px);
 }
+
+.toast-notification {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12000;
+  width: min(380px, calc(100vw - 24px));
+  min-height: 48px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  color: #fff;
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+  animation: toast-in .2s ease;
+}
+.toast-notification.success { border-color: rgba(16,185,129,.35); }
+.toast-notification.error { border-color: rgba(239,68,68,.35); }
+.toast-icon {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #16a34a;
+  font-size: .75rem;
+  font-weight: 800;
+}
+.toast-notification.error .toast-icon { background: #dc2626; }
+.toast-text {
+  min-width: 0;
+  flex: 1;
+  font-size: .72rem;
+  line-height: 1.35;
+}
+.toast-close {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: rgba(255,255,255,.65);
+  background: transparent;
+  cursor: pointer;
+}
+.toast-close:hover { color: #fff; background: rgba(255,255,255,.08); }
+
+.confirm-modal {
+  width: min(330px, calc(100vw - 30px));
+  box-sizing: border-box;
+  padding: 18px;
+  text-align: center;
+  color: #fff;
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 15px;
+  box-shadow: 0 25px 70px rgba(0,0,0,.48);
+  animation: modal-in .2s ease;
+}
+.confirm-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+}
+.confirm-icon.danger {
+  color: #fca5a5;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.2);
+}
+.confirm-modal h3 { margin: 0; font-size: .92rem; }
+.confirm-modal p {
+  margin: 6px 0 16px;
+  color: rgba(255,255,255,.45);
+  font-size: .68rem;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.delete-confirm-button {
+  min-height: 37px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: #dc2626;
+  font-size: .68rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.delete-confirm-button:hover { background: #b91c1c; }
 
 .notice {
   display: flex;
@@ -1056,9 +1279,40 @@ const styles = `
   padding: 0 9px;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 9px;
-  color: #fff;
-  background: #111827;
+  color: #111827;
+  background: #fff;
   outline: 0;
+  cursor: pointer;
+  color-scheme: light;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.type-filter:hover {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.10);
+}
+
+.type-filter:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
+}
+
+.type-filter option,
+.loan-modal select option {
+  background: #fff;
+  color: #111827;
+}
+
+.type-filter option:hover,
+.loan-modal select option:hover {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.type-filter option:checked,
+.loan-modal select option:checked {
+  background: #7c3aed;
+  color: #fff;
 }
 
 .loan-list {
@@ -1271,7 +1525,8 @@ const styles = `
 }
 
 .loan-modal {
-  width: min(460px, 100%);
+  width: min(460px, calc(100vw - 30px));
+  box-sizing: border-box;
   max-height: calc(100vh - 36px);
   overflow-y: auto;
   padding: 18px;
@@ -1338,6 +1593,20 @@ const styles = `
   color: #fff;
   background: rgba(255,255,255,.055);
   font: inherit;
+}
+
+.loan-modal select {
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.loan-modal select:hover {
+  border-color: #7c3aed;
+}
+
+.loan-modal select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
 }
 
 .loan-modal input,
@@ -1423,6 +1692,11 @@ const styles = `
   to { transform: rotate(360deg); }
 }
 
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, -8px) scale(.98); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;
@@ -1472,6 +1746,10 @@ const styles = `
 }
 
 @media (max-width: 560px) {
+  .toast-notification { width: calc(100vw - 20px); }
+  .confirm-actions { width: 100%; }
+  .confirm-actions button { flex: 1; }
+
   .loan-page {
     padding: 8px;
   }

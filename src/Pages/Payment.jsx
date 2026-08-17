@@ -1173,9 +1173,40 @@ const styles = `
   padding: 0 9px;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 9px;
-  color: #fff;
-  background: #111827;
+  color: #111827;
+  background: #fff;
   outline: 0;
+  cursor: pointer;
+  color-scheme: light;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.filters select:hover {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.10);
+}
+
+.filters select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
+}
+
+.filters select option,
+.payment-modal select option {
+  background: #fff;
+  color: #111827;
+}
+
+.filters select option:hover,
+.payment-modal select option:hover {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.filters select option:checked,
+.payment-modal select option:checked {
+  background: #7c3aed;
+  color: #fff;
 }
 
 .payment-list {
@@ -1474,6 +1505,20 @@ const styles = `
   color: #fff;
   background: rgba(255,255,255,.055);
   font: inherit;
+}
+
+.payment-modal select {
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.payment-modal select:hover {
+  border-color: #7c3aed;
+}
+
+.payment-modal select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
 }
 
 .payment-modal input,

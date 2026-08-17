@@ -565,7 +565,8 @@ export default function Portfolio() {
         }
         .footer-inner>span{
           display:inline-flex;align-items:center;justify-content:center;gap:8px;
-          color:#64748b;line-height:1.5;white-space:nowrap;
+          max-width:100%;color:#64748b;line-height:1.5;white-space:normal;
+          overflow-wrap:anywhere;word-break:normal;text-align:center;
           transition:color .25s ease,transform .25s ease
         }
         .footer-inner>span:hover{color:#a5b4fc;transform:translateY(-1px)}
@@ -651,6 +652,40 @@ export default function Portfolio() {
           .contact{padding:40px 28px}
         }
 
+        /* Mobile typography: keep the desktop design unchanged, but scale text down
+           and allow every line to wrap naturally on narrow screens. */
+        @media(max-width:700px){
+          body{font-size:13px}
+          .hero h1{font-size:clamp(34px,10.5vw,52px);line-height:1.02;letter-spacing:-.045em}
+          .hero-lead{font-size:14px;line-height:1.7;margin:20px 0 24px}
+          .section-heading h2{font-size:clamp(27px,7.5vw,40px);line-height:1.08}
+          .section-heading p{font-size:13px;line-height:1.7}
+          .about-copy{font-size:14px;line-height:1.75}
+          .experience-role{font-size:21px}
+          .experience-list li{font-size:12px}
+          .project h3{font-size:18px}
+          .project p{font-size:12.5px;line-height:1.7}
+          .timeline-card h3{font-size:18px}
+          .timeline-card h4{font-size:12px}
+          .timeline-card p{font-size:12.5px}
+          .contact h2{font-size:clamp(28px,8vw,42px)}
+          .contact p{font-size:13px;line-height:1.7}
+          .contact-link{font-size:12px;padding:12px}
+          .stat strong{font-size:21px}
+          .stat span{font-size:10px}
+          .skill-head span:first-child{font-size:12px}
+          .skill-head span:last-child{font-size:10px}
+          .tech{font-size:10px;padding:8px 10px}
+          .footer-inner{width:100%;padding:0 14px}
+          .footer-inner>span{
+            width:100%;max-width:100%;display:flex;flex-wrap:wrap;
+            justify-content:center;align-items:center;gap:4px 7px;
+            text-align:center;white-space:normal;overflow-wrap:anywhere;
+            word-break:normal;line-height:1.6;font-size:clamp(10px,2.8vw,12px);
+          }
+          .footer-inner>span i{flex:0 0 auto}
+        }
+
         @media(max-width:700px){
           .learning-grid{grid-template-columns:1fr;gap:12px}
            .learning-card{padding:20px 18px}
@@ -711,7 +746,7 @@ export default function Portfolio() {
         }
         @media(max-width:420px){
           .footer{padding:22px 0}
-          .footer-inner>span{font-size:12px;gap:6px;letter-spacing:0;white-space:normal}
+          .footer-inner>span{font-size:10px;gap:4px 6px;line-height:1.55}
           .hero-actions .btn{width:100%}
           .internship-badge{line-height:1.5;white-space:normal}
           .project-insight span{font-size:12px}

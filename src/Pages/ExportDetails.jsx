@@ -1,187 +1,689 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Download,
-  FileText,
-  FileSpreadsheet,
-  RefreshCw,
-  CalendarDays,
-  Eye,
-  X,
-  Printer,
-  CheckCircle2,
   AlertCircle,
-  FileJson,
-  BarChart3,
-  Wallet,
-  Receipt,
-  Landmark,
-  HandCoins,
   ArrowDownToLine,
   ArrowUpFromLine,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  HandCoins,
+  Landmark,
+  Loader2,
+  PieChart,
+  RefreshCw,
+  Receipt,
+  Wallet,
+  X,
 } from "lucide-react";
 
-const API_BASE_URL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1"
-    ? "http://localhost:5000"
-    : "https://express-project-learning-new.onrender.com";
+/*
+  ExportDetails.jsx
+  ------------------------------------------------------------
+  Backend expected:
+    GET /api/export-details/data?period=month&month=YYYY-MM
+    GET /api/export-details/data?period=week&month=YYYY-MM&week=1..4
 
-const today = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => today().slice(0, 7);
+    GET /api/export-details?format=pdf&period=month&month=YYYY-MM
+    GET /api/export-details?format=excel&period=month&month=YYYY-MM
+    GET /api/export-details?format=text&period=month&month=YYYY-MM
+
+  This page uses the exportDetailsapi.js supplied for this project.
+  It does NOT use the old /json, /pdf, /excel, /text endpoints.
+
+  Browser download:
+    The page downloads the returned Blob with an <a download> element.
+    In normal browsers this goes to the browser's configured Downloads
+    location. A web page cannot silently choose an arbitrary local folder.
+
+  Android/iOS WebView:
+    The same Blob download is started. If the WebView does not implement
+    downloads, the native WebView wrapper must handle download requests.
+*/
+
+const API_BASE_URL = (
+  (typeof import.meta !== "undefined" && import.meta.env &&
+    (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)) ||
+  (typeof process !== "undefined" && process.env &&
+    (process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL)) ||
+  (typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1")
+    ? "http://localhost:5000"
+    : "https://express-project-learning-new.onrender.com")
+).replace(/\/$/, "");
+
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+/*
+  AUTH BRIDGE
+  ------------------------------------------------------------------
+  Uses the SAME user already logged in by the existing application.
+  The login page is not changed.
+
+  Supported existing storage styles:
+    token / accessToken
+    user / currentUser / loggedInUser / authUser
+    userId / user_id / currentUserId / loggedInUserId
+
+  The API receives both:
+    Authorization: Bearer <token>   (when a token exists)
+    x-user-id: <logged-in user id>   (when an id exists)
+
+  Cookies/sessions are also enabled on every request with
+  credentials: "include".
+*/
+
+const readStorage = (storage, keys) => {
+  for (const key of keys) {
+    try {
+      const value = storage.getItem(key);
+      if (value !== null && value !== "") return value;
+    } catch {
+      // Storage can be unavailable in some WebViews/private modes.
+    }
+  }
+  return "";
+};
+
+const parseStoredObject = (value) => {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const validUserId = (value) => {
+  if (value === undefined || value === null || value === "") return "";
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? String(id) : "";
+};
+
+const getLoggedInUserId = () => {
+  const directKeys = [
+    "userId",
+    "user_id",
+    "currentUserId",
+    "loggedInUserId",
+    "authUserId",
+    "userid",
+  ];
+
+  const objectKeys = [
+    "user",
+    "currentUser",
+    "loggedInUser",
+    "authUser",
+    "profile",
+    "current_user",
+    "auth_user",
+  ];
+
+  // Direct numeric ID.
+  const directValues = [
+    ...directKeys.map((key) => readStorage(localStorage, [key])),
+    ...directKeys.map((key) => readStorage(sessionStorage, [key])),
+  ];
+
+  for (const value of directValues) {
+    const id = validUserId(value);
+    if (id) return id;
+  }
+
+  // User object saved by the login page.
+  const storedObjects = [
+    ...objectKeys.map((key) => readStorage(localStorage, [key])),
+    ...objectKeys.map((key) => readStorage(sessionStorage, [key])),
+  ];
+
+  for (const value of storedObjects) {
+    const user = parseStoredObject(value);
+    if (!user) continue;
+
+    const id =
+      validUserId(user.id) ||
+      validUserId(user.userId) ||
+      validUserId(user.user_id);
+
+    if (id) return id;
+  }
+
+  return "";
+};
 
 const getToken = () =>
-  localStorage.getItem("token") ||
-  localStorage.getItem("accessToken") ||
-  sessionStorage.getItem("token") ||
-  "";
+  readStorage(localStorage, [
+    "token",
+    "accessToken",
+    "authToken",
+    "jwt",
+    "access_token",
+  ]) ||
+  readStorage(sessionStorage, [
+    "token",
+    "accessToken",
+    "authToken",
+    "jwt",
+    "access_token",
+  ]);
 
-const money = (value) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
-const numberValue = (value) => Number(value || 0);
+const apiFetch = async (path, options = {}) => {
+  const url = `${API_BASE_URL}${path}`;
 
-const firstValue = (...values) => {
-  for (const value of values) {
-    if (value !== undefined && value !== null) return value;
+  try {
+    return await fetch(url, {
+      ...options,
+      credentials: "include",
+    });
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch API: ${url}. Check that the Render backend is running, the API URL is correct, and CORS/OPTIONS is enabled.`
+    );
   }
-  return 0;
+};
+
+const authHeaders = () => {
+  const token = getToken();
+  const userId = getLoggedInUserId();
+
+  const headers = {
+    Accept: "application/json",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Important: this connects the export API to the SAME logged-in user.
+  if (userId) {
+    headers["x-user-id"] = userId;
+  }
+
+  return headers;
+};
+
+const num = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const formatAmount = (value) => {
+  const n = num(value);
+  if (Number.isInteger(n)) return String(n);
+  return String(Number(n.toFixed(2)));
+};
+
+const money = (value) => `₹${formatAmount(value)}`;
+
+const moneyCompact = (value) => `₹${formatAmount(value)}`;
+
+const dateLabel = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const dateTimeLabel = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const safe = (value) =>
+  value === undefined || value === null || value === ""
+    ? "-"
+    : String(value);
+
+const monthTitle = (month) => {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return month;
+  const [year, m] = month.split("-").map(Number);
+  return new Date(year, m - 1, 1).toLocaleString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const lastDayOfMonth = (month) => {
+  const [year, m] = month.split("-").map(Number);
+  return new Date(year, m, 0).getDate();
+};
+
+const getWeekRange = (month, week) => {
+  const last = lastDayOfMonth(month);
+  const starts = [1, 8, 15, 22];
+  const ends = [7, 14, 21, last];
+  const index = Math.max(1, Math.min(4, Number(week))) - 1;
+  return {
+    start: starts[index],
+    end: ends[index],
+  };
+};
+
+const normalizeData = (payload) => {
+  const source = payload?.data || payload || {};
+  const tables = source.tables || {};
+
+  return {
+    ...source,
+    user: source.user || {},
+    period: source.period || {},
+    summary: source.summary || {},
+    tables: {
+      personal_business_work: tables.personal_business_work || [],
+      personal_expenses: tables.personal_expenses || [],
+      personal_loans_borrow: tables.personal_loans_borrow || [],
+      personal_loan_emi_payments:
+        tables.personal_loan_emi_payments || [],
+      personal_payments: tables.personal_payments || [],
+      personal_overview: tables.personal_overview || [],
+    },
+  };
+};
+
+const buildCategoryTotals = (expenses) => {
+  const map = {};
+  expenses.forEach((row) => {
+    const category = safe(row.category) === "-" ? "Uncategorized" : safe(row.category);
+    map[category] = num(map[category]) + num(row.amount);
+  });
+  return Object.entries(map)
+    .map(([category, total]) => ({ category, total }))
+    .sort((a, b) => b.total - a.total);
+};
+
+const calculateLocalSummary = (data) => {
+  const summary = data.summary || {};
+  const expenses = data.tables.personal_expenses || [];
+  const payments = data.tables.personal_payments || [];
+  const repayments = data.tables.personal_loan_emi_payments || [];
+  const loans = data.tables.personal_loans_borrow || [];
+  const work = data.tables.personal_business_work || [];
+
+  const totalExpenses = expenses.reduce((s, r) => s + num(r.amount), 0);
+
+  const received = payments
+    .filter((r) => String(r.status).toLowerCase() === "received")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const pending = payments
+    .filter((r) => String(r.status).toLowerCase() === "pending")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const overdue = payments
+    .filter((r) => String(r.status).toLowerCase() === "overdue")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const lost = payments
+    .filter((r) => String(r.status).toLowerCase() === "lost")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const emi = repayments
+    .filter((r) => String(r.payment_type).toLowerCase() === "emi")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const loanRepayment = repayments
+    .filter((r) => String(r.payment_type).toLowerCase() === "loan repayment")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const borrowRepayment = repayments
+    .filter((r) => String(r.payment_type).toLowerCase() === "borrow repayment")
+    .reduce((s, r) => s + num(r.amount), 0);
+
+  const totalOutgoing =
+    num(summary.outgoing) ||
+    totalExpenses + emi + loanRepayment + borrowRepayment;
+
+  const income = num(summary.income) || received;
+  const net =
+    Number.isFinite(Number(summary.net))
+      ? num(summary.net)
+      : income - totalOutgoing;
+
+  return {
+    income,
+    expenses: num(summary.expenseTotal) || totalExpenses,
+    emi: num(summary.emiTotal) || emi,
+    loanRepayment: num(summary.loanRepayment) || loanRepayment,
+    borrowRepayment:
+      num(summary.borrowRepayment) || borrowRepayment,
+    outgoing: totalOutgoing,
+    net,
+    savings:
+      Number.isFinite(Number(summary.savings))
+        ? num(summary.savings)
+        : Math.max(net, 0),
+    loss:
+      Number.isFinite(Number(summary.loss))
+        ? num(summary.loss)
+        : Math.max(-net, 0),
+    pending: num(summary.pending) || pending,
+    overdue: num(summary.overdue) || overdue,
+    lost: num(summary.lost) || lost,
+    received,
+    activeLoan:
+      num(summary.activeLoanTotal) ||
+      loans
+        .filter(
+          (r) =>
+            String(r.type).toLowerCase() === "loan" &&
+            String(r.status).toLowerCase() === "active"
+        )
+        .reduce((s, r) => s + num(r.amount), 0),
+    activeBorrow:
+      num(summary.activeBorrowTotal) ||
+      loans
+        .filter(
+          (r) =>
+            String(r.type).toLowerCase() === "borrow" &&
+            String(r.status).toLowerCase() === "active"
+        )
+        .reduce((s, r) => s + num(r.amount), 0),
+    businessTotal:
+      num(summary.businessTotal) ||
+      work
+        .filter((r) => String(r.type).toLowerCase() === "business")
+        .reduce((s, r) => s + num(r.amount), 0),
+    workTotal:
+      num(summary.workTotal) ||
+      work
+        .filter((r) => String(r.type).toLowerCase() === "work")
+        .reduce((s, r) => s + num(r.amount), 0),
+  };
+};
+
+const filterRowsByWeek = (rows, dateFields, month, week) => {
+  const { start, end } = getWeekRange(month, week);
+  const startDate = `${month}-${String(start).padStart(2, "0")}`;
+  const endDate = `${month}-${String(end).padStart(2, "0")}`;
+
+  return rows.filter((row) => {
+    for (const field of dateFields) {
+      if (!row[field]) continue;
+      const value = String(row[field]).slice(0, 10);
+      if (value >= startDate && value <= endDate) return true;
+    }
+    return false;
+  });
+};
+
+const calculateWeeklyRows = (data, month) => {
+  const weeks = [];
+  const last = lastDayOfMonth(month);
+
+  for (let week = 1; week <= 4; week += 1) {
+    const { start, end } = getWeekRange(month, week);
+
+    const expenses = filterRowsByWeek(
+      data.tables.personal_expenses,
+      ["expense_date", "created_at"],
+      month,
+      week
+    );
+
+    const payments = filterRowsByWeek(
+      data.tables.personal_payments,
+      ["payment_date", "created_at", "received_at"],
+      month,
+      week
+    );
+
+    const repayments = filterRowsByWeek(
+      data.tables.personal_loan_emi_payments,
+      ["payment_date", "created_at"],
+      month,
+      week
+    );
+
+    const income = payments
+      .filter((r) => String(r.status).toLowerCase() === "received")
+      .reduce((s, r) => s + num(r.amount), 0);
+
+    const expenseTotal = expenses.reduce((s, r) => s + num(r.amount), 0);
+
+    const loanEmi = repayments
+      .filter((r) => String(r.payment_type).toLowerCase() === "emi")
+      .reduce((s, r) => s + num(r.amount), 0);
+
+    const loanRepayment = repayments
+      .filter((r) => String(r.payment_type).toLowerCase() === "loan repayment")
+      .reduce((s, r) => s + num(r.amount), 0);
+
+    const borrowRepayment = repayments
+      .filter((r) => String(r.payment_type).toLowerCase() === "borrow repayment")
+      .reduce((s, r) => s + num(r.amount), 0);
+
+    const outgoing =
+      expenseTotal + loanEmi + loanRepayment + borrowRepayment;
+
+    const net = income - outgoing;
+
+    const hasActivity =
+      expenses.length ||
+      payments.length ||
+      repayments.length;
+
+    weeks.push({
+      week,
+      start,
+      end,
+      income,
+      expenses: expenseTotal,
+      loanEmi,
+      loanRepayment,
+      borrowRepayment,
+      outgoing,
+      net,
+      status: !hasActivity
+        ? "No Activity"
+        : net >= 0
+          ? "Positive"
+          : "Negative",
+      hasActivity: Boolean(hasActivity),
+    });
+  }
+
+  // Prevent an impossible day range in unusual month data.
+  if (last < 22) {
+    weeks[3].end = last;
+  }
+
+  return weeks;
+};
+
+const formatFilename = (disposition, fallback) => {
+  const match = disposition?.match(
+    /filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i
+  );
+
+  if (match?.[1]) {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  }
+
+  return fallback;
+};
+
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+
+  window.setTimeout(() => {
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }, 1500);
 };
 
 const ExportDetails = () => {
-  const [month, setMonth] = useState(currentMonth());
-  const [data, setData] = useState({});
+  const [month, setMonth] = useState(getCurrentMonth());
+  const [period, setPeriod] = useState("month");
+  const [week, setWeek] = useState("1");
+
+  const [data, setData] = useState(normalizeData({}));
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState("");
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
-  const authHeaders = () => {
-    const token = getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const monthLabel = useMemo(() => {
-    const [year, m] = month.split("-").map(Number);
-    if (!year || !m) return month;
-    return new Date(year, m - 1, 1).toLocaleString("en-IN", {
-      month: "long",
-      year: "numeric",
-    });
-  }, [month]);
-
-  const loadDetails = async () => {
+  const loadDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      // Exact API available in the supplied backend:
-      // GET /api/export-details/json?month=YYYY-MM
-      const response = await fetch(
-        `${API_BASE_URL}/api/export-details/json?month=${encodeURIComponent(month)}`,
+      const currentUserId = getLoggedInUserId();
+      const currentToken = getToken();
+
+      // A valid login can be cookie/session based, so do not block the
+      // request when both browser storage values are empty.
+      setAuthReady(Boolean(currentUserId || currentToken));
+
+      const params = new URLSearchParams({
+        period,
+        month,
+      });
+
+      if (period === "week") {
+        params.set("week", week);
+      }
+
+      const response = await apiFetch(
+        `/api/export-details/data?${params.toString()}`,
         {
           method: "GET",
           headers: authHeaders(),
         }
       );
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok || result.success === false) {
+        if (response.status === 401) {
+          throw new Error(
+            "Login session was not attached to this request. Please refresh the page after login. If the error continues, your existing login must expose the logged-in user ID/token to this page."
+          );
+        }
+
         throw new Error(
-          result.message || "Failed to load export details."
+          result.message || `Failed to load ${period} report.`
         );
       }
 
-      setData(result.data || {});
+      setData(normalizeData(result));
     } catch (err) {
       console.error("Export details GET error:", err);
-      setError(err.message || "Failed to load export details.");
-      setData({});
+      setError(err.message || "Failed to load report details.");
+      setData(normalizeData({}));
     } finally {
       setLoading(false);
     }
-  };
+  }, [month, period, week]);
 
   useEffect(() => {
     loadDetails();
-  }, [month]);
+  }, [loadDetails]);
 
-  const user = data.user || {};
-  const summary = data.summary || {};
-  const overview = data.overview || {};
+  const summary = useMemo(
+    () => calculateLocalSummary(data),
+    [data]
+  );
 
-  const weekly = data.weekly || data.weeks || [];
-  const expenses = data.expenses || [];
-  const payments = data.payments || [];
-  const loans = data.loans || [];
-  const repayments = data.repayments || [];
-  const expenseCategories = data.expenseCategories || [];
-  const chart = data.chart || [];
+  const expenses = data.tables.personal_expenses;
+  const payments = data.tables.personal_payments;
+  const loans = data.tables.personal_loans_borrow;
+  const repayments = data.tables.personal_loan_emi_payments;
+  const businessWork = data.tables.personal_business_work;
+  const overviewRows = data.tables.personal_overview;
 
-  const summaryCards = [
-    {
-      label: "Total Income",
-      value: money(summary.total_income),
-      icon: ArrowDownToLine,
-      className: "income",
-    },
-    {
-      label: "Total Expenses",
-      value: money(summary.total_expenses),
-      icon: Receipt,
-      className: "expense",
-    },
-    {
-      label: "Loan / EMI",
-      value: money(
-        numberValue(summary.total_emi) +
-          numberValue(summary.total_loan_repayment)
-      ),
-      icon: Landmark,
-      className: "loan",
-    },
-    {
-      label: "Borrow Repayment",
-      value: money(summary.total_borrow_repayment),
-      icon: HandCoins,
-      className: "borrow",
-    },
-    {
-      label: "Total Outgoing",
-      value: money(summary.total_outgoing),
-      icon: ArrowUpFromLine,
-      className: "outgoing",
-    },
-    {
-      label: "Net Result",
-      value: money(summary.net),
-      icon: Wallet,
-      className: summary.net >= 0 ? "income" : "expense",
-    },
-  ];
+  const categoryTotals = useMemo(
+    () => buildCategoryTotals(expenses),
+    [expenses]
+  );
 
-  const endpointMap = {
-    pdf: `/api/export-details/pdf?month=${encodeURIComponent(month)}`,
-    excel: `/api/export-details/excel?month=${encodeURIComponent(month)}`,
-    text: `/api/export-details/text?month=${encodeURIComponent(month)}`,
-    overviewPdf: `/api/export-details/overview/pdf?month=${encodeURIComponent(month)}`,
-    overviewExcel: `/api/export-details/overview/excel?month=${encodeURIComponent(month)}`,
-    overviewText: `/api/export-details/overview/text?month=${encodeURIComponent(month)}`,
-  };
+  const weeklyRows = useMemo(
+    () => calculateWeeklyRows(data, month),
+    [data, month]
+  );
 
-  const downloadFile = async (type, label) => {
+  const selectedWeekRow = useMemo(
+    () =>
+      weeklyRows.find(
+        (row) => Number(row.week) === Number(week)
+      ) || weeklyRows[0],
+    [weeklyRows, week]
+  );
+
+  const visibleWeeklyRows =
+    period === "week"
+      ? [selectedWeekRow]
+      : weeklyRows;
+
+  const activeRecords =
+    expenses.length +
+    payments.length +
+    loans.length +
+    repayments.length +
+    businessWork.length;
+
+  const reportTitle =
+    period === "week"
+      ? `Week ${week} • ${monthTitle(month)}`
+      : monthTitle(month);
+
+
+  const downloadFile = async (format) => {
+    const key = `${period}-${format}`;
+
     try {
-      setExporting(type);
+      setExporting(key);
       setError("");
       setMessage("");
 
-      const response = await fetch(
-        `${API_BASE_URL}${endpointMap[type]}`,
+      const params = new URLSearchParams({
+        format,
+        period,
+        month,
+      });
+
+      if (period === "week") {
+        params.set("week", week);
+      }
+
+      const response = await apiFetch(
+        `/api/export-details?${params.toString()}`,
         {
           method: "GET",
           headers: authHeaders(),
@@ -189,49 +691,50 @@ const ExportDetails = () => {
       );
 
       if (!response.ok) {
-        let errorMessage = `Failed to download ${label}.`;
-        try {
-          const result = await response.json();
-          errorMessage = result.message || errorMessage;
-        } catch {
-          // Non-JSON response.
+        const result = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          throw new Error(
+            "Login session was not attached to the download request. Please refresh after login."
+          );
         }
-        throw new Error(errorMessage);
+
+        throw new Error(
+          result.message ||
+            `Failed to download ${format.toUpperCase()} file.`
+        );
       }
 
       const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition");
 
-      let filename = `Personal_Report_${month}`;
-      const match = disposition?.match(
-        /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
-      );
-
-      if (match?.[1]) {
-        filename = match[1].replace(/['"]/g, "");
-      } else {
-        const extension =
-          type.toLowerCase().includes("excel")
-            ? "xlsx"
-            : type.toLowerCase().includes("pdf")
-              ? "pdf"
-              : "txt";
-        filename += `.${extension}`;
+      if (!blob.size) {
+        throw new Error("The server returned an empty file.");
       }
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      const extension =
+        format === "excel" ? "xlsx" : format === "pdf" ? "pdf" : "txt";
 
-      setMessage(`${label} downloaded successfully.`);
+      const fallback =
+        `Personal_Summary_${period}_${month}` +
+        (period === "week" ? `_Week_${week}` : "") +
+        `.${extension}`;
+
+      const filename = formatFilename(
+        response.headers.get("Content-Disposition"),
+        fallback
+      );
+
+      downloadBlob(blob, filename);
+
+      setMessage(
+        `${format.toUpperCase()} ${period} report downloaded successfully.`
+      );
     } catch (err) {
-      console.error(`${type} export error:`, err);
-      setError(err.message || `Unable to download ${label}.`);
+      console.error("Export error:", err);
+      setError(
+        err.message ||
+          `Unable to download ${format.toUpperCase()} report.`
+      );
     } finally {
       setExporting("");
     }
@@ -244,119 +747,62 @@ const ExportDetails = () => {
         { type: "application/json;charset=utf-8" }
       );
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Personal_Report_${month}.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      downloadBlob(
+        blob,
+        `Personal_Data_${period}_${month}${
+          period === "week" ? `_Week_${week}` : ""
+        }.json`
+      );
 
-      setMessage("JSON preview data downloaded successfully.");
+      setMessage("JSON backup downloaded successfully.");
     } catch (err) {
-      setError(err.message || "Unable to download JSON.");
+      setError(err.message || "Unable to download JSON backup.");
     }
   };
 
-  const printPreview = () => window.print();
-
-  const actionCards = [
-    {
-      key: "pdf",
-      title: "Full Professional PDF",
-      description:
-        "Complete monthly report with profile, summary, overview, categories, weekly performance, payments, expenses, loans and repayments.",
-      icon: FileText,
-      className: "pdf",
-      button: "Download PDF",
-      onClick: () => downloadFile("pdf", "Full PDF report"),
-    },
-    {
-      key: "excel",
-      title: "Full Professional Excel",
-      description:
-        "Complete workbook with separate professional worksheets for all financial records and summary data.",
-      icon: FileSpreadsheet,
-      className: "excel",
-      button: "Download Excel",
-      onClick: () => downloadFile("excel", "Full Excel report"),
-    },
-    {
-      key: "text",
-      title: "Full Text Report",
-      description:
-        "Clean plain-text backup containing the complete selected-month report.",
-      icon: FileText,
-      className: "text",
-      button: "Download TXT",
-      onClick: () => downloadFile("text", "Full text report"),
-    },
-    {
-      key: "overviewPdf",
-      title: "Overview PDF",
-      description:
-        "Short management-style overview with business, work, monthly result and outstanding payment status.",
-      icon: BarChart3,
-      className: "overview",
-      button: "Download PDF",
-      onClick: () => downloadFile("overviewPdf", "Overview PDF"),
-    },
-    {
-      key: "overviewExcel",
-      title: "Overview Excel",
-      description:
-        "Compact overview worksheet containing profile, business, work and monthly financial results.",
-      icon: FileSpreadsheet,
-      className: "overviewExcel",
-      button: "Download Excel",
-      onClick: () => downloadFile("overviewExcel", "Overview Excel"),
-    },
-    {
-      key: "overviewText",
-      title: "Overview Text",
-      description:
-        "Simple overview backup containing key financial results and payment status.",
-      icon: FileText,
-      className: "overviewText",
-      button: "Download TXT",
-      onClick: () => downloadFile("overviewText", "Overview text"),
-    },
-  ];
+  const resetCurrent = () => {
+    setMonth(getCurrentMonth());
+    setPeriod("month");
+    setWeek("1");
+  };
 
   return (
     <div className="export-page">
       <style>{styles}</style>
 
       <header className="topbar">
-        <div className="title-area">
-          <div className="title-icon">
-            <Download size={22} />
+        <div className="brand">
+          <div className="brand-icon">
+            <Download size={21} />
           </div>
-          <div>
-            <h1>Export Details</h1>
+
+          <div className="brand-copy">
+            <div className="brand-title-row">
+              <h1>Financial Export</h1>
+              <span className="live-pill">SECURE</span>
+            </div>
             <p>
-              Professional reports and complete financial exports
+              Complete monthly and weekly reports • PDF • Excel • Text
             </p>
           </div>
         </div>
 
-        <div className="toolbar">
-          <label className="month-control">
-            <CalendarDays size={17} />
-            <span>Month</span>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-            />
-          </label>
+        <div className="top-actions">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={resetCurrent}
+          >
+            <CalendarDays size={15} />
+            Current
+          </button>
 
           <button
+            type="button"
             className="icon-button"
             onClick={loadDetails}
-            title="Refresh report"
             disabled={loading}
+            title="Refresh report"
           >
             <RefreshCw
               size={17}
@@ -367,226 +813,369 @@ const ExportDetails = () => {
       </header>
 
       {error && (
-        <div className="notice error">
-          <AlertCircle size={17} />
-          <span>{error}</span>
-          <button onClick={() => setError("")}>
-            <X size={16} />
-          </button>
-        </div>
+        <Notice
+          type="error"
+          text={error}
+          onClose={() => setError("")}
+        />
       )}
 
       {message && (
-        <div className="notice success">
-          <CheckCircle2 size={17} />
-          <span>{message}</span>
-          <button onClick={() => setMessage("")}>
-            <X size={16} />
-          </button>
-        </div>
+        <Notice
+          type="success"
+          text={message}
+          onClose={() => setMessage("")}
+        />
       )}
 
-      <section className="report-heading">
-        <div>
-          <span className="eyebrow">SELECTED REPORT PERIOD</span>
-          <h2>{monthLabel}</h2>
+      <section className="control-panel">
+        <div className="control-heading">
+          <span className="eyebrow">REPORT CONTROL</span>
+          <h2>Select your report</h2>
           <p>
-            Select a month and download the complete report or a
-            compact overview in PDF, Excel or text format.
+            Choose any month. Select Monthly for the complete month or
+            Weekly for one specific week.
           </p>
         </div>
 
-        <div className="heading-status">
-          <span>Status</span>
-          <strong>{summary.status || "No Activity"}</strong>
+        <div className="controls-grid">
+          <label className="field-card">
+            <span>Report period</span>
+            <div className="select-wrap">
+              <CalendarDays size={16} />
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
+                <option value="month">Monthly Summary</option>
+                <option value="week">Weekly Summary</option>
+              </select>
+              <ChevronDown size={15} />
+            </div>
+          </label>
+
+          <label className="field-card">
+            <span>Select month</span>
+            <div className="month-wrap">
+              <CalendarDays size={16} />
+              <input
+                type="month"
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+              />
+            </div>
+          </label>
+
+          {period === "week" ? (
+            <label className="field-card">
+              <span>Select week</span>
+              <div className="select-wrap">
+                <BarChart3 size={16} />
+                <select
+                  value={week}
+                  onChange={(e) => setWeek(e.target.value)}
+                >
+                  <option value="1">Week 1 • 1–7</option>
+                  <option value="2">Week 2 • 8–14</option>
+                  <option value="3">Week 3 • 15–21</option>
+                  <option value="4">
+                    Week 4 • 22–month end
+                  </option>
+                </select>
+                <ChevronDown size={15} />
+              </div>
+            </label>
+          ) : (
+            <div className="period-preview">
+              <span>Selected report</span>
+              <strong>{monthTitle(month)}</strong>
+              <small>Complete month</small>
+            </div>
+          )}
+        </div>
+
+        <div className="selected-period">
+          <div>
+            <span>Selected</span>
+            <strong>{reportTitle}</strong>
+          </div>
+          <div className="selected-status">
+            <span>Records</span>
+            <strong>{activeRecords}</strong>
+          </div>
         </div>
       </section>
 
       {loading ? (
         <div className="loading-card">
-          <RefreshCw size={28} className="spin" />
-          <strong>Loading report details...</strong>
-          <span>Fetching the selected month from the API.</span>
+          <div className="loader-ring">
+            <Loader2 size={30} className="spin" />
+          </div>
+          <strong>Loading financial details</strong>
+          <span>
+            Fetching {period === "week" ? "weekly" : "monthly"} data from
+            your authenticated API.
+          </span>
         </div>
       ) : (
         <>
           <section className="summary-grid">
-            {summaryCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <div className={`summary-card ${card.className}`} key={card.label}>
-                  <div className="summary-icon">
-                    <Icon size={18} />
-                  </div>
-                  <div className="summary-info">
-                    <span>{card.label}</span>
-                    <strong>{card.value}</strong>
-                  </div>
-                </div>
-              );
-            })}
+            <SummaryCard
+              label="Received / Income"
+              value={summary.income}
+              icon={ArrowDownToLine}
+              tone="green"
+            />
+            <SummaryCard
+              label="Expenses"
+              value={summary.expenses}
+              icon={Receipt}
+              tone="red"
+            />
+            <SummaryCard
+              label="EMI"
+              value={summary.emi}
+              icon={Landmark}
+              tone="purple"
+            />
+            <SummaryCard
+              label="Loan Repayment"
+              value={summary.loanRepayment}
+              icon={Landmark}
+              tone="violet"
+            />
+            <SummaryCard
+              label="Borrow Repayment"
+              value={summary.borrowRepayment}
+              icon={HandCoins}
+              tone="amber"
+            />
+            <SummaryCard
+              label="Total Outgoing"
+              value={summary.outgoing}
+              icon={ArrowUpFromLine}
+              tone="orange"
+            />
+            <SummaryCard
+              label="Net Result"
+              value={summary.net}
+              icon={Wallet}
+              tone={summary.net >= 0 ? "green" : "red"}
+            />
+            <SummaryCard
+              label="Pending"
+              value={summary.pending}
+              icon={Receipt}
+              tone="blue"
+            />
           </section>
 
-          <section className="profile-card">
-            <div className="section-title">
-              <div>
-                <span className="eyebrow">REPORT OWNER</span>
-                <h2>Profile & Overview</h2>
-              </div>
-            </div>
+          <section className="main-grid">
+            <div className="content-card">
+              <SectionHeader
+                eyebrow="DOWNLOAD"
+                title={`Download ${period === "week" ? "Weekly" : "Monthly"} Report`}
+                text="Choose any format. The server generates the complete selected report."
+              />
 
-            <div className="profile-grid">
-              <div className="profile-main">
-                <div className="avatar">
-                  {(user.full_name || "U").charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3>{user.full_name || "User"}</h3>
-                  <p>
-                    {user.profession || "Personal Dashboard"}
-                  </p>
-                  <small>
-                    {user.username
-                      ? `@${user.username}`
-                      : user.email_address || "-"}
-                  </small>
-                </div>
-              </div>
-
-              <div className="detail-list">
-                <div>
-                  <span>Email</span>
-                  <strong>{user.email_address || "-"}</strong>
-                </div>
-                <div>
-                  <span>Phone</span>
-                  <strong>{user.phone1 || "-"}</strong>
-                </div>
-                <div>
-                  <span>Business</span>
-                  <strong>{overview.total_business ?? 0}</strong>
-                </div>
-                <div>
-                  <span>Works</span>
-                  <strong>{overview.total_works ?? 0}</strong>
-                </div>
-                <div>
-                  <span>Business Payment</span>
-                  <strong>{money(overview.business_payment)}</strong>
-                </div>
-                <div>
-                  <span>Work Payment</span>
-                  <strong>{money(overview.work_payment)}</strong>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="section-block">
-            <div className="section-title">
-              <div>
-                <span className="eyebrow">COMPLETE REPORT</span>
-                <h2>Download All Details</h2>
-                <p>
-                  These buttons use the same authenticated APIs from
-                  your Express export router.
-                </p>
-              </div>
-            </div>
-
-            <div className="action-grid">
-              {actionCards.slice(0, 3).map((card) => (
-                <ActionCard
-                  key={card.key}
-                  card={card}
+              <div className="format-grid">
+                <DownloadCard
+                  type="pdf"
+                  title="Professional PDF"
+                  text="A4-ready report with summary, tables, transactions and all available details."
+                  icon={FileText}
                   exporting={exporting}
+                  onClick={() => downloadFile("pdf")}
+                  tone="pdf"
                 />
-              ))}
-            </div>
-          </section>
 
-          <section className="section-block">
-            <div className="section-title">
-              <div>
-                <span className="eyebrow">QUICK MANAGEMENT EXPORT</span>
-                <h2>Overview Downloads</h2>
-                <p>
-                  Shorter files for sharing, review and quick backup.
-                </p>
-              </div>
-            </div>
-
-            <div className="action-grid">
-              {actionCards.slice(3).map((card) => (
-                <ActionCard
-                  key={card.key}
-                  card={card}
+                <DownloadCard
+                  type="excel"
+                  title="Professional Excel"
+                  text="Workbook with separate sheets for summary, expenses, loans, payments and other records."
+                  icon={FileSpreadsheet}
                   exporting={exporting}
+                  onClick={() => downloadFile("excel")}
+                  tone="excel"
                 />
-              ))}
-            </div>
-          </section>
 
-          <section className="section-block">
-            <div className="section-title">
-              <div>
-                <span className="eyebrow">LOCAL PREVIEW</span>
-                <h2>Preview & JSON Backup</h2>
-                <p>
-                  Preview the current API data before downloading.
-                </p>
+                <DownloadCard
+                  type="text"
+                  title="Complete Text"
+                  text="Plain-text backup containing the selected period and complete available records."
+                  icon={FileText}
+                  exporting={exporting}
+                  onClick={() => downloadFile("text")}
+                  tone="text"
+                />
               </div>
             </div>
 
-            <div className="utility-grid">
-              <button
-                className="utility-card"
-                onClick={() => setPreviewOpen(true)}
-              >
-                <div className="utility-icon purple">
-                  <Eye size={20} />
-                </div>
-                <div>
-                  <strong>Open Professional Preview</strong>
-                  <span>View report layout and weekly details.</span>
-                </div>
-              </button>
+            <div className="content-card report-status-card">
+              <SectionHeader
+                eyebrow="REPORT STATUS"
+                title="Selected period"
+                text="Live values from the current API response."
+              />
 
-              <button
-                className="utility-card"
-                onClick={downloadJson}
-              >
-                <div className="utility-icon blue">
-                  <FileJson size={20} />
+              <div className="status-box">
+                <div className="status-icon">
+                  <CheckCircle2 size={22} />
                 </div>
                 <div>
-                  <strong>Download JSON Backup</strong>
+                  <strong>{reportTitle}</strong>
                   <span>
-                    Save the exact JSON data returned by the API.
+                    {data.period?.startDate
+                      ? `${dateLabel(data.period.startDate)} → ${dateLabel(
+                          new Date(
+                            `${data.period.endDateExclusive}T00:00:00`
+                          ).getTime() - 86400000
+                        )}`
+                      : "Selected period"}
                   </span>
                 </div>
+              </div>
+
+              <div className="mini-stats">
+                <MiniStat
+                  label="Business"
+                  value={moneyCompact(summary.businessTotal)}
+                />
+                <MiniStat
+                  label="Work"
+                  value={moneyCompact(summary.workTotal)}
+                />
+                <MiniStat
+                  label="Active Loan"
+                  value={moneyCompact(summary.activeLoan)}
+                />
+                <MiniStat
+                  label="Active Borrow"
+                  value={moneyCompact(summary.activeBorrow)}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="preview-button"
+                onClick={() => setPreviewOpen(true)}
+              >
+                <Eye size={16} />
+                Open report preview
               </button>
             </div>
           </section>
 
-          <section className="section-block">
-            <div className="section-title">
-              <div>
-                <span className="eyebrow">DATA COVERAGE</span>
-                <h2>Included Records</h2>
-              </div>
+          <section className="content-card">
+            <SectionHeader
+              eyebrow="PERFORMANCE"
+              title={
+                period === "week"
+                  ? `Week ${week} Performance`
+                  : `Monthly Performance • ${monthTitle(month)}`
+              }
+              text={
+                period === "week"
+                  ? "Only the selected week is shown."
+                  : "Weeks with no activity remain visible but contain no financial details."
+              }
+            />
+
+            <PerformanceTable rows={visibleWeeklyRows} />
+          </section>
+
+          <section className="two-column">
+            <div className="content-card">
+              <SectionHeader
+                eyebrow="DISTRIBUTION"
+                title="Expense Categories"
+                text="Selected period expense distribution."
+              />
+
+              {categoryTotals.length === 0 ? (
+                <EmptyState text="No expense details available for this period." />
+              ) : (
+                <div className="category-list">
+                  {categoryTotals.map((item) => {
+                    const total =
+                      categoryTotals.reduce(
+                        (s, row) => s + num(row.total),
+                        0
+                      );
+                    const pct =
+                      total > 0
+                        ? (num(item.total) / total) * 100
+                        : 0;
+
+                    return (
+                      <div
+                        className="category-row"
+                        key={item.category}
+                      >
+                        <div className="category-top">
+                          <span>{item.category}</span>
+                          <strong>{money(item.total)}</strong>
+                        </div>
+                        <div className="progress">
+                          <span
+                            style={{
+                              width: `${Math.min(100, pct)}%`,
+                            }}
+                          />
+                        </div>
+                        <small>{pct.toFixed(1)}%</small>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className="coverage-grid">
-              <Coverage label="Weekly Performance" value={weekly.length} />
-              <Coverage label="Expense Records" value={expenses.length} />
-              <Coverage label="Payment Records" value={payments.length} />
-              <Coverage label="Loan / Borrow Records" value={loans.length} />
-              <Coverage label="Repayment Records" value={repayments.length} />
-              <Coverage
-                label="Expense Categories"
-                value={expenseCategories.length}
+            <div className="content-card">
+              <SectionHeader
+                eyebrow="QUICK BACKUP"
+                title="Data Backup"
+                text="Save the exact JSON response locally for technical backup."
               />
+
+              <div className="backup-box">
+                <div className="backup-icon">
+                  <PieChart size={22} />
+                </div>
+                <div>
+                  <strong>JSON backup</strong>
+                  <span>
+                    Includes the selected period, summary and all API
+                    tables returned for the user.
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={downloadJson}
+              >
+                <Download size={15} />
+                Download JSON
+              </button>
+            </div>
+          </section>
+
+          <section className="content-card">
+            <SectionHeader
+              eyebrow="DATA COVERAGE"
+              title="Included records"
+              text="Only records returned for the selected month/week are counted."
+            />
+
+            <div className="coverage-grid">
+              <Coverage label="Business / Work" value={businessWork.length} />
+              <Coverage label="Expenses" value={expenses.length} />
+              <Coverage label="Payments" value={payments.length} />
+              <Coverage label="Loans / Borrow" value={loans.length} />
+              <Coverage label="Repayments" value={repayments.length} />
+              <Coverage label="Overview Rows" value={overviewRows.length} />
             </div>
           </section>
         </>
@@ -594,65 +1183,116 @@ const ExportDetails = () => {
 
       {previewOpen && (
         <PreviewModal
-          monthLabel={monthLabel}
-          month={month}
-          user={user}
+          data={data}
           summary={summary}
-          overview={overview}
-          weekly={weekly}
-          expenses={expenses}
-          payments={payments}
-          loans={loans}
-          repayments={repayments}
-          expenseCategories={expenseCategories}
-          chart={chart}
+          reportTitle={reportTitle}
+          period={period}
+          week={week}
+          weeklyRows={visibleWeeklyRows}
+          categoryTotals={categoryTotals}
           onClose={() => setPreviewOpen(false)}
-          onPrint={printPreview}
+          onDownload={(format) => downloadFile(format)}
         />
       )}
     </div>
   );
 };
 
-const ActionCard = ({ card, exporting }) => {
-  const Icon = card.icon;
-  const busy = exporting === card.key;
+const Notice = ({ type, text, onClose }) => (
+  <div className={`notice ${type}`}>
+    {type === "error" ? (
+      <AlertCircle size={17} />
+    ) : (
+      <CheckCircle2 size={17} />
+    )}
+    <span>{text}</span>
+    <button type="button" onClick={onClose} aria-label="Close">
+      <X size={16} />
+    </button>
+  </div>
+);
+
+const SummaryCard = ({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}) => (
+  <div className={`summary-card ${tone}`}>
+    <div className="summary-icon">
+      <Icon size={18} />
+    </div>
+    <div className="summary-content">
+      <span>{label}</span>
+      <strong>{money(value)}</strong>
+    </div>
+  </div>
+);
+
+const SectionHeader = ({
+  eyebrow,
+  title,
+  text,
+}) => (
+  <div className="section-header">
+    <div>
+      <span className="eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      {text && <p>{text}</p>}
+    </div>
+  </div>
+);
+
+const DownloadCard = ({
+  type,
+  title,
+  text,
+  icon: Icon,
+  exporting,
+  onClick,
+  tone,
+}) => {
+  const busy = exporting.endsWith(`-${type}`);
 
   return (
-    <div className={`action-card ${card.className}`}>
-      <div className="action-top">
-        <div className="action-icon">
+    <article className={`download-card ${tone}`}>
+      <div className="download-card-top">
+        <div className="format-icon">
           <Icon size={21} />
         </div>
-        <span className="file-badge">
-          {card.key.toLowerCase().includes("excel")
-            ? "XLSX"
-            : card.key.toLowerCase().includes("pdf")
-              ? "PDF"
-              : "TXT"}
+        <span className="format-badge">
+          {type === "excel" ? "XLSX" : type.toUpperCase()}
         </span>
       </div>
 
-      <div className="action-content">
-        <h3>{card.title}</h3>
-        <p>{card.description}</p>
+      <div className="download-copy">
+        <h3>{title}</h3>
+        <p>{text}</p>
       </div>
 
       <button
-        className="download-button"
-        onClick={card.onClick}
+        type="button"
+        className="download-action"
+        onClick={onClick}
         disabled={Boolean(exporting)}
       >
         {busy ? (
-          <RefreshCw size={15} className="spin" />
+          <Loader2 size={15} className="spin" />
         ) : (
           <Download size={15} />
         )}
-        {busy ? "Preparing..." : card.button}
+        {busy ? "Preparing..." : `Download ${type === "excel" ? "Excel" : type.toUpperCase()}`}
       </button>
-    </div>
+    </article>
   );
 };
+
+const MiniStat = ({ label, value }) => (
+  <div className="mini-stat">
+    <span>{label}</span>
+    <strong>{value}</strong>
+  </div>
+);
 
 const Coverage = ({ label, value }) => (
   <div className="coverage-card">
@@ -661,47 +1301,143 @@ const Coverage = ({ label, value }) => (
   </div>
 );
 
-const PreviewModal = ({
-  monthLabel,
-  month,
-  user,
-  summary,
-  overview,
-  weekly,
-  expenses,
-  payments,
-  loans,
-  repayments,
-  expenseCategories,
-  chart,
-  onClose,
-  onPrint,
-}) => {
-  const safe = (value) =>
-    value === undefined || value === null || value === ""
-      ? "-"
-      : String(value);
+const PerformanceTable = ({ rows }) => {
+  if (!rows?.length) {
+    return <EmptyState text="No weekly performance available." />;
+  }
 
   return (
-    <div className="preview-backdrop" onMouseDown={(e) => {
-      if (e.target === e.currentTarget) onClose();
-    }}>
+    <div className="table-scroll">
+      <table className="performance-table">
+        <thead>
+          <tr>
+            <th>Week</th>
+            <th>Period</th>
+            <th>Income</th>
+            <th>Expenses</th>
+            <th>EMI</th>
+            <th>Loan</th>
+            <th>Borrow</th>
+            <th>Outgoing</th>
+            <th>Net</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.week}
+              className={!row.hasActivity ? "no-activity" : ""}
+            >
+              <td>
+                <strong>Week {row.week}</strong>
+              </td>
+              <td>
+                {row.start}–{row.end}
+              </td>
+              <td>{money(row.income)}</td>
+              <td>{money(row.expenses)}</td>
+              <td>{money(row.loanEmi)}</td>
+              <td>{money(row.loanRepayment)}</td>
+              <td>{money(row.borrowRepayment)}</td>
+              <td>{money(row.outgoing)}</td>
+              <td
+                className={
+                  row.net >= 0
+                    ? "positive-value"
+                    : "negative-value"
+                }
+              >
+                {money(row.net)}
+              </td>
+              <td>
+                <span
+                  className={`status-tag ${
+                    row.hasActivity
+                      ? row.net >= 0
+                        ? "positive"
+                        : "negative"
+                      : "neutral"
+                  }`}
+                >
+                  {row.status}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const EmptyState = ({ text }) => (
+  <div className="empty-state">
+    <Receipt size={20} />
+    <span>{text}</span>
+  </div>
+);
+
+const PreviewModal = ({
+  data,
+  summary,
+  reportTitle,
+  period,
+  week,
+  weeklyRows,
+  categoryTotals,
+  onClose,
+  onDownload,
+}) => {
+  const user = data.user || {};
+  const expenses = data.tables?.personal_expenses || [];
+  const payments = data.tables?.personal_payments || [];
+  const loans = data.tables?.personal_loans_borrow || [];
+  const repayments =
+    data.tables?.personal_loan_emi_payments || [];
+  const work = data.tables?.personal_business_work || [];
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="preview-modal">
-        <div className="preview-toolbar">
+        <div className="modal-head">
           <div>
             <span className="eyebrow dark">REPORT PREVIEW</span>
-            <h2>Personal Financial Report</h2>
+            <h2>{reportTitle}</h2>
             <p>
-              {user.full_name || "User"} • {monthLabel}
+              {safe(user.full_name)} •{" "}
+              {period === "week"
+                ? `Week ${week}`
+                : "Monthly Summary"}
             </p>
           </div>
 
-          <div className="preview-buttons">
-            <button onClick={onPrint}>
-              <Printer size={15} />
-              Print
+          <div className="modal-actions">
+            <button
+              type="button"
+              onClick={() => onDownload("pdf")}
+            >
+              <FileText size={15} />
+              PDF
             </button>
-            <button className="close-button" onClick={onClose}>
+            <button
+              type="button"
+              onClick={() => onDownload("excel")}
+            >
+              <FileSpreadsheet size={15} />
+              Excel
+            </button>
+            <button
+              type="button"
+              className="close-modal"
+              onClick={onClose}
+              aria-label="Close preview"
+            >
               <X size={18} />
             </button>
           </div>
@@ -709,224 +1445,151 @@ const PreviewModal = ({
 
         <div className="preview-body">
           <div className="document-header">
-            <div className="document-mark">₹</div>
+            <div className="document-logo">₹</div>
             <div>
               <h1>Personal Financial Report</h1>
-              <p>{monthLabel}</p>
+              <p>{reportTitle}</p>
             </div>
           </div>
 
-          <div className="document-owner">
-            <div>
-              <span>Name</span>
-              <strong>{safe(user.full_name)}</strong>
-            </div>
-            <div>
-              <span>Profession</span>
-              <strong>{safe(user.profession)}</strong>
-            </div>
-            <div>
-              <span>Email</span>
-              <strong>{safe(user.email_address)}</strong>
-            </div>
-            <div>
-              <span>Phone</span>
-              <strong>{safe(user.phone1)}</strong>
+          <div className="owner-grid">
+            <DocumentField label="Name" value={user.full_name} />
+            <DocumentField label="Profession" value={user.profession} />
+            <DocumentField label="Username" value={user.username} />
+            <DocumentField label="Email" value={user.email_address} />
+          </div>
+
+          <div className="preview-section">
+            <h3>Financial Summary</h3>
+            <div className="document-metrics">
+              <DocumentMetric label="Income" value={money(summary.income)} />
+              <DocumentMetric label="Expenses" value={money(summary.expenses)} />
+              <DocumentMetric label="EMI" value={money(summary.emi)} />
+              <DocumentMetric label="Loan Repayment" value={money(summary.loanRepayment)} />
+              <DocumentMetric label="Borrow Repayment" value={money(summary.borrowRepayment)} />
+              <DocumentMetric label="Outgoing" value={money(summary.outgoing)} />
+              <DocumentMetric label="Net Result" value={money(summary.net)} />
+              <DocumentMetric label="Pending" value={money(summary.pending)} />
             </div>
           </div>
 
-          <PreviewSection title="Monthly Financial Summary">
-            <div className="document-cards">
-              <DocMetric label="Income" value={money(summary.total_income)} />
-              <DocMetric label="Expenses" value={money(summary.total_expenses)} />
-              <DocMetric label="EMI / Loan" value={money(
-                numberValue(summary.total_emi) +
-                numberValue(summary.total_loan_repayment)
-              )} />
-              <DocMetric label="Borrow Repayment" value={money(summary.total_borrow_repayment)} />
-              <DocMetric label="Total Outgoing" value={money(summary.total_outgoing)} />
-              <DocMetric label="Net" value={money(summary.net)} />
-              <DocMetric label="Savings" value={money(summary.savings)} />
-              <DocMetric label="Loss" value={money(summary.loss)} />
-              <DocMetric label="Status" value={safe(summary.status)} />
-            </div>
-          </PreviewSection>
+          <div className="preview-section">
+            <h3>Weekly Performance</h3>
+            <PerformanceTable rows={weeklyRows} />
+          </div>
 
-          <PreviewSection title="Overview">
-            <div className="simple-table">
-              <Row label="Total Business" value={safe(overview.total_business)} />
-              <Row label="Total Works" value={safe(overview.total_works)} />
-              <Row label="Business Payment" value={money(overview.business_payment)} />
-              <Row label="Work Payment" value={money(overview.work_payment)} />
-              <Row label="Pending" value={money(summary.pending)} />
-              <Row label="Overdue" value={money(summary.overdue)} />
-              <Row label="Lost" value={money(summary.lost)} />
-            </div>
-          </PreviewSection>
-
-          <PreviewSection title="Financial Distribution">
-            {chart.length === 0 ? (
-              <p className="muted">No chart data available.</p>
-            ) : (
-              <div className="distribution-list">
-                {chart.map((item, index) => {
-                  const total = chart.reduce(
-                    (sum, row) => sum + numberValue(row.value),
-                    0
-                  );
-                  const percentage =
-                    total > 0
-                      ? (numberValue(item.value) / total) * 100
-                      : 0;
-
-                  return (
-                    <div className="distribution-row" key={index}>
-                      <div className="distribution-label">
-                        <span>{safe(item.label)}</span>
-                        <strong>{money(item.value)}</strong>
-                      </div>
-                      <div className="bar">
-                        <div style={{ width: `${percentage}%` }} />
-                      </div>
-                      <small>{percentage.toFixed(1)}%</small>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </PreviewSection>
-
-          <PreviewSection title="Weekly Performance">
-            <Table
-              headers={[
-                "Week",
-                "Income",
-                "Expenses",
-                "Loan / EMI",
-                "Borrow",
-                "Outgoing",
-                "Net",
-                "Status",
-              ]}
-              rows={weekly.map((row) => [
-                `Week ${row.week}`,
-                money(row.income),
-                money(row.expenses),
-                money(
-                  numberValue(row.loan_emi) +
-                    numberValue(row.loan_repayment)
-                ),
-                money(row.borrow_repayment),
-                money(row.outgoing),
-                money(row.net),
-                safe(row.status),
-              ])}
-              empty="No weekly records available."
-            />
-          </PreviewSection>
-
-          <PreviewSection title="Expense Categories">
-            <Table
-              headers={["Category", "Total"]}
-              rows={expenseCategories.map((row) => [
-                safe(row.category),
+          <div className="preview-section">
+            <h3>Expense Categories</h3>
+            <SimpleTable
+              headers={["Category", "Amount"]}
+              rows={categoryTotals.map((row) => [
+                row.category,
                 money(row.total),
               ])}
               empty="No expense categories."
             />
-          </PreviewSection>
+          </div>
 
-          <PreviewSection title="Payments">
-            <Table
+          <div className="preview-section">
+            <h3>Business / Work</h3>
+            <SimpleTable
+              headers={["Type", "Name", "Amount", "Status", "Start", "End"]}
+              rows={work.map((row) => [
+                safe(row.type),
+                safe(row.name),
+                money(row.amount),
+                safe(row.status),
+                dateLabel(row.start_date),
+                dateLabel(row.end_date),
+              ])}
+              empty="No business or work records."
+            />
+          </div>
+
+          <div className="preview-section">
+            <h3>Expenses</h3>
+            <SimpleTable
+              headers={["Category", "Amount", "Date", "Notes"]}
+              rows={expenses.map((row) => [
+                safe(row.category),
+                money(row.amount),
+                dateLabel(row.expense_date),
+                safe(row.notes),
+              ])}
+              empty="No expenses."
+            />
+          </div>
+
+          <div className="preview-section">
+            <h3>Loans / Borrow</h3>
+            <SimpleTable
+              headers={[
+                "Type",
+                "Name",
+                "Amount",
+                "EMI",
+                "Status",
+                "Start",
+                "Return / End",
+              ]}
+              rows={loans.map((row) => [
+                safe(row.type),
+                safe(row.name),
+                money(row.amount),
+                money(row.emi),
+                safe(row.status),
+                dateLabel(row.start_date),
+                dateLabel(row.return_date || row.end_date),
+              ])}
+              empty="No loans or borrow records."
+            />
+          </div>
+
+          <div className="preview-section">
+            <h3>Repayments</h3>
+            <SimpleTable
+              headers={[
+                "Loan",
+                "Type",
+                "Amount",
+                "Date",
+                "Notes",
+              ]}
+              rows={repayments.map((row) => [
+                safe(row.loan_name),
+                safe(row.payment_type),
+                money(row.amount),
+                dateLabel(row.payment_date),
+                safe(row.notes),
+              ])}
+              empty="No repayments."
+            />
+          </div>
+
+          <div className="preview-section">
+            <h3>Payments</h3>
+            <SimpleTable
               headers={[
                 "Person",
                 "Category",
                 "Amount",
                 "Date",
-                "Received",
                 "Status",
               ]}
               rows={payments.map((row) => [
                 safe(row.person_name),
                 safe(row.category),
                 money(row.amount),
-                safe(row.payment_date),
-                row.received_at
-                  ? String(row.received_at).slice(0, 10)
-                  : "-",
+                dateLabel(row.payment_date),
                 safe(row.status),
               ])}
               empty="No payments."
             />
-          </PreviewSection>
+          </div>
 
-          <PreviewSection title="Expenses">
-            <Table
-              headers={["Category", "Amount", "Date", "Notes"]}
-              rows={expenses.map((row) => [
-                safe(row.category),
-                money(row.amount),
-                safe(row.expense_date),
-                safe(row.notes),
-              ])}
-              empty="No expenses."
-            />
-          </PreviewSection>
-
-          <PreviewSection title="Loans & Borrow">
-            <Table
-              headers={[
-                "Name",
-                "Type",
-                "Amount",
-                "EMI",
-                "Start",
-                "Due",
-                "Status",
-              ]}
-              rows={loans.map((row) => [
-                safe(row.name),
-                safe(row.type),
-                money(row.amount),
-                money(row.emi),
-                safe(row.start_date),
-                safe(
-                  row.type === "Loan"
-                    ? row.end_date
-                    : row.return_date
-                ),
-                safe(row.status),
-              ])}
-              empty="No loans or borrow records."
-            />
-          </PreviewSection>
-
-          <PreviewSection title="Repayments">
-            <Table
-              headers={[
-                "Loan ID",
-                "Amount",
-                "Date",
-                "Type",
-                "Notes",
-              ]}
-              rows={repayments.map((row) => [
-                safe(row.loan_id),
-                money(row.amount),
-                safe(row.payment_date),
-                safe(row.payment_type),
-                safe(row.notes),
-              ])}
-              empty="No repayments."
-            />
-          </PreviewSection>
-
-          <div className="document-footer">
-            <span>Personal Dashboard Export</span>
-            <span>Month: {month}</span>
-            <span>
-              Generated: {new Date().toLocaleString("en-IN")}
-            </span>
+          <div className="preview-footer">
+            <span>Personal Dashboard</span>
+            <span>Generated {dateTimeLabel(new Date())}</span>
           </div>
         </div>
       </div>
@@ -934,34 +1597,27 @@ const PreviewModal = ({
   );
 };
 
-const PreviewSection = ({ title, children }) => (
-  <section className="preview-section">
-    <h3>{title}</h3>
-    {children}
-  </section>
+const DocumentField = ({ label, value }) => (
+  <div className="document-field">
+    <span>{label}</span>
+    <strong>{safe(value)}</strong>
+  </div>
 );
 
-const DocMetric = ({ label, value }) => (
-  <div className="doc-metric">
+const DocumentMetric = ({ label, value }) => (
+  <div className="document-metric">
     <span>{label}</span>
     <strong>{value}</strong>
   </div>
 );
 
-const Row = ({ label, value }) => (
-  <div className="simple-row">
-    <span>{label}</span>
-    <strong>{value}</strong>
-  </div>
-);
-
-const Table = ({ headers, rows, empty }) => {
+const SimpleTable = ({ headers, rows, empty }) => {
   if (!rows.length) {
-    return <p className="muted">{empty}</p>;
+    return <EmptyState text={empty} />;
   }
 
   return (
-    <div className="table-scroll">
+    <div className="table-scroll light">
       <table>
         <thead>
           <tr>
@@ -985,484 +1641,282 @@ const Table = ({ headers, rows, empty }) => {
 };
 
 const styles = `
+:root {
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
 
 .export-page {
-  width: 100%;
   min-height: 100%;
-  padding: 18px;
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+  padding: clamp(10px, 2vw, 24px);
   color: #f8fafc;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(79,70,229,.17), transparent 30%),
+    radial-gradient(circle at 95% 10%, rgba(6,182,212,.12), transparent 26%),
+    #070b14;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 14px;
 }
 
-.title-area,
-.toolbar,
-.month-control,
-.report-heading,
-.action-top,
-.utility-card,
-.profile-main,
-.section-title {
+.brand {
   display: flex;
   align-items: center;
+  min-width: 0;
+  gap: 11px;
 }
 
-.title-area {
-  gap: 11px;
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  color: #c4b5fd;
+  background: linear-gradient(135deg, rgba(99,102,241,.24), rgba(6,182,212,.14));
+  border: 1px solid rgba(196,181,253,.18);
+  border-radius: 13px;
+  box-shadow: 0 10px 28px rgba(79,70,229,.15);
+}
+
+.brand-copy {
   min-width: 0;
 }
 
-.title-icon {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 44px;
-  color: #67e8f9;
-  background: rgba(34, 211, 238, .10);
-  border: 1px solid rgba(103, 232, 249, .15);
-  border-radius: 13px;
+.brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
-.title-area h1 {
+.brand h1 {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 850;
-  letter-spacing: -.02em;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  letter-spacing: -.03em;
 }
 
-.title-area p {
+.brand p {
   margin: 4px 0 0;
-  color: rgba(255,255,255,.48);
-  font-size: .73rem;
+  color: rgba(255,255,255,.46);
+  font-size: .68rem;
 }
 
-.toolbar {
-  gap: 8px;
+.live-pill {
+  padding: 3px 6px;
+  color: #a7f3d0;
+  background: rgba(16,185,129,.09);
+  border: 1px solid rgba(16,185,129,.17);
+  border-radius: 999px;
+  font-size: .46rem;
+  font-weight: 900;
+  letter-spacing: .08em;
 }
 
-.month-control {
-  height: 40px;
-  gap: 8px;
-  padding: 0 10px;
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 11px;
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ghost-button,
+.icon-button,
+.preview-button,
+.secondary-button,
+.modal-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #f8fafc;
   background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.09);
+  cursor: pointer;
+  transition: .18s ease;
 }
 
-.month-control span {
-  color: rgba(255,255,255,.45);
-  font-size: .65rem;
-}
-
-.month-control input {
-  width: 125px;
-  color: #fff;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  font-size: .75rem;
+.ghost-button {
+  min-height: 38px;
+  padding: 0 11px;
+  border-radius: 10px;
+  font-size: .62rem;
+  font-weight: 800;
 }
 
 .icon-button {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: rgba(255,255,255,.045);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 11px;
-  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
 }
 
-.icon-button:hover {
+.ghost-button:hover,
+.icon-button:hover,
+.preview-button:hover,
+.secondary-button:hover,
+.modal-actions button:hover {
   border-color: rgba(103,232,249,.30);
+  background: rgba(255,255,255,.08);
+  transform: translateY(-1px);
 }
 
-.icon-button:disabled {
-  opacity: .55;
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
-.report-heading {
-  justify-content: space-between;
-  gap: 15px;
-  padding: 18px;
-  margin-bottom: 12px;
+.control-panel,
+.content-card,
+.loading-card {
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 16px;
+  border-radius: 17px;
   background: rgba(255,255,255,.035);
+  box-shadow: 0 18px 45px rgba(0,0,0,.14);
+}
+
+.control-panel {
+  padding: clamp(14px, 2vw, 20px);
+  margin-bottom: 12px;
+}
+
+.control-heading h2,
+.section-header h2 {
+  margin: 4px 0 3px;
+  font-size: clamp(.95rem, 1.7vw, 1.12rem);
+}
+
+.control-heading p,
+.section-header p {
+  margin: 0;
+  max-width: 720px;
+  color: rgba(255,255,255,.43);
+  font-size: .65rem;
+  line-height: 1.55;
 }
 
 .eyebrow {
   display: block;
-  color: rgba(255,255,255,.38);
-  font-size: .58rem;
-  font-weight: 850;
-  letter-spacing: .12em;
+  color: rgba(255,255,255,.36);
+  font-size: .54rem;
+  font-weight: 900;
+  letter-spacing: .13em;
 }
 
-.report-heading h2 {
-  margin: 5px 0 4px;
-  font-size: 1.25rem;
-}
-
-.report-heading p {
-  max-width: 650px;
-  margin: 0;
-  color: rgba(255,255,255,.48);
-  font-size: .70rem;
-  line-height: 1.5;
-}
-
-.heading-status {
-  min-width: 125px;
-  padding: 11px 13px;
-  text-align: right;
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 11px;
-  background: rgba(255,255,255,.025);
-}
-
-.heading-status span {
-  display: block;
-  color: rgba(255,255,255,.35);
-  font-size: .57rem;
-}
-
-.heading-status strong {
-  display: block;
-  margin-top: 4px;
-  font-size: .72rem;
-}
-
-.summary-grid {
+.controls-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0,1fr));
   gap: 9px;
-  margin-bottom: 12px;
-}
-
-.summary-card,
-.profile-card,
-.section-block,
-.loading-card {
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 16px;
-  background: rgba(255,255,255,.035);
-  box-shadow: 0 12px 32px rgba(0,0,0,.12);
-}
-
-.summary-card {
-  min-width: 0;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.summary-icon {
-  width: 37px;
-  height: 37px;
-  flex: 0 0 37px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: rgba(255,255,255,.055);
-}
-
-.summary-info {
-  min-width: 0;
-}
-
-.summary-info span {
-  display: block;
-  color: rgba(255,255,255,.40);
-  font-size: .57rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.summary-info strong {
-  display: block;
-  margin-top: 4px;
-  font-size: .72rem;
-  overflow-wrap: anywhere;
-}
-
-.income .summary-icon { color: #6ee7b7; }
-.expense .summary-icon { color: #fca5a5; }
-.loan .summary-icon { color: #c4b5fd; }
-.borrow .summary-icon { color: #fcd34d; }
-.outgoing .summary-icon { color: #fb7185; }
-
-.profile-card {
-  padding: 16px;
-  margin-bottom: 12px;
-}
-
-.section-title {
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.section-title h2 {
-  margin: 4px 0 0;
-  font-size: .95rem;
-}
-
-.section-title p {
-  margin: 4px 0 0;
-  color: rgba(255,255,255,.43);
-  font-size: .65rem;
-}
-
-.profile-grid {
-  display: grid;
-  grid-template-columns: minmax(250px, .75fr) 1.25fr;
-  gap: 14px;
   margin-top: 14px;
 }
 
-.profile-main {
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px;
+.field-card,
+.period-preview {
+  min-width: 0;
+  padding: 10px;
   border: 1px solid rgba(255,255,255,.07);
-  border-radius: 12px;
+  border-radius: 11px;
   background: rgba(255,255,255,.025);
 }
 
-.avatar {
-  width: 47px;
-  height: 47px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 47px;
+.field-card > span,
+.period-preview > span {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(255,255,255,.38);
+  font-size: .55rem;
+  font-weight: 750;
+}
+
+.select-wrap,
+.month-wrap {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  color: #c4b5fd;
+  background: rgba(0,0,0,.13);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px;
+}
+
+.select-wrap select,
+.month-wrap input {
+  width: 100%;
+  min-width: 0;
   color: #fff;
-  background: linear-gradient(135deg, #4f46e5, #0891b2);
-  border-radius: 13px;
-  font-weight: 900;
-  font-size: 1rem;
-}
-
-.profile-main h3 {
-  margin: 0;
-  font-size: .82rem;
-}
-
-.profile-main p {
-  margin: 3px 0;
-  color: rgba(255,255,255,.45);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
   font-size: .65rem;
 }
 
-.profile-main small {
-  color: rgba(255,255,255,.30);
-  font-size: .59rem;
+.select-wrap select option {
+  color: #111827;
+  background: #fff;
 }
 
-.detail-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 8px;
-}
-
-.detail-list > div,
-.coverage-card {
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 10px;
-  background: rgba(255,255,255,.022);
-}
-
-.detail-list span,
-.coverage-card span {
+.period-preview strong {
   display: block;
-  color: rgba(255,255,255,.36);
-  font-size: .57rem;
+  color: #fff;
+  font-size: .74rem;
 }
 
-.detail-list strong,
-.coverage-card strong {
+.period-preview small {
   display: block;
-  margin-top: 4px;
-  font-size: .68rem;
-  overflow-wrap: anywhere;
+  margin-top: 3px;
+  color: rgba(255,255,255,.33);
+  font-size: .54rem;
 }
 
-.section-block {
-  padding: 16px;
-  margin-bottom: 12px;
-}
-
-.action-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 10px;
-  margin-top: 13px;
-}
-
-.action-card {
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 13px;
-  background: rgba(255,255,255,.025);
-  transition: .18s ease;
-}
-
-.action-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(103,232,249,.24);
-}
-
-.action-top {
-  justify-content: space-between;
-}
-
-.action-icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 11px;
-  background: rgba(255,255,255,.055);
-}
-
-.pdf .action-icon { color: #fca5a5; }
-.excel .action-icon { color: #6ee7b7; }
-.text .action-icon { color: #67e8f9; }
-.overview .action-icon { color: #c4b5fd; }
-.overviewExcel .action-icon { color: #34d399; }
-.overviewText .action-icon { color: #60a5fa; }
-
-.file-badge {
-  padding: 4px 7px;
-  color: rgba(255,255,255,.42);
-  background: rgba(255,255,255,.045);
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 6px;
-  font-size: .50rem;
-  font-weight: 850;
-}
-
-.action-content {
-  min-height: 84px;
-  margin-top: 12px;
-}
-
-.action-content h3 {
-  margin: 0;
-  font-size: .77rem;
-}
-
-.action-content p {
-  margin: 5px 0 0;
-  color: rgba(255,255,255,.40);
-  font-size: .62rem;
-  line-height: 1.5;
-}
-
-.download-button {
-  width: 100%;
-  min-height: 35px;
+.selected-period {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  color: #fff;
-  background: rgba(255,255,255,.055);
-  border: 1px solid rgba(255,255,255,.09);
-  border-radius: 9px;
-  cursor: pointer;
-  font-size: .61rem;
-  font-weight: 800;
-}
-
-.download-button:hover {
-  background: rgba(255,255,255,.09);
-  border-color: rgba(103,232,249,.30);
-}
-
-.download-button:disabled {
-  opacity: .48;
-  cursor: not-allowed;
-}
-
-.utility-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 10px;
-  margin-top: 13px;
-}
-
-.utility-card {
-  width: 100%;
-  gap: 11px;
-  padding: 13px;
-  text-align: left;
-  color: #fff;
-  background: rgba(255,255,255,.025);
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 12px;
-  cursor: pointer;
-}
-
-.utility-card:hover {
-  border-color: rgba(103,232,249,.25);
-}
-
-.utility-icon {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  display: grid;
-  place-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(255,255,255,.06);
+  background: linear-gradient(90deg, rgba(79,70,229,.10), rgba(6,182,212,.05));
+  border: 1px solid rgba(129,140,248,.13);
 }
 
-.utility-icon.purple { color: #c4b5fd; }
-.utility-icon.blue { color: #67e8f9; }
-
-.utility-card strong {
+.selected-period span,
+.selected-status span {
   display: block;
-  font-size: .72rem;
+  color: rgba(255,255,255,.35);
+  font-size: .51rem;
 }
 
-.utility-card span {
+.selected-period strong,
+.selected-status strong {
   display: block;
-  margin-top: 4px;
-  color: rgba(255,255,255,.38);
-  font-size: .60rem;
+  margin-top: 3px;
+  color: #e0e7ff;
+  font-size: .67rem;
 }
 
-.coverage-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0,1fr));
-  gap: 8px;
-  margin-top: 13px;
-}
-
-.coverage-card {
-  text-align: center;
-}
-
-.coverage-card strong {
-  font-size: .92rem;
+.selected-status {
+  text-align: right;
 }
 
 .notice {
@@ -1470,9 +1924,9 @@ const styles = `
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  margin-bottom: 11px;
+  margin-bottom: 10px;
   border-radius: 10px;
-  font-size: .67rem;
+  font-size: .64rem;
 }
 
 .notice span {
@@ -1481,8 +1935,8 @@ const styles = `
 
 .notice button {
   color: inherit;
-  border: 0;
   background: transparent;
+  border: 0;
   cursor: pointer;
 }
 
@@ -1499,24 +1953,32 @@ const styles = `
 }
 
 .loading-card {
-  min-height: 320px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 9px;
-  color: rgba(255,255,255,.45);
-  font-size: .72rem;
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
 }
 
 .loading-card strong {
-  color: rgba(255,255,255,.70);
   font-size: .78rem;
 }
 
 .loading-card span {
   color: rgba(255,255,255,.35);
-  font-size: .62rem;
+  font-size: .60rem;
+}
+
+.loader-ring {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  color: #a78bfa;
+  background: rgba(139,92,246,.08);
+  border: 1px solid rgba(139,92,246,.15);
+  border-radius: 15px;
 }
 
 .spin {
@@ -1524,101 +1986,526 @@ const styles = `
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-.preview-backdrop {
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0,1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.summary-card {
+  min-width: 0;
+  padding: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 13px;
+  background: rgba(255,255,255,.035);
+  transition: .18s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,.13);
+}
+
+.summary-icon {
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,.055);
+}
+
+.summary-content {
+  min-width: 0;
+}
+
+.summary-content span {
+  display: block;
+  color: rgba(255,255,255,.37);
+  font-size: .51rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-content strong {
+  display: block;
+  margin-top: 4px;
+  color: #f8fafc;
+  font-size: .68rem;
+  overflow-wrap: anywhere;
+}
+
+.summary-card.green .summary-icon { color: #6ee7b7; }
+.summary-card.red .summary-icon { color: #fca5a5; }
+.summary-card.purple .summary-icon { color: #c4b5fd; }
+.summary-card.violet .summary-icon { color: #a78bfa; }
+.summary-card.amber .summary-icon { color: #fcd34d; }
+.summary-card.orange .summary-icon { color: #fb923c; }
+.summary-card.blue .summary-icon { color: #67e8f9; }
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 12px;
+}
+
+.content-card {
+  min-width: 0;
+  padding: clamp(13px, 2vw, 17px);
+  margin-bottom: 12px;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.format-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 9px;
+}
+
+.download-card {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 13px;
+  background: rgba(255,255,255,.025);
+  transition: .18s ease;
+}
+
+.download-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(103,232,249,.23);
+  box-shadow: 0 12px 35px rgba(0,0,0,.15);
+}
+
+.download-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.format-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(255,255,255,.055);
+}
+
+.format-badge {
+  padding: 4px 7px;
+  border-radius: 6px;
+  color: rgba(255,255,255,.45);
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.07);
+  font-size: .48rem;
+  font-weight: 900;
+}
+
+.download-card.pdf .format-icon { color: #fca5a5; }
+.download-card.excel .format-icon { color: #6ee7b7; }
+.download-card.text .format-icon { color: #67e8f9; }
+
+.download-copy {
+  min-height: 90px;
+  margin-top: 11px;
+}
+
+.download-copy h3 {
+  margin: 0;
+  font-size: .76rem;
+}
+
+.download-copy p {
+  margin: 5px 0 0;
+  color: rgba(255,255,255,.38);
+  font-size: .59rem;
+  line-height: 1.55;
+}
+
+.download-action,
+.secondary-button {
+  width: 100%;
+  min-height: 35px;
+  border-radius: 9px;
+  font-size: .59rem;
+  font-weight: 850;
+}
+
+.download-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #fff;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.09);
+  cursor: pointer;
+}
+
+.download-action:hover {
+  background: rgba(255,255,255,.09);
+  border-color: rgba(103,232,249,.30);
+}
+
+.status-box,
+.backup-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 11px;
+  background: rgba(255,255,255,.025);
+}
+
+.status-icon,
+.backup-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  color: #6ee7b7;
+  background: rgba(16,185,129,.08);
+  border-radius: 10px;
+}
+
+.status-box strong,
+.backup-box strong {
+  display: block;
+  font-size: .70rem;
+}
+
+.status-box span,
+.backup-box span {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255,255,255,.36);
+  font-size: .56rem;
+  line-height: 1.4;
+}
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.mini-stat {
+  padding: 9px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 9px;
+  background: rgba(255,255,255,.018);
+}
+
+.mini-stat span {
+  display: block;
+  color: rgba(255,255,255,.34);
+  font-size: .51rem;
+}
+
+.mini-stat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: .66rem;
+}
+
+.preview-button,
+.secondary-button {
+  margin-top: 9px;
+}
+
+.preview-button {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 9px;
+  font-size: .59rem;
+  font-weight: 850;
+}
+
+.secondary-button {
+  color: #fff;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.09);
+  cursor: pointer;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 12px;
+}
+
+.category-list {
+  display: grid;
+  gap: 11px;
+}
+
+.category-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(255,255,255,.65);
+  font-size: .60rem;
+}
+
+.category-top strong {
+  color: #f8fafc;
+  font-size: .62rem;
+}
+
+.progress {
+  height: 7px;
+  margin-top: 5px;
+  overflow: hidden;
+  background: rgba(255,255,255,.07);
+  border-radius: 99px;
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  border-radius: inherit;
+  transition: width .4s ease;
+}
+
+.category-row small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255,255,255,.30);
+  font-size: .50rem;
+}
+
+.backup-box {
+  margin-bottom: 10px;
+}
+
+.backup-icon {
+  color: #67e8f9;
+  background: rgba(6,182,212,.08);
+}
+
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0,1fr));
+  gap: 8px;
+}
+
+.coverage-card {
+  padding: 11px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  background: rgba(255,255,255,.022);
+}
+
+.coverage-card span {
+  display: block;
+  color: rgba(255,255,255,.33);
+  font-size: .52rem;
+}
+
+.coverage-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: .90rem;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  background: rgba(255,255,255,.015);
+}
+
+.table-scroll table {
+  width: 100%;
+  min-width: 930px;
+  border-collapse: collapse;
+  font-size: .57rem;
+}
+
+.table-scroll th,
+.table-scroll td {
+  padding: 8px 9px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+}
+
+.table-scroll th {
+  color: rgba(255,255,255,.45);
+  background: rgba(255,255,255,.035);
+  font-weight: 850;
+}
+
+.table-scroll td {
+  color: rgba(255,255,255,.66);
+}
+
+.table-scroll tr:last-child td {
+  border-bottom: 0;
+}
+
+.no-activity td {
+  color: rgba(255,255,255,.23);
+}
+
+.positive-value {
+  color: #6ee7b7 !important;
+}
+
+.negative-value {
+  color: #fca5a5 !important;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  border-radius: 99px;
+  font-size: .48rem;
+  font-weight: 850;
+}
+
+.status-tag.positive {
+  color: #a7f3d0;
+  background: rgba(16,185,129,.08);
+}
+
+.status-tag.negative {
+  color: #fecaca;
+  background: rgba(239,68,68,.08);
+}
+
+.status-tag.neutral {
+  color: rgba(255,255,255,.34);
+  background: rgba(255,255,255,.05);
+}
+
+.empty-state {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(255,255,255,.30);
+  font-size: .61rem;
+  border: 1px dashed rgba(255,255,255,.08);
+  border-radius: 10px;
+}
+
+.modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  background: rgba(2,6,23,.80);
-  backdrop-filter: blur(9px);
+  padding: 14px;
+  background: rgba(2,6,23,.82);
+  backdrop-filter: blur(10px);
 }
 
 .preview-modal {
-  width: min(1100px, 100%);
-  max-height: calc(100vh - 32px);
+  width: min(1180px, 100%);
+  max-height: calc(100vh - 28px);
   overflow: hidden;
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.11);
   border-radius: 17px;
-  box-shadow: 0 30px 90px rgba(0,0,0,.55);
+  background: #f8fafc;
+  box-shadow: 0 35px 100px rgba(0,0,0,.58);
 }
 
-.preview-toolbar {
+.modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 13px 15px;
+  color: #fff;
+  background: #0f172a;
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
 
-.preview-toolbar h2 {
+.modal-head h2 {
   margin: 4px 0 2px;
-  font-size: .90rem;
+  font-size: .88rem;
 }
 
-.preview-toolbar p {
+.modal-head p {
   margin: 0;
-  color: rgba(255,255,255,.40);
-  font-size: .61rem;
+  color: rgba(255,255,255,.38);
+  font-size: .58rem;
 }
 
-.preview-buttons {
-  display: flex;
-  gap: 7px;
+.eyebrow.dark {
+  color: #94a3b8;
 }
 
-.preview-buttons button {
-  min-height: 34px;
+.modal-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 0 10px;
-  color: #fff;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: .61rem;
-  font-weight: 750;
 }
 
-.preview-buttons .close-button {
-  width: 34px;
+.modal-actions button {
+  min-height: 33px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: .57rem;
+  font-weight: 800;
+}
+
+.modal-actions .close-modal {
+  width: 33px;
   padding: 0;
 }
 
 .preview-body {
-  max-height: calc(100vh - 95px);
+  max-height: calc(100vh - 91px);
   overflow: auto;
-  padding: 25px;
-  color: #111827;
+  padding: clamp(15px, 3vw, 28px);
+  color: #1e293b;
   background: #f8fafc;
 }
 
 .document-header {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding-bottom: 15px;
+  gap: 10px;
+  padding-bottom: 14px;
   border-bottom: 2px solid #e2e8f0;
 }
 
-.document-mark {
+.document-logo {
   width: 43px;
   height: 43px;
   display: grid;
   place-items: center;
   color: #fff;
-  background: #4f46e5;
+  background: linear-gradient(135deg,#4f46e5,#0891b2);
   border-radius: 11px;
   font-size: 1.1rem;
   font-weight: 900;
@@ -1626,44 +2513,44 @@ const styles = `
 
 .document-header h1 {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.05rem;
 }
 
 .document-header p {
   margin: 3px 0 0;
   color: #64748b;
-  font-size: .65rem;
+  font-size: .62rem;
 }
 
-.document-owner {
+.owner-grid,
+.document-metrics {
   display: grid;
-  grid-template-columns: repeat(4,1fr);
+  grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 8px;
-  margin: 16px 0;
+  margin-top: 14px;
 }
 
-.document-owner > div,
-.doc-metric,
-.simple-row {
+.document-field,
+.document-metric {
   padding: 9px;
+  background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: #fff;
 }
 
-.document-owner span,
-.doc-metric span {
+.document-field span,
+.document-metric span {
   display: block;
   color: #64748b;
-  font-size: .57rem;
+  font-size: .52rem;
 }
 
-.document-owner strong,
-.doc-metric strong {
+.document-field strong,
+.document-metric strong {
   display: block;
   margin-top: 3px;
-  color: #1e293b;
-  font-size: .67rem;
+  color: #0f172a;
+  font-size: .65rem;
   overflow-wrap: anywhere;
 }
 
@@ -1674,143 +2561,143 @@ const styles = `
 .preview-section h3 {
   margin: 0 0 8px;
   color: #0f172a;
-  font-size: .78rem;
+  font-size: .76rem;
 }
 
-.document-cards {
-  display: grid;
-  grid-template-columns: repeat(3,1fr);
-  gap: 8px;
-}
-
-.simple-table {
-  display: grid;
-  gap: 6px;
-}
-
-.simple-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-}
-
-.simple-row span {
-  color: #64748b;
-  font-size: .60rem;
-}
-
-.simple-row strong {
-  color: #1e293b;
-  font-size: .66rem;
-  text-align: right;
-}
-
-.distribution-list {
-  display: grid;
-  gap: 10px;
-}
-
-.distribution-label {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  color: #475569;
-  font-size: .61rem;
-}
-
-.distribution-label strong {
-  color: #0f172a;
-}
-
-.bar {
-  height: 7px;
-  margin-top: 5px;
-  overflow: hidden;
-  background: #e2e8f0;
-  border-radius: 10px;
-}
-
-.bar > div {
-  height: 100%;
-  background: #4f46e5;
-  border-radius: inherit;
-}
-
-.distribution-row small {
-  display: block;
-  margin-top: 3px;
-  color: #64748b;
-  font-size: .52rem;
-}
-
-.table-scroll {
-  overflow-x: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+.table-scroll.light {
+  border-color: #e2e8f0;
   background: #fff;
 }
 
-.table-scroll table {
-  width: 100%;
+.table-scroll.light table {
   min-width: 650px;
-  border-collapse: collapse;
-  font-size: .59rem;
-}
-
-.table-scroll th,
-.table-scroll td {
-  padding: 7px 8px;
-  text-align: left;
-  white-space: nowrap;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.table-scroll th {
-  color: #475569;
-  background: #f1f5f9;
-  font-weight: 850;
-}
-
-.table-scroll td {
   color: #334155;
 }
 
-.muted {
-  margin: 0;
-  color: #64748b;
-  font-size: .61rem;
+.table-scroll.light th,
+.table-scroll.light td {
+  color: #334155;
+  border-color: #e2e8f0;
 }
 
-.document-footer {
+.table-scroll.light th {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.table-scroll.light .empty-state {
+  color: #64748b;
+}
+
+.preview-footer {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 25px;
-  padding-top: 12px;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 24px;
+  padding-top: 11px;
   color: #64748b;
-  font-size: .54rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: .52rem;
 }
 
-@media (max-width: 1050px) {
+.summary-card,
+.content-card,
+.control-panel,
+.download-card {
+  transition:
+    transform .22s ease,
+    border-color .22s ease,
+    box-shadow .22s ease;
+}
+
+.summary-card:hover,
+.content-card:hover,
+.control-panel:hover,
+.download-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(129, 140, 248, .24);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, .20),
+    0 0 24px rgba(99, 102, 241, .06);
+}
+
+.download-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.download-action::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255,255,255,.14) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  transition: transform .45s ease;
+}
+
+.download-action:hover::after {
+  transform: translateX(120%);
+}
+
+.select-wrap:focus-within,
+.month-wrap:focus-within {
+  border-color: rgba(167, 139, 250, .65);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, .10);
+}
+
+.select-wrap select option,
+.select-wrap select optgroup {
+  background: #ffffff;
+  color: #111827;
+}
+
+@media (max-width: 1200px) {
   .summary-grid {
-    grid-template-columns: repeat(3, minmax(0,1fr));
+    grid-template-columns: repeat(4, minmax(0,1fr));
   }
 
   .coverage-grid {
     grid-template-columns: repeat(3, minmax(0,1fr));
   }
 
-  .action-grid {
+  .main-grid,
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .controls-grid {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+
+  .format-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .download-copy {
+    min-height: auto;
+  }
+
+  .owner-grid,
+  .document-metrics {
     grid-template-columns: repeat(2, minmax(0,1fr));
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 680px) {
   .export-page {
-    padding: 11px;
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
   }
 
   .topbar {
@@ -1818,124 +2705,77 @@ const styles = `
     flex-direction: column;
   }
 
-  .toolbar {
+  .top-actions {
     width: 100%;
   }
 
-  .month-control {
+  .ghost-button {
     flex: 1;
   }
 
-  .month-control input {
-    width: 100%;
+  .controls-grid {
+    grid-template-columns: 1fr;
   }
 
-  .report-heading {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+
+  .coverage-grid {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+
+  .selected-period {
+    align-items: flex-start;
+  }
+
+  .modal-backdrop {
+    padding: 7px;
+  }
+
+  .modal-head {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .heading-status {
+  .modal-actions {
     width: 100%;
-    text-align: left;
   }
 
-  .profile-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .detail-list {
-    grid-template-columns: repeat(2,minmax(0,1fr));
-  }
-
-  .document-owner {
-    grid-template-columns: repeat(2,1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .summary-grid,
-  .action-grid,
-  .utility-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .coverage-grid {
-    grid-template-columns: repeat(2,minmax(0,1fr));
-  }
-
-  .section-block,
-  .profile-card {
-    padding: 13px;
-  }
-
-  .document-cards {
-    grid-template-columns: repeat(2,1fr);
-  }
-
-  .preview-body {
-    padding: 16px;
+  .modal-actions button:not(.close-modal) {
+    flex: 1;
   }
 }
 
 @media (max-width: 430px) {
-  .export-page {
-    padding: 8px;
-  }
-
-  .title-area h1 {
-    font-size: 1.15rem;
-  }
-
-  .title-area p {
-    font-size: .62rem;
-  }
-
-  .detail-list,
-  .coverage-grid,
-  .document-owner,
-  .document-cards {
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 
-  .action-card {
-    padding: 12px;
+  .coverage-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .document-footer {
+  .owner-grid,
+  .document-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .brand p {
+    max-width: 270px;
+  }
+
+  .selected-period {
     flex-direction: column;
   }
-}
 
-@media print {
-  body {
-    background: #fff !important;
-  }
-
-  .export-page > *:not(.preview-backdrop) {
-    display: none !important;
-  }
-
-  .preview-backdrop {
-    position: static;
-    padding: 0;
-    background: #fff;
-  }
-
-  .preview-modal {
+  .selected-status {
     width: 100%;
-    max-height: none;
-    border: 0;
-    box-shadow: none;
+    text-align: left;
   }
 
-  .preview-toolbar {
-    display: none;
-  }
-
-  .preview-body {
-    max-height: none;
-    overflow: visible;
+  .modal-actions .close-modal {
+    flex: 0 0 33px;
   }
 }
 `;

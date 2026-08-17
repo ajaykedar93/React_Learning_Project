@@ -5,8 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import ProfileCard from './ProfileCard';
 import Navbar from './Navbar';
 import Overview from './Overview';
-import Transactions from './Transactions';
-import Loans from './Loans';
 import Trading from './Trading';
 import Footer from './Footer';
 import Expense from './Expense';
@@ -42,9 +40,8 @@ const Home = () => {
     { id: 'payment', label: 'Payments', icon: '💎', component: Payment },
     { id: 'performance', label: 'Performance', icon: '📈', component: Performance },
     { id: 'summary', label: 'Summary', icon: '📋', component: Summary },
-    { id: 'transactions', label: 'Transactions', icon: '📝', component: Transactions },
     { id: 'trading', label: 'Trading', icon: '📊', component: Trading },
-    { id: 'loans', label: 'Loans', icon: '🏦', component: Loans },
+   
     { id: 'export', label: 'Export', icon: '📤', component: ExportDetails },
   ];
 
