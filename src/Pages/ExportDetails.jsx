@@ -186,10 +186,17 @@ const apiFetch = async (path, options = {}) => {
     return await fetch(url, {
       ...options,
       credentials: "include",
+      mode: "cors",
+      headers: {
+        Accept: "application/json",
+        ...(options.headers || {}),
+      },
     });
   } catch (error) {
     throw new Error(
-      `Failed to fetch API: ${url}. Check that the Render backend is running, the API URL is correct, and CORS/OPTIONS is enabled.`
+      `Failed to fetch API: ${url}. ${
+        error?.message || "Network request failed."
+      }. Check the backend URL, Render service status, and CORS configuration.`
     );
   }
 };
