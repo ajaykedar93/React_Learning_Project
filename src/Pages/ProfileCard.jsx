@@ -1444,14 +1444,25 @@ const ProfileCard = () => {
                 )}
               </InfoRow>
 
-              {/* Portfolio — opens the existing portfolio page at /portfolio. */}
+              {/* Portfolio — open or copy the public portfolio URL. */}
               <InfoRow
                 icon={<Globe size={14} color="#67E8F9" />}
                 iconBg="rgba(34,211,238,0.10)"
                 label="Portfolio"
                 value="View Portfolio"
               >
-                <a href="/portfolio" style={linkBtn} aria-label="Open Portfolio">
+                <CopyBtn
+                  onClick={() => handleCopy('https://react-learning-project-lime.vercel.app/portfolio', 'portfolio')}
+                  copied={copiedField === 'portfolio'}
+                />
+                <a
+                  href="https://react-learning-project-lime.vercel.app/portfolio"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={linkBtn}
+                  aria-label="Open Portfolio"
+                  title="Open Portfolio"
+                >
                   <ExternalLink size={13} color="#67E8F9" />
                 </a>
               </InfoRow>

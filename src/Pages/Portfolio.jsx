@@ -266,7 +266,7 @@ export default function Portfolio() {
         }
         *{box-sizing:border-box}
         html{scroll-behavior:smooth}
-        body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+        body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
         .portfolio-app,.container,.section,.project,.timeline-card,.contact,.contact-link,.about-copy,.quick-item,.tech-cloud{min-width:0}
         .project h3,.project p,.project-meta,.timeline-card h3,.timeline-card h4,.timeline-card p,.contact-link span,.quick-item span{
           overflow-wrap:anywhere;word-break:normal
@@ -763,6 +763,292 @@ export default function Portfolio() {
           .quick-item{display:grid;grid-template-columns:1fr;gap:4px}
           .quick-item span:last-child{text-align:left}
         }
+
+      /* Final responsive pass — desktop/laptop stays unchanged.
+         Mobile scales typography, spacing and cards to fit narrow screens cleanly. */
+      @media (max-width: 700px) {
+        html, body { width:100%; max-width:100%; overflow-x:hidden; }
+        .portfolio-app { width:100%; min-width:0; }
+        .container { width:calc(100% - 24px); max-width:var(--max); }
+
+        .nav-inner { height:64px; }
+        .brand { font-size:13px; gap:7px; }
+        .brand-mark { width:34px; height:34px; border-radius:10px; }
+        .mobile-menu { width:38px; height:38px; display:grid; place-items:center; }
+
+        .nav-links { left:10px; right:10px; top:69px; padding:9px; border-radius:13px; }
+        .nav-links button { font-size:12px; padding:10px 11px; }
+
+        .hero {
+          min-height:auto;
+          padding:105px 0 48px;
+        }
+        .hero-grid { gap:28px; }
+        .status,
+        .internship-badge,
+        .job-availability {
+          font-size:10px;
+          line-height:1.45;
+        }
+        .status { padding:7px 10px; margin-bottom:14px; }
+        .internship-badge { margin:-2px 0 16px; padding:7px 9px; }
+        .hero h1 {
+          font-size:clamp(30px, 9.5vw, 46px) !important;
+          line-height:1.05;
+          letter-spacing:-.045em;
+        }
+        .hero-lead {
+          font-size:13px;
+          line-height:1.7;
+          margin:16px 0 20px;
+        }
+        .hero-actions { gap:8px; }
+        .btn {
+          min-height:42px;
+          padding:0 12px;
+          border-radius:9px;
+          font-size:11px;
+        }
+        .hero-meta {
+          gap:8px 14px;
+          margin-top:18px;
+          font-size:10px;
+        }
+        .hero-meta span { gap:5px; }
+
+        .profile-frame { padding:4px; border-radius:22px; }
+        .hero-card { padding:18px; border-radius:19px; }
+        .avatar {
+          width:88px; height:88px; border-radius:20px;
+          font-size:30px;
+        }
+        .hero-card h3 { margin:16px 0 5px; font-size:21px; }
+        .hero-card-role { font-size:11px; }
+        .hero-card-line { margin:16px 0; }
+        .quick-list { gap:10px; }
+        .quick-item {
+          font-size:11px;
+          gap:6px 10px;
+          line-height:1.45;
+        }
+        .quick-item span:last-child { max-width:100%; }
+        .social-row { margin-top:16px; gap:7px; }
+        .social { width:34px; height:34px; border-radius:9px; }
+
+        .job-availability {
+          width:100%;
+          max-width:100%;
+          justify-content:center;
+          padding:9px 10px;
+          margin-top:14px;
+          border-radius:11px;
+        }
+
+        .stats {
+          border-radius:13px;
+          grid-template-columns:repeat(2,1fr);
+        }
+        .stat { padding:14px 10px; }
+        .stat strong { font-size:18px; }
+        .stat span { font-size:9px; line-height:1.4; }
+
+        .section {
+          padding:62px 0;
+          scroll-margin-top:68px;
+        }
+        .section-heading { margin-bottom:27px; }
+        .eyebrow { font-size:9px; letter-spacing:.13em; margin-bottom:9px; }
+        .section-heading h2 {
+          font-size:clamp(24px, 7vw, 34px) !important;
+          line-height:1.1;
+        }
+        .section-heading p {
+          font-size:12px;
+          line-height:1.65;
+          margin-top:11px;
+        }
+
+        .about-grid,
+        .skills-grid,
+        .contact { gap:24px; }
+        .about-copy { font-size:12.5px; line-height:1.7; }
+        .about-copy p { margin-bottom:13px; }
+        .strengths { gap:8px; }
+        .strength {
+          padding:11px;
+          border-radius:9px;
+          font-size:11px;
+          line-height:1.45;
+          gap:7px;
+        }
+
+        .timeline { gap:12px; }
+        .timeline-item { padding-left:28px; }
+        .timeline:before { left:7px; }
+        .timeline-dot { left:1px; width:12px; height:12px; }
+        .timeline-card {
+          padding:16px;
+          border-radius:12px;
+        }
+        .period { font-size:9px; }
+        .timeline-card h3 {
+          font-size:16px;
+          line-height:1.25;
+          margin:6px 0 4px;
+        }
+        .timeline-card h4 { font-size:10.5px; margin-bottom:8px; }
+        .timeline-card p { font-size:11.5px; line-height:1.65; }
+
+        .experience-card {
+          padding:17px 15px;
+          border-radius:13px;
+        }
+        .experience-role { font-size:19px !important; }
+        .experience-company { font-size:11px; }
+        .experience-date { font-size:9px; padding:7px 9px; }
+        .experience-location {
+          font-size:10.5px;
+          margin:15px 0 13px;
+        }
+        .experience-list { gap:8px; }
+        .experience-list li {
+          font-size:11.5px !important;
+          line-height:1.65;
+          padding-left:17px;
+        }
+        .experience-list li:before { left:2px; width:5px; height:5px; }
+        .experience-stack { gap:5px; margin-top:14px; }
+        .experience-stack span { font-size:8.5px; padding:5px 7px; }
+
+        .learning-grid,
+        .additional-skills-grid,
+        .project-grid { gap:10px; }
+        .learning-card {
+          padding:15px;
+          border-radius:12px;
+        }
+        .learning-icon {
+          width:34px; height:34px;
+          border-radius:9px;
+          margin-bottom:11px;
+        }
+        .learning-card h3 { font-size:14px; margin-bottom:6px; }
+        .learning-card p { font-size:11.5px; line-height:1.65; }
+
+        .project {
+          min-height:0 !important;
+          padding:17px;
+          border-radius:13px;
+        }
+        .project-number { font-size:26px; }
+        .project-icon { width:40px; height:40px; border-radius:11px; }
+        .project-category {
+          font-size:8.5px;
+          margin-top:15px;
+          letter-spacing:.08em;
+        }
+        .project h3 { font-size:16px !important; line-height:1.25; margin:6px 0 9px; }
+        .project p {
+          font-size:11.5px !important;
+          line-height:1.65;
+        }
+        .project-insight { gap:6px; margin-top:12px; }
+        .project-insight > div { padding:7px 8px; }
+        .project-insight strong { font-size:8px; }
+        .project-insight span { font-size:9.5px; line-height:1.5; }
+        .chips { gap:5px; margin-top:11px; }
+        .chip { font-size:8.5px; padding:5px 7px; gap:4px; }
+        .project-meta {
+          font-size:9px;
+          margin-top:11px;
+          line-height:1.5;
+        }
+        .project:after {
+          font-size:8px;
+          padding:5px 7px;
+        }
+
+        .skill-list { gap:13px; padding:15px; border-radius:12px; }
+        .skill-head { margin-bottom:6px; }
+        .skill-head span:first-child { font-size:11px; }
+        .skill-head span:last-child { font-size:9px; }
+        .bar { height:5px; }
+        .tech-cloud { gap:6px; }
+        .tech { font-size:9px; padding:7px 8px; border-radius:8px; }
+
+        .additional-skill-card {
+          padding:14px;
+          border-radius:11px;
+        }
+        .additional-skill-card h3 {
+          font-size:14px !important;
+          line-height:1.3;
+        }
+        .additional-skill-card p {
+          font-size:11px;
+          line-height:1.65;
+        }
+
+        .contact {
+          padding:22px 17px !important;
+          border-radius:15px;
+          gap:22px;
+        }
+        .contact h2 {
+          font-size:clamp(25px, 7.5vw, 36px) !important;
+          line-height:1.1;
+        }
+        .contact p { font-size:11.5px; line-height:1.65; }
+        .contact-links { gap:7px; }
+        .contact-link {
+          padding:10px;
+          border-radius:9px;
+          font-size:10.5px;
+          line-height:1.45;
+          gap:8px;
+        }
+
+        .resume-modal { padding:8px; }
+        .resume-modal-card {
+          width:98vw;
+          max-height:97vh;
+          padding:8px;
+          border-radius:13px;
+        }
+        .resume-modal-title { font-size:11px; padding:3px 43px 8px 3px; }
+        .resume-image-wrap { max-height:calc(97vh - 52px); border-radius:9px; }
+        .resume-modal-close { width:32px; height:32px; top:6px; right:6px; }
+
+        .footer { padding:18px 0; }
+        .footer-inner { padding:0 10px; }
+        .footer-inner > span {
+          font-size:9px !important;
+          line-height:1.5;
+          gap:3px 5px;
+        }
+        .back-top {
+          width:40px; height:40px;
+          right:12px; bottom:12px;
+          border-radius:11px;
+          font-size:17px;
+        }
+      }
+
+      @media (max-width: 380px) {
+        .container { width:calc(100% - 18px); }
+        .hero { padding-top:98px; }
+        .hero h1 { font-size:30px !important; }
+        .hero-lead { font-size:12px; }
+        .btn { font-size:10px; padding:0 10px; }
+        .stats { grid-template-columns:1fr 1fr; }
+        .stat { padding:12px 7px; }
+        .stat strong { font-size:16px; }
+        .stat span { font-size:8px; }
+        .project { padding:14px; }
+        .timeline-card { padding:14px; }
+        .experience-card { padding:15px 13px; }
+      }
+
       `}</style>
 
       <header className="navbar">

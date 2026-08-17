@@ -146,6 +146,246 @@ const Home = () => {
   return (
     <>
       <style>{`
+
+        /* =========================================================
+           PREMIUM HOME UI — visual enhancement only
+           Keeps existing tabs/components and responsive behavior.
+        ========================================================= */
+        :root {
+          --home-bg: #050712;
+          --home-panel: rgba(13, 18, 32, .72);
+          --home-panel-strong: rgba(17, 24, 39, .88);
+          --home-line: rgba(148, 163, 184, .14);
+          --home-line-bright: rgba(34, 211, 238, .28);
+          --home-cyan: #22d3ee;
+          --home-blue: #60a5fa;
+          --home-violet: #8b5cf6;
+          --home-green: #34d399;
+        }
+
+        .home-container {
+          position: relative;
+          isolation: isolate;
+          background:
+            radial-gradient(circle at 8% 8%, rgba(34,211,238,.055), transparent 24rem),
+            radial-gradient(circle at 92% 12%, rgba(139,92,246,.075), transparent 28rem),
+            radial-gradient(circle at 50% 100%, rgba(52,211,153,.035), transparent 30rem),
+            var(--home-bg);
+        }
+
+        .home-container::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: -1;
+          opacity: .28;
+          background-image:
+            linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+          background-size: 38px 38px;
+          mask-image: linear-gradient(to bottom, black, transparent 85%);
+        }
+
+        .home-main {
+          position: relative;
+        }
+
+        .tab-navigation-wrapper {
+          margin-top: .25rem;
+          filter: drop-shadow(0 14px 35px rgba(0,0,0,.18));
+        }
+
+        .tab-navigation {
+          position: relative;
+          border-color: rgba(255,255,255,.09);
+          background:
+            linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
+            rgba(8,12,23,.72);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.055),
+            0 16px 45px rgba(0,0,0,.16);
+        }
+
+        .tab-button {
+          position: relative;
+          overflow: hidden;
+          border-color: transparent;
+          transition:
+            transform .22s ease,
+            color .22s ease,
+            background .22s ease,
+            border-color .22s ease,
+            box-shadow .22s ease;
+        }
+
+        .tab-button::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,.07) 50%, transparent 75%);
+          transform: translateX(-120%);
+          transition: transform .65s ease;
+          pointer-events: none;
+        }
+
+        .tab-button:hover::before,
+        .tab-button.active::before {
+          transform: translateX(120%);
+        }
+
+        .tab-button:hover {
+          box-shadow: 0 8px 24px rgba(34,211,238,.055);
+        }
+
+        .tab-button.active {
+          background:
+            linear-gradient(135deg, rgba(34,211,238,.18), rgba(139,92,246,.14)),
+            rgba(255,255,255,.025);
+          border-color: rgba(34,211,238,.32);
+          box-shadow:
+            0 8px 28px rgba(34,211,238,.10),
+            inset 0 1px 0 rgba(255,255,255,.08);
+        }
+
+        .tab-button.active .tab-icon {
+          transform: translateY(-1px) scale(1.05);
+          filter: drop-shadow(0 0 9px rgba(34,211,238,.42));
+        }
+
+        .tab-icon {
+          display: inline-flex;
+          transition: transform .22s ease, filter .22s ease;
+        }
+
+        .tab-count {
+          border: 1px solid rgba(34,211,238,.15);
+        }
+
+        .tab-content {
+          position: relative;
+        }
+
+        .tab-content::before {
+          content: "";
+          display: block;
+          width: 100%;
+          height: 1px;
+          margin-bottom: 1rem;
+          background: linear-gradient(90deg, transparent, rgba(34,211,238,.18), rgba(139,92,246,.16), transparent);
+          opacity: .65;
+        }
+
+        .refresh-indicator {
+          border-color: rgba(34,211,238,.16);
+          background: rgba(7,11,21,.78);
+          box-shadow: 0 8px 30px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.04);
+        }
+
+        .refresh-indicator.active {
+          border-color: rgba(245,158,11,.26);
+          box-shadow: 0 8px 30px rgba(245,158,11,.08);
+        }
+
+        .footer-wrapper {
+          background:
+            linear-gradient(180deg, rgba(5,7,18,.84), rgba(3,5,13,.98));
+          border-top: 1px solid rgba(148,163,184,.10);
+          box-shadow: 0 -12px 35px rgba(0,0,0,.18);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+
+        /* Give common child cards a consistent premium treatment while
+           leaving their own styles in control of content/layout. */
+        .tab-content > * {
+          animation: homeContentIn .42s cubic-bezier(.2,.7,.2,1) both;
+        }
+
+        @keyframes homeContentIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Better keyboard accessibility */
+        .tab-button:focus-visible,
+        .scroll-indicator:focus-visible {
+          outline: 2px solid var(--home-cyan);
+          outline-offset: 2px;
+        }
+
+        @media (max-width: 768px) {
+          .home-container {
+            background:
+              radial-gradient(circle at 50% 0%, rgba(34,211,238,.055), transparent 17rem),
+              radial-gradient(circle at 100% 28%, rgba(139,92,246,.055), transparent 18rem),
+              var(--home-bg);
+          }
+
+          .home-container::before {
+            background-size: 30px 30px;
+            opacity: .18;
+          }
+
+          .home-main {
+            padding-left: 0;
+            padding-right: 0;
+          }
+
+          .tab-navigation-wrapper {
+            padding-top: 9px;
+            padding-bottom: 9px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.12);
+          }
+
+          .tab-navigation {
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,.05),
+              0 10px 28px rgba(0,0,0,.16);
+          }
+
+          .tab-button {
+            min-width: 112px;
+            min-height: 44px;
+            padding: 8px 12px;
+          }
+
+          .tab-content {
+            padding-top: 14px;
+          }
+
+          .tab-content::before {
+            margin-bottom: .75rem;
+          }
+
+          .refresh-indicator {
+            font-size: .48rem;
+            padding: .18rem .5rem;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .tab-button {
+            min-width: 105px;
+            min-height: 42px;
+            padding: 7px 10px;
+            gap: 6px;
+          }
+
+          .tab-icon { font-size: 16px; }
+          .tab-label { font-size: 10.5px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .tab-content > *,
+          .tab-button,
+          .tab-button::before,
+          .tab-icon {
+            animation: none !important;
+            transition: none !important;
+          }
+        }
+
         * {
           margin: 0;
           padding: 0;

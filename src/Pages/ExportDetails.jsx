@@ -553,6 +553,52 @@ const downloadBlob = (blob, filename) => {
   }, 1500);
 };
 
+// ============================================================
+// TOAST SYSTEM
+// ============================================================
+
+let toastIdCounter = 0;
+
+const ToastContainer = ({ toasts, removeToast }) => {
+  if (!toasts.length) return null;
+
+  return (
+    <div className="toast-container">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`toast ${toast.type} ${toast.visible ? "visible" : "hidden"}`}
+        >
+          <div className="toast-icon">
+            {toast.type === "success" ? (
+              <CheckCircle2 size={20} />
+            ) : toast.type === "error" ? (
+              <AlertCircle size={20} />
+            ) : (
+              <Loader2 size={20} className="spin" />
+            )}
+          </div>
+          <div className="toast-content">
+            <strong>{toast.title}</strong>
+            <span>{toast.message}</span>
+          </div>
+          <button
+            type="button"
+            className="toast-close"
+            onClick={() => removeToast(toast.id)}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+          <div className="toast-progress">
+            <span style={{ width: `${toast.progress}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ExportDetails = () => {
   const [month, setMonth] = useState(getCurrentMonth());
   const [period, setPeriod] = useState("month");
@@ -565,6 +611,47 @@ const ExportDetails = () => {
   const [message, setMessage] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  // Toast functions
+  const showToast = (type, title, message, duration = 3000) => {
+    const id = ++toastIdCounter;
+    const newToast = {
+      id,
+      type,
+      title,
+      message,
+      visible: true,
+      progress: 100,
+      duration,
+    };
+
+    setToasts((prev) => [...prev, newToast]);
+
+    // Start progress animation
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.max(0, 100 - (elapsed / duration) * 100);
+
+      setToasts((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, progress } : t
+        )
+      );
+
+      if (elapsed >= duration) {
+        clearInterval(interval);
+        removeToast(id);
+      }
+    }, 50);
+
+    return id;
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const loadDetails = useCallback(async () => {
     try {
@@ -610,10 +697,12 @@ const ExportDetails = () => {
       }
 
       setData(normalizeData(result));
+      showToast("success", "Data Loaded", `Successfully loaded ${period} report for ${monthTitle(month)}`);
     } catch (err) {
       console.error("Export details GET error:", err);
       setError(err.message || "Failed to load report details.");
       setData(normalizeData({}));
+      showToast("error", "Load Failed", err.message || "Failed to load report details.");
     } finally {
       setLoading(false);
     }
@@ -733,14 +822,23 @@ const ExportDetails = () => {
 
       downloadBlob(blob, filename);
 
-      setMessage(
-        `${format.toUpperCase()} ${period} report downloaded successfully.`
+      const formatName = format === "excel" ? "Excel" : format.toUpperCase();
+      showToast(
+        "success",
+        "Download Complete",
+        `${formatName} report downloaded successfully: ${filename}`
       );
+      setMessage(`${formatName} ${period} report downloaded successfully.`);
     } catch (err) {
       console.error("Export error:", err);
       setError(
         err.message ||
           `Unable to download ${format.toUpperCase()} report.`
+      );
+      showToast(
+        "error",
+        "Download Failed",
+        err.message || `Unable to download ${format.toUpperCase()} report.`
       );
     } finally {
       setExporting("");
@@ -761,9 +859,11 @@ const ExportDetails = () => {
         }.json`
       );
 
+      showToast("success", "JSON Backup", "JSON backup downloaded successfully.");
       setMessage("JSON backup downloaded successfully.");
     } catch (err) {
       setError(err.message || "Unable to download JSON backup.");
+      showToast("error", "JSON Failed", err.message || "Unable to download JSON backup.");
     }
   };
 
@@ -771,11 +871,15 @@ const ExportDetails = () => {
     setMonth(getCurrentMonth());
     setPeriod("month");
     setWeek("1");
+    showToast("info", "Reset", "Switched to current month");
   };
 
   return (
     <div className="export-page">
       <style>{styles}</style>
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <header className="topbar">
         <div className="brand">
@@ -1676,6 +1780,164 @@ const styles = `
     radial-gradient(circle at 95% 10%, rgba(6,182,212,.12), transparent 26%),
     #070b14;
 }
+
+/* ============================================================
+   TOAST STYLES
+   ============================================================ */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #1e293b;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  animation: toastIn .35s cubic-bezier(.21,1.02,.73,1);
+  backdrop-filter: blur(12px);
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast.hidden {
+  opacity: 0;
+  transform: translateX(30px);
+  animation: toastOut .3s ease forwards;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translateX(40px) scale(.94);
+  }
+}
+
+.toast-icon {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+}
+
+.toast.success .toast-icon {
+  color: #6ee7b7;
+  background: rgba(16,185,129,.12);
+}
+
+.toast.error .toast-icon {
+  color: #fca5a5;
+  background: rgba(239,68,68,.12);
+}
+
+.toast.info .toast-icon {
+  color: #67e8f9;
+  background: rgba(6,182,212,.12);
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-content strong {
+  display: block;
+  font-size: .7rem;
+  color: #f8fafc;
+}
+
+.toast-content span {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255,255,255,.55);
+  font-size: .58rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.toast-close {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,.25);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.toast-close:hover {
+  color: #f8fafc;
+  background: rgba(255,255,255,.08);
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,.06);
+}
+
+.toast-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #06b6d4);
+  border-radius: 0 2px 2px 0;
+  transition: width .1s linear;
+}
+
+.toast.success .toast-progress span {
+  background: linear-gradient(90deg, #34d399, #6ee7b7);
+}
+
+.toast.error .toast-progress span {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.toast.info .toast-progress span {
+  background: linear-gradient(90deg, #06b6d4, #67e8f9);
+}
+
+/* ============================================================
+   EXISTING STYLES (unchanged)
+   ============================================================ */
 
 .topbar {
   display: flex;
@@ -2751,6 +3013,14 @@ button:disabled {
 
   .modal-actions button:not(.close-modal) {
     flex: 1;
+  }
+
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    width: auto;
   }
 }
 
