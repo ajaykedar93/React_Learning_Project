@@ -18,7 +18,10 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = (
+  import.meta.env?.VITE_API_URL || "https://express-project-learning-new.onrender.com/api" ||
+  "http://localhost:5000/api"
+).replace(/\/$/, "");
 
 const getToken = () =>
   localStorage.getItem("token") ||
@@ -83,6 +86,7 @@ export default function Expense() {
     useState("date-desc");
 
   const [toast, setToast] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const [form, setForm] = useState({
     category_id: "",
@@ -456,9 +460,7 @@ export default function Expense() {
   /*
    * DELETE EXPENSE
    */
-  const deleteExpense = async (
-    expenseId
-  ) => {
+  const deleteExpense = async (expenseId) => {
     setSaving(true);
 
     try {
@@ -467,6 +469,7 @@ export default function Expense() {
         axiosConfig
       );
 
+      setConfirmAction(null);
       await loadExpenses();
 
       showToast(
@@ -474,10 +477,7 @@ export default function Expense() {
         "Expense deleted successfully."
       );
     } catch (error) {
-      console.error(
-        "Delete expense error:",
-        error
-      );
+      console.error("Delete expense error:", error);
 
       showToast(
         "error",
@@ -548,38 +548,35 @@ export default function Expense() {
    * therefore a category already used by
    * expenses cannot be deleted.
    */
-  const deleteCategory =
-    async (categoryId) => {
-      setSaving(true);
+  const deleteCategory = async (categoryId) => {
+    setSaving(true);
 
-      try {
-        await axios.delete(
-          `${API_BASE_URL}/expenses/categories/${categoryId}`,
-          axiosConfig
-        );
+    try {
+      await axios.delete(
+        `${API_BASE_URL}/expenses/categories/${categoryId}`,
+        axiosConfig
+      );
 
-        await loadCategories();
+      setConfirmAction(null);
+      await loadCategories();
 
-        showToast(
-          "success",
-          "Category deleted successfully."
-        );
-      } catch (error) {
-        console.error(
-          "Delete category error:",
-          error
-        );
+      showToast(
+        "success",
+        "Category deleted successfully."
+      );
+    } catch (error) {
+      console.error("Delete category error:", error);
 
-        showToast(
-          "error",
-          error.response?.data?.message ||
-            error.response?.data?.error ||
-            "Category is already being used or cannot be deleted."
-        );
-      } finally {
-        setSaving(false);
-      }
-    };
+      showToast(
+        "error",
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Category is already being used or cannot be deleted."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /*
    * FILTER + SORT
@@ -1805,6 +1802,93 @@ export default function Expense() {
           cursor: pointer;
         }
 
+        /* CENTER CONFIRMATION */
+        .expense-confirm-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 6000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 14px;
+          background: rgba(7, 19, 38, 0.62);
+          backdrop-filter: blur(6px);
+        }
+
+        .expense-confirm {
+          width: min(390px, calc(100vw - 26px));
+          padding: 18px;
+          border-radius: 17px;
+          background: #fff;
+          box-shadow: 0 30px 90px rgba(7, 19, 38, 0.30);
+          text-align: center;
+          animation: expenseModalIn 0.18s ease;
+        }
+
+        .expense-confirm-icon {
+          width: 46px;
+          height: 46px;
+          margin: 0 auto 9px;
+          display: grid;
+          place-items: center;
+          border-radius: 13px;
+          color: #d04444;
+          background: #fff0f0;
+        }
+
+        .expense-confirm h2 {
+          margin: 0;
+          color: #172033;
+          font-size: 16px;
+          font-weight: 900;
+          line-height: 1.2;
+        }
+
+        .expense-confirm p {
+          margin: 6px auto 0;
+          max-width: 330px;
+          color: #697386;
+          font-size: 10px;
+          line-height: 1.5;
+          overflow-wrap: anywhere;
+        }
+
+        .expense-confirm-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 7px;
+          margin-top: 14px;
+        }
+
+        .expense-confirm-actions button {
+          height: 38px;
+          border: 0;
+          border-radius: 9px;
+          font-size: 10px;
+          font-weight: 850;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+        }
+
+        .expense-confirm-cancel {
+          color: #475467;
+          background: #f1f4f8;
+        }
+
+        .expense-confirm-delete {
+          color: #fff;
+          background: linear-gradient(135deg, #d04444, #e05252);
+          box-shadow: 0 8px 20px rgba(208, 68, 68, 0.18);
+        }
+
+        .expense-confirm-actions button:disabled {
+          opacity: 0.55;
+          cursor: wait;
+        }
+
         /* TOAST */
 
         .expense-toast-container {
@@ -1955,138 +2039,541 @@ export default function Expense() {
 
         @media (max-width: 600px) {
           .expense-page {
-            padding: 7px;
-
-            padding-bottom:
-              env(
-                safe-area-inset-bottom,
-                10px
-              );
+            width: 100%;
+            min-height: 100%;
+            padding: 7px 7px calc(30px + env(safe-area-inset-bottom));
+            overflow-x: hidden;
           }
 
-          .expense-header {
-            flex-direction: column;
-
-            align-items: stretch;
-
-            border-radius: 15px;
-          }
-
-          .expense-controls {
-            justify-content: center;
-
-            flex-wrap: nowrap;
-          }
-
-          .expense-month {
-            flex: 1;
-
+          .expense-container {
+            width: 100%;
             min-width: 0;
           }
 
+          .expense-header {
+            position: relative;
+            top: auto;
+            z-index: 2;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 9px;
+            padding: 10px;
+            border-radius: 14px;
+          }
+
+          .expense-brand {
+            gap: 8px;
+          }
+
+          .expense-brand-icon {
+            width: 34px;
+            height: 34px;
+            flex-basis: 34px;
+            border-radius: 9px;
+          }
+
+          .expense-brand-icon svg {
+            width: 17px;
+            height: 17px;
+          }
+
+          .expense-brand h1 {
+            font-size: 17px;
+            line-height: 1.15;
+          }
+
+          .expense-brand p {
+            margin-top: 2px;
+            font-size: 7px;
+          }
+
+          .expense-controls {
+            display: grid;
+            grid-template-columns: 31px minmax(0, 1fr) 31px;
+            gap: 4px;
+            width: 100%;
+            align-items: center;
+          }
+
+          .expense-icon-btn {
+            width: 31px;
+            height: 31px;
+            border-radius: 8px;
+          }
+
+          .expense-icon-btn svg {
+            width: 14px;
+            height: 14px;
+          }
+
+          .expense-month {
+            min-width: 0;
+            height: 31px;
+            padding: 0 6px;
+            border-radius: 8px;
+            font-size: 9px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+          }
+
           .expense-month-input {
-            width: 108px;
+            grid-column: 1 / span 2;
+            width: 100%;
+            height: 31px;
+            min-width: 0;
+            border-radius: 8px;
+            font-size: 9px;
           }
 
           .expense-current {
             display: none;
           }
 
+          .expense-controls .expense-icon-btn:nth-of-type(3) {
+            grid-column: 3;
+            grid-row: 2;
+          }
+
           .expense-add {
-            padding: 0 10px;
+            grid-column: 1 / -1;
+            grid-row: 3;
+            width: 100%;
+            min-height: 34px;
+            height: auto;
+            padding: 8px 12px;
+            border-radius: 8px;
+            justify-content: center;
+            font-size: 10px;
+            line-height: 1.2;
+            white-space: nowrap;
+          }
+
+          .expense-add span {
+            display: inline;
           }
 
           .expense-stats {
-            gap: 6px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px;
+            margin-bottom: 6px;
           }
 
           .expense-stat {
-            padding: 11px;
-
-            gap: 7px;
-
-            border-radius: 13px;
+            min-width: 0;
+            padding: 8px;
+            gap: 6px;
+            border-radius: 10px;
           }
 
           .expense-stat-icon {
-            width: 32px;
-            height: 32px;
-
-            flex-basis: 32px;
+            width: 27px;
+            height: 27px;
+            flex-basis: 27px;
+            border-radius: 7px;
           }
 
-          .expense-stat-text strong {
-            font-size: 16px;
+          .expense-stat-icon svg {
+            width: 13px;
+            height: 13px;
+          }
+
+          .expense-stat-text {
+            min-width: 0;
           }
 
           .expense-stat-text small {
-            font-size: 8px;
+            font-size: 6px;
+            line-height: 1.2;
+          }
+
+          .expense-stat-text strong {
+            margin-top: 3px;
+            font-size: 11px;
+            line-height: 1.2;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+
+          .expense-stat-text span {
+            margin-top: 2px;
+            font-size: 6px;
+            line-height: 1.2;
           }
 
           .expense-panel {
-            padding: 12px;
-
-            border-radius: 14px;
+            padding: 9px;
+            margin-bottom: 6px;
+            border-radius: 11px;
           }
 
           .expense-panel-header {
             align-items: flex-start;
+            gap: 6px;
+            margin-bottom: 8px;
+          }
+
+          .expense-panel-title {
+            min-width: 0;
+          }
+
+          .expense-panel-title h2 {
+            font-size: 10px;
+            line-height: 1.25;
+          }
+
+          .expense-panel-title p {
+            margin-top: 2px;
+            font-size: 6.5px;
+            line-height: 1.3;
+          }
+
+          .expense-category-btn {
+            flex: 0 0 auto;
+            min-height: 30px;
+            padding: 6px 8px;
+            border-radius: 7px;
+            font-size: 7px;
+            white-space: nowrap;
+          }
+
+          .expense-category-btn svg {
+            width: 12px;
+            height: 12px;
           }
 
           .expense-filters {
             grid-template-columns: 1fr;
+            gap: 5px;
+          }
+
+          .expense-search,
+          .expense-filter {
+            width: 100%;
+            min-width: 0;
+            height: 33px;
+            border-radius: 8px;
+            font-size: 8px;
           }
 
           .expense-search {
-            grid-column: auto;
+            padding: 0 8px;
+          }
+
+          .expense-search input,
+          .expense-filter {
+            font-size: 8px;
           }
 
           .expense-week-grid {
-            gap: 6px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px;
           }
 
           .expense-week {
-            padding: 9px;
+            min-width: 0;
+            padding: 7px;
+            border-radius: 8px;
+          }
+
+          .expense-week span {
+            font-size: 6px;
+            line-height: 1.2;
           }
 
           .expense-week strong {
-            font-size: 13px;
+            margin-top: 4px;
+            font-size: 9px;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+          }
+
+          .expense-category-summary {
+            gap: 5px;
+            padding-bottom: 2px;
+          }
+
+          .expense-category-summary-card {
+            min-width: 108px;
+            max-width: 150px;
+            padding: 7px;
+            border-radius: 8px;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 6px;
+            overflow-wrap: anywhere;
+            white-space: normal;
+            line-height: 1.2;
+          }
+
+          .expense-category-summary-card strong {
+            margin-top: 3px;
+            font-size: 8px;
+          }
+
+          .expense-list {
+            width: 100%;
+            gap: 5px;
+            padding-bottom: 6px;
           }
 
           .expense-row {
-            padding: 10px;
-
-            gap: 8px;
-
-            border-radius: 13px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr) auto;
+            gap: 6px;
+            padding: 8px;
+            border-radius: 9px;
+            align-items: start;
           }
 
           .expense-row-icon {
-            width: 34px;
-            height: 34px;
+            width: 28px;
+            height: 28px;
+            flex-basis: 28px;
+            border-radius: 7px;
+          }
 
-            flex-basis: 34px;
+          .expense-row-icon svg {
+            width: 13px;
+            height: 13px;
+          }
+
+          .expense-row-main {
+            min-width: 0;
+          }
+
+          .expense-row-main strong {
+            font-size: 8px;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+
+          .expense-row-main span {
+            margin-top: 2px;
+            font-size: 6px;
+            line-height: 1.25;
+          }
+
+          .expense-row-main small {
+            margin-top: 2px;
+            font-size: 6px;
+            line-height: 1.3;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+            word-break: break-word;
           }
 
           .expense-row-amount {
-            font-size: 12px;
+            grid-column: 2;
+            grid-row: 2;
+            margin-top: 2px;
+            font-size: 8px;
+            line-height: 1.2;
+            white-space: normal;
+            overflow-wrap: anywhere;
           }
 
           .expense-row-actions {
+            grid-column: 3;
+            grid-row: 1 / span 2;
             flex-direction: column;
+            gap: 3px;
+          }
+
+          .expense-row-action {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+          }
+
+          .expense-row-action svg {
+            width: 12px;
+            height: 12px;
+          }
+
+          .expense-empty {
+            min-height: 210px;
+            padding: 25px 12px;
+            border-radius: 11px;
+            text-align: center;
+          }
+
+          .expense-empty strong {
+            font-size: 10px;
+          }
+
+          .expense-empty span {
+            font-size: 7px;
+            line-height: 1.4;
           }
 
           .expense-modal-backdrop {
-            align-items: flex-end;
-
-            padding: 7px;
+            padding: 9px;
+            align-items: center;
+            overflow: auto;
           }
 
           .expense-modal {
-            max-height: 92vh;
+            width: min(100%, 470px);
+            max-width: 100%;
+            max-height: calc(100dvh - 18px);
+            border-radius: 15px;
+          }
 
-            border-radius:
-              18px 18px 12px 12px;
+          .expense-modal-header {
+            padding: 11px;
+          }
+
+          .expense-modal-header h2 {
+            font-size: 12px;
+            line-height: 1.2;
+          }
+
+          .expense-modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+          }
+
+          .expense-modal-body {
+            padding: 11px;
+          }
+
+          .expense-form {
+            gap: 8px;
+          }
+
+          .expense-form label {
+            gap: 4px;
+            font-size: 7px;
+          }
+
+          .expense-form input,
+          .expense-form select,
+          .expense-form textarea {
+            min-width: 0;
+            font-size: 9px;
+            border-radius: 8px;
+            padding: 8px;
+          }
+
+          .expense-form input,
+          .expense-form select {
+            height: 35px;
+          }
+
+          .expense-form textarea {
+            min-height: 68px;
+          }
+
+          .expense-submit {
+            height: 36px;
+            margin-top: 8px;
+            border-radius: 8px;
+            font-size: 9px;
+          }
+
+          .expense-category-add {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 5px;
+          }
+
+          .expense-category-add input {
+            min-width: 0;
+            height: 35px;
+            border-radius: 8px;
+            font-size: 9px;
+          }
+
+          .expense-category-add button {
+            height: 35px;
+            padding: 0 10px;
+            border-radius: 8px;
+            font-size: 9px;
+            white-space: nowrap;
+          }
+
+          .expense-category-item {
+            min-width: 0;
+            gap: 7px;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 8px;
+          }
+
+          .expense-category-item span:first-child {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.3;
+          }
+
+          .expense-category-delete {
+            width: 27px;
+            height: 27px;
+            flex: 0 0 27px;
+            border-radius: 7px;
+          }
+
+          .expense-toast-container {
+            width: min(340px, calc(100vw - 20px));
+          }
+
+          .expense-toast {
+            padding: 10px;
+            border-radius: 11px;
+            gap: 7px;
+          }
+
+          .expense-toast-title {
+            font-size: 10px;
+          }
+
+          .expense-toast-message {
+            font-size: 8px;
+          }
+
+          .expense-toast-close {
+            width: 25px;
+            height: 25px;
+            flex: 0 0 25px;
+          }
+
+          .expense-confirm {
+            width: min(340px, calc(100vw - 22px));
+            padding: 15px;
+            border-radius: 15px;
+          }
+
+          .expense-confirm-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 11px;
+          }
+
+          .expense-confirm h2 {
+            font-size: 13px;
+            line-height: 1.2;
+          }
+
+          .expense-confirm p {
+            font-size: 8px;
+            line-height: 1.5;
+          }
+
+          .expense-confirm-actions button {
+            height: 34px;
+            font-size: 8px;
+            border-radius: 8px;
           }
         }
 
@@ -2212,9 +2699,8 @@ export default function Expense() {
               <button
                 type="button"
                 className="expense-add"
-                onClick={
-                  openAddExpense
-                }
+                onClick={openAddExpense}
+                disabled={saving || refreshing}
               >
                 <Plus size={15} />
                 Add
@@ -2622,9 +3108,13 @@ export default function Expense() {
                         type="button"
                         className="expense-row-action delete"
                         onClick={() =>
-                          deleteExpense(
-                            expense.id
-                          )
+                          setConfirmAction({
+                            type: "expense",
+                            id: expense.id,
+                            title: "Delete Expense?",
+                            message:
+                              "This expense record will be permanently deleted. This action cannot be undone.",
+                          })
                         }
                         title="Delete"
                         disabled={saving}
@@ -2901,9 +3391,13 @@ export default function Expense() {
                             type="button"
                             className="expense-category-delete"
                             onClick={() =>
-                              deleteCategory(
-                                category.id
-                              )
+                              setConfirmAction({
+                                type: "category",
+                                id: category.id,
+                                title: "Delete Category?",
+                                message:
+                                  "This category can only be deleted if it is not being used by any expense.",
+                              })
                             }
                             disabled={
                               saving
@@ -2931,6 +3425,68 @@ export default function Expense() {
                   )
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* CENTER DELETE CONFIRMATION */}
+      {confirmAction ? (
+        <div
+          className="expense-confirm-backdrop"
+          onMouseDown={(e) => {
+            if (
+              e.target === e.currentTarget &&
+              !saving
+            ) {
+              setConfirmAction(null);
+            }
+          }}
+        >
+          <div
+            className="expense-confirm"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="expense-confirm-title"
+          >
+            <div className="expense-confirm-icon">
+              <Trash2 size={20} />
+            </div>
+            <h2 id="expense-confirm-title">
+              {confirmAction.title}
+            </h2>
+            <p>{confirmAction.message}</p>
+
+            <div className="expense-confirm-actions">
+              <button
+                type="button"
+                className="expense-confirm-cancel"
+                onClick={() => setConfirmAction(null)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="expense-confirm-delete"
+                onClick={() =>
+                  confirmAction.type === "expense"
+                    ? deleteExpense(confirmAction.id)
+                    : deleteCategory(confirmAction.id)
+                }
+                disabled={saving}
+              >
+                {saving ? (
+                  <RefreshCw
+                    size={14}
+                    className="expense-spin"
+                  />
+                ) : (
+                  <Trash2 size={14} />
+                )}
+                {saving ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
         </div>

@@ -58,7 +58,7 @@ import {
   - No old overview column names.
 */
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = (import.meta.env?.VITE_API_URL || "https://express-project-learning-new.onrender.com/api" || "http://localhost:5000/api").replace(/\/$/, "");
 
 const EMPTY_MANUAL = {
   total_work: 0,
@@ -1259,6 +1259,433 @@ export default function Overview() {
           to {
             opacity: 1;
             transform: scale(1);
+          }
+        }
+
+
+        /* ============================================================
+           FINAL RESPONSIVE OVERRIDES
+           Android-style mobile layout: readable, compact, never clipped.
+        ============================================================ */
+        .overview-page,
+        .overview-container,
+        .overview-section,
+        .overview-stat-card,
+        .overview-summary-box,
+        .overview-field,
+        .overview-saving {
+          min-width: 0;
+        }
+
+        .overview-page {
+          width: 100%;
+          overflow-x: hidden;
+          overflow-wrap: anywhere;
+          padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .overview-container {
+          max-width: 1180px;
+        }
+
+        .overview-brand > div:last-child,
+        .overview-stat-card > div,
+        .overview-summary-box > div:last-child {
+          min-width: 0;
+        }
+
+        .overview-stat-value,
+        .overview-saving-value,
+        .overview-summary-value,
+        .overview-field-value,
+        .overview-brand h1,
+        .overview-brand p,
+        .overview-section-title,
+        .overview-section-note {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .overview-stat-value {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+          line-height: 1.12;
+        }
+
+        .overview-month,
+        .overview-month-input {
+          flex: 0 1 auto;
+          min-width: 0;
+        }
+
+        .overview-icon-button,
+        .overview-edit-button,
+        .overview-save-button,
+        .overview-cancel-button,
+        .overview-current-button {
+          white-space: nowrap;
+        }
+
+        .overview-toast-container {
+          pointer-events: none;
+        }
+
+        .overview-toast {
+          width: min(360px, calc(100vw - 24px));
+          pointer-events: auto;
+        }
+
+        @media (max-width: 900px) {
+          .overview-page {
+            padding: 8px;
+          }
+
+          .overview-navbar {
+            gap: 10px;
+          }
+
+          .overview-grid,
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .overview-stat-card {
+            padding: 12px;
+          }
+
+          .overview-stat-value {
+            font-size: clamp(16px, 4vw, 22px);
+          }
+
+          .overview-section {
+            padding: 13px;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .overview-page {
+            padding: 6px 6px calc(30px + env(safe-area-inset-bottom, 0px));
+          }
+
+          .overview-navbar {
+            position: relative;
+            top: auto;
+            z-index: 1;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            padding: 10px;
+            margin-bottom: 7px;
+            border-radius: 13px;
+            box-shadow: 0 8px 22px rgba(25, 40, 70, 0.07);
+          }
+
+          .overview-brand {
+            gap: 8px;
+          }
+
+          .overview-brand-icon {
+            width: 36px;
+            height: 36px;
+            flex-basis: 36px;
+            border-radius: 10px;
+          }
+
+          .overview-brand-icon svg {
+            width: 18px;
+            height: 18px;
+          }
+
+          .overview-brand h1 {
+            font-size: 17px;
+            line-height: 1.1;
+          }
+
+          .overview-brand p {
+            margin-top: 2px;
+            font-size: 8px;
+            line-height: 1.3;
+          }
+
+          .overview-month-controls {
+            width: 100%;
+            justify-content: stretch;
+            gap: 4px;
+          }
+
+          .overview-icon-button {
+            width: 31px;
+            height: 31px;
+            flex: 0 0 31px;
+            border-radius: 8px;
+          }
+
+          .overview-month {
+            flex: 1 1 auto;
+            min-width: 0;
+            padding: 7px 6px;
+            font-size: 9px;
+            border-radius: 8px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+          }
+
+          .overview-month svg {
+            flex: 0 0 auto;
+            width: 13px;
+            height: 13px;
+          }
+
+          .overview-month-input {
+            width: 108px;
+            min-width: 92px;
+            height: 31px;
+            padding: 0 5px;
+            border-radius: 8px;
+            font-size: 8px;
+          }
+
+          .overview-current-button {
+            display: none;
+          }
+
+          .overview-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px;
+            margin-bottom: 6px;
+          }
+
+          .overview-stat-card {
+            padding: 8px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(25, 40, 70, 0.05);
+          }
+
+          .overview-stat-top {
+            gap: 5px;
+          }
+
+          .overview-stat-title {
+            font-size: 6.5px;
+            line-height: 1.2;
+            letter-spacing: 0.04em;
+          }
+
+          .overview-stat-icon {
+            width: 26px;
+            height: 26px;
+            flex-basis: 26px;
+            border-radius: 7px;
+          }
+
+          .overview-stat-icon svg {
+            width: 13px;
+            height: 13px;
+          }
+
+          .overview-stat-value {
+            margin-top: 4px;
+            font-size: 12px;
+            line-height: 1.15;
+          }
+
+          .overview-stat-subtitle {
+            margin-top: 2px;
+            font-size: 6px;
+            line-height: 1.2;
+          }
+
+          .overview-section {
+            padding: 9px;
+            margin-bottom: 6px;
+            border-radius: 11px;
+            box-shadow: 0 5px 16px rgba(25, 40, 70, 0.05);
+          }
+
+          .overview-section-header {
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 8px;
+          }
+
+          .overview-section-title {
+            gap: 5px;
+            font-size: 9px;
+            line-height: 1.2;
+          }
+
+          .overview-section-title svg {
+            width: 13px;
+            height: 13px;
+            flex: 0 0 auto;
+          }
+
+          .overview-section-note {
+            font-size: 6px;
+            line-height: 1.25;
+            text-align: right;
+          }
+
+          .overview-edit-button,
+          .overview-save-button,
+          .overview-cancel-button {
+            min-height: 31px;
+            padding: 0 8px;
+            border-radius: 7px;
+            font-size: 8px;
+          }
+
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 5px;
+          }
+
+          .overview-field {
+            padding: 7px;
+            border-radius: 8px;
+          }
+
+          .overview-field label {
+            margin-bottom: 4px;
+            font-size: 6.5px;
+            line-height: 1.2;
+          }
+
+          .overview-field input {
+            height: 32px;
+            padding: 0 7px;
+            border-radius: 7px;
+            font-size: 10px;
+          }
+
+          .overview-field-value {
+            min-height: 32px;
+            font-size: 10px;
+            line-height: 1.15;
+          }
+
+          .overview-summary-box {
+            padding: 7px;
+            gap: 6px;
+            border-radius: 8px;
+          }
+
+          .overview-summary-icon {
+            width: 26px;
+            height: 26px;
+            flex-basis: 26px;
+            border-radius: 7px;
+          }
+
+          .overview-summary-icon svg {
+            width: 12px;
+            height: 12px;
+          }
+
+          .overview-summary-title {
+            font-size: 6.5px;
+            line-height: 1.2;
+          }
+
+          .overview-summary-value {
+            margin-top: 2px;
+            font-size: 9.5px;
+            line-height: 1.2;
+          }
+
+          .overview-auto-note {
+            margin-top: 6px;
+            padding: 7px 8px;
+            border-radius: 8px;
+            font-size: 7px;
+            line-height: 1.4;
+          }
+
+          .overview-saving {
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px;
+            margin-top: 7px;
+            border-radius: 10px;
+          }
+
+          .overview-saving-label {
+            font-size: 6px;
+            line-height: 1.2;
+          }
+
+          .overview-saving-value {
+            margin-top: 2px;
+            font-size: 17px;
+            line-height: 1.1;
+          }
+
+          .overview-saving-formula {
+            width: 100%;
+            text-align: left;
+            font-size: 7px;
+            line-height: 1.5;
+          }
+
+          .overview-loading,
+          .overview-empty {
+            min-height: 48vh;
+            padding: 18px 10px;
+            font-size: 9px;
+            text-align: center;
+          }
+
+          .overview-toast-container {
+            left: 50%;
+            top: 50%;
+            width: calc(100vw - 20px);
+            max-width: 340px;
+          }
+
+          .overview-toast {
+            width: 100%;
+            gap: 7px;
+            padding: 10px;
+            border-radius: 11px;
+          }
+
+          .overview-toast-title {
+            font-size: 10px;
+          }
+
+          .overview-toast-message {
+            font-size: 8px;
+            line-height: 1.4;
+          }
+
+          .overview-toast .overview-icon-button {
+            width: 25px !important;
+            height: 25px !important;
+            min-width: 25px;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .overview-month-input {
+            width: 102px;
+            min-width: 92px;
+          }
+
+          .overview-stat-value {
+            font-size: 11px;
+          }
+
+          .overview-section-title {
+            font-size: 8.5px;
           }
         }
 

@@ -49,7 +49,7 @@ import {
 */
 
 const API_BASE =
-  import.meta?.env?.VITE_API_BASE_URL ||
+  import.meta?.env?.VITE_API_BASE_URL || "https://express-project-learning-new.onrender.com/api/payments" ||
   "http://localhost:5000/api/payments";
 
 const STATUS_OPTIONS = [

@@ -1,625 +1,373 @@
 // Home.jsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import ProfileCard from './ProfileCard';
-import Navbar from './Navbar';
-import Overview from './Overview';
-import Trading from './Trading';
-import Footer from './Footer';
-import Expense from './Expense';
-import LoanBorrow from './LoanBorrow';
-import Payment from './Payment';
-import Performance from './Performance';
-import ExportDetails from './ExportDetails';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import ProfileCard from "./ProfileCard";
+import Navbar from "./Navbar";
+import Overview from "./Overview";
+import Trading from "./Trading";
+import Footer from "./Footer";
+import Expense from "./Expense";
+import LoanBorrow from "./LoanBorrow";
+import Payment from "./Payment";
+import Performance from "./Performance";
+import ExportDetails from "./ExportDetails";
+
+const TABS = [
+  { id: "profile", label: "Profile", icon: "👤", component: ProfileCard },
+  { id: "overview", label: "Overview", icon: "📊", component: Overview },
+  { id: "expense", label: "Expense", icon: "💳", component: Expense },
+  { id: "loan-borrow", label: "Loan & Borrow", icon: "💰", component: LoanBorrow },
+  { id: "payment", label: "Payments", icon: "💎", component: Payment },
+  { id: "performance", label: "Performance", icon: "📈", component: Performance },
+  { id: "export", label: "Export", icon: "📤", component: ExportDetails },
+  { id: "trading", label: "Trading", icon: "📊", component: Trading },
+];
+
+const NAVBAR_HEIGHT_DESKTOP = 88;
+const TAB_HEIGHT_DESKTOP = 96;
+const NAVBAR_HEIGHT_MOBILE = 64;
+const TAB_HEIGHT_MOBILE = 76;
+const FOOTER_SPACE_DESKTOP = 64;
+const FOOTER_SPACE_MOBILE = 72;
 
 const Home = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  
-  const [searchQuery, setSearchQuery] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [navigationTarget, setNavigationTarget] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(true);
-  const refreshTimerRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const refreshInProgress = useRef(false);
-  const refreshCountRef = useRef(0);
+  const [activeTab, setActiveTab] = useState("profile");
+
   const tabContainerRef = useRef(null);
+  const refreshTimerRef = useRef(null);
+  const refreshInProgressRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-  // Tab configuration - ProfileCard is now first
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: '👤', component: ProfileCard },
-    { id: 'overview', label: 'Overview', icon: '📊', component: Overview },
-    { id: 'expense', label: 'Expense', icon: '💳', component: Expense },
-    { id: 'loan-borrow', label: 'Loan & Borrow', icon: '💰', component: LoanBorrow },
-    { id: 'payment', label: 'Payments', icon: '💎', component: Payment },
-    { id: 'performance', label: 'Performance', icon: '📈', component: Performance },
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("admin_token");
 
-    { id: 'trading', label: 'Trading', icon: '📊', component: Trading },
-   
-    { id: 'export', label: 'Export', icon: '📤', component: ExportDetails },
-  ];
-
-  // =============================================
-  // LOGOUT HANDLER
-  // =============================================
-  const handleLogout = () => {
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('admin_token');
-    
-    if (logout) {
+    if (typeof logout === "function") {
       logout();
     }
-    
-    navigate('/login', { replace: true });
-  };
 
-  // =============================================
-  // TAB NAVIGATION
-  // =============================================
-  const handleTabChange = (tabId) => {
+    navigate("/login", { replace: true });
+  }, [logout, navigate]);
+
+  const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
     setNavigationTarget(tabId);
-    
-    // Scroll to top when changing tabs
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
-  // =============================================
-  // CHECK SCROLL POSITION FOR ARROWS
-  // =============================================
-  const checkScrollPosition = () => {
-    const container = tabContainerRef.current;
-    if (!container) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = container;
-    setShowLeftArrow(scrollLeft > 20);
-    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 20);
-  };
-
-  useEffect(() => {
-    const container = tabContainerRef.current;
-    if (container) {
-      checkScrollPosition();
-      container.addEventListener('scroll', checkScrollPosition);
-      window.addEventListener('resize', checkScrollPosition);
-      
-      return () => {
-        container.removeEventListener('scroll', checkScrollPosition);
-        window.removeEventListener('resize', checkScrollPosition);
-      };
-    }
-  }, []);
-
-  // =============================================
-  // SILENT BACKGROUND REFRESH
-  // =============================================
-  const refreshPage = useCallback(() => {
-    if (refreshInProgress.current) return;
-    
-    refreshInProgress.current = true;
-    setIsRefreshing(true);
-    refreshCountRef.current += 1;
-    
+    // Only the page-content scroller moves.
     requestAnimationFrame(() => {
-      setRefreshTrigger(prev => prev + 1);
-      console.log(`🔄 Auto-refresh #${refreshCountRef.current} at:`, new Date().toLocaleTimeString());
-      
-      setTimeout(() => {
-        refreshInProgress.current = false;
-        setIsRefreshing(false);
-      }, 200);
+      const pageScroller = document.querySelector(".home-page-scroll");
+      if (pageScroller) {
+        pageScroller.scrollTo({ top: 0, behavior: "smooth" });
+      }
     });
   }, []);
 
-  // =============================================
-  // AUTO-REFRESH EVERY 30 SECONDS
-  // =============================================
+  const refreshPage = useCallback(() => {
+    if (refreshInProgressRef.current) return;
+
+    refreshInProgressRef.current = true;
+    setIsRefreshing(true);
+    setRefreshTrigger((prev) => prev + 1);
+
+    window.setTimeout(() => {
+      refreshInProgressRef.current = false;
+      if (isMountedRef.current) {
+        setIsRefreshing(false);
+      }
+    }, 450);
+  }, []);
+
   useEffect(() => {
     isMountedRef.current = true;
-    
-    refreshTimerRef.current = setInterval(() => {
-      if (isMountedRef.current && !refreshInProgress.current) {
+
+    refreshTimerRef.current = window.setInterval(() => {
+      if (isMountedRef.current) {
         refreshPage();
       }
     }, 30000);
 
     return () => {
       isMountedRef.current = false;
+
       if (refreshTimerRef.current) {
-        clearInterval(refreshTimerRef.current);
+        window.clearInterval(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
-      refreshInProgress.current = false;
+
+      refreshInProgressRef.current = false;
     };
   }, [refreshPage]);
 
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || ProfileCard;
+  const ActiveComponent =
+    TABS.find((tab) => tab.id === activeTab)?.component || ProfileCard;
 
   return (
     <>
       <style>{`
-
-        /* =========================================================
-           PREMIUM HOME UI — visual enhancement only
-           Keeps existing tabs/components and responsive behavior.
-        ========================================================= */
         :root {
-          --home-bg: #050712;
-          --home-panel: rgba(13, 18, 32, .72);
-          --home-panel-strong: rgba(17, 24, 39, .88);
-          --home-line: rgba(148, 163, 184, .14);
-          --home-line-bright: rgba(34, 211, 238, .28);
-          --home-cyan: #22d3ee;
-          --home-blue: #60a5fa;
-          --home-violet: #8b5cf6;
-          --home-green: #34d399;
+          --home-navbar-height: ${NAVBAR_HEIGHT_DESKTOP}px;
+          --home-tabs-height: ${TAB_HEIGHT_DESKTOP}px;
+          --home-safe-top: env(safe-area-inset-top, 0px);
+          --home-safe-bottom: env(safe-area-inset-bottom, 0px);
+          --home-footer-space: ${FOOTER_SPACE_DESKTOP}px;
+
+          --home-bg: #f6f8fc;
+          --home-card: rgba(255,255,255,.96);
+          --home-border: rgba(15,23,42,.10);
+          --home-text: #172033;
+          --home-muted: #64748b;
+          --home-blue: #2563eb;
+          --home-cyan: #06b6d4;
+          --home-green: #10b981;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        html,
+        body,
+        #root {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+        }
+
+        html {
+          overflow: hidden;
+        }
+
+        body {
+          overflow: hidden;
+          background: var(--home-bg);
+          font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system,
+            BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+          font: inherit;
+        }
+
+        button {
+          -webkit-tap-highlight-color: transparent;
         }
 
         .home-container {
           position: relative;
-          isolation: isolate;
-          background:
-            radial-gradient(circle at 8% 8%, rgba(34,211,238,.055), transparent 24rem),
-            radial-gradient(circle at 92% 12%, rgba(139,92,246,.075), transparent 28rem),
-            radial-gradient(circle at 50% 100%, rgba(52,211,153,.035), transparent 30rem),
-            var(--home-bg);
-        }
-
-        .home-container::before {
-          content: "";
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: -1;
-          opacity: .28;
-          background-image:
-            linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
-          background-size: 38px 38px;
-          mask-image: linear-gradient(to bottom, black, transparent 85%);
-        }
-
-        .home-main {
-          position: relative;
-        }
-
-        .tab-navigation-wrapper {
-          margin-top: .25rem;
-          filter: drop-shadow(0 14px 35px rgba(0,0,0,.18));
-        }
-
-        .tab-navigation {
-          position: relative;
-          border-color: rgba(255,255,255,.09);
-          background:
-            linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
-            rgba(8,12,23,.72);
-          box-shadow:
-            inset 0 1px 0 rgba(255,255,255,.055),
-            0 16px 45px rgba(0,0,0,.16);
-        }
-
-        .tab-button {
-          position: relative;
-          overflow: hidden;
-          border-color: transparent;
-          transition:
-            transform .22s ease,
-            color .22s ease,
-            background .22s ease,
-            border-color .22s ease,
-            box-shadow .22s ease;
-        }
-
-        .tab-button::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,.07) 50%, transparent 75%);
-          transform: translateX(-120%);
-          transition: transform .65s ease;
-          pointer-events: none;
-        }
-
-        .tab-button:hover::before,
-        .tab-button.active::before {
-          transform: translateX(120%);
-        }
-
-        .tab-button:hover {
-          box-shadow: 0 8px 24px rgba(34,211,238,.055);
-        }
-
-        .tab-button.active {
-          background:
-            linear-gradient(135deg, rgba(34,211,238,.18), rgba(139,92,246,.14)),
-            rgba(255,255,255,.025);
-          border-color: rgba(34,211,238,.32);
-          box-shadow:
-            0 8px 28px rgba(34,211,238,.10),
-            inset 0 1px 0 rgba(255,255,255,.08);
-        }
-
-        .tab-button.active .tab-icon {
-          transform: translateY(-1px) scale(1.05);
-          filter: drop-shadow(0 0 9px rgba(34,211,238,.42));
-        }
-
-        .tab-icon {
-          display: inline-flex;
-          transition: transform .22s ease, filter .22s ease;
-        }
-
-        .tab-count {
-          border: 1px solid rgba(34,211,238,.15);
-        }
-
-        .tab-content {
-          position: relative;
-        }
-
-        .tab-content::before {
-          content: "";
-          display: block;
           width: 100%;
-          height: 1px;
-          margin-bottom: 1rem;
-          background: linear-gradient(90deg, transparent, rgba(34,211,238,.18), rgba(139,92,246,.16), transparent);
-          opacity: .65;
-        }
-
-        .refresh-indicator {
-          border-color: rgba(34,211,238,.16);
-          background: rgba(7,11,21,.78);
-          box-shadow: 0 8px 30px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.04);
-        }
-
-        .refresh-indicator.active {
-          border-color: rgba(245,158,11,.26);
-          box-shadow: 0 8px 30px rgba(245,158,11,.08);
-        }
-
-        .footer-wrapper {
+          height: 100dvh;
+          min-height: 100vh;
+          overflow: hidden;
           background:
-            linear-gradient(180deg, rgba(5,7,18,.84), rgba(3,5,13,.98));
-          border-top: 1px solid rgba(148,163,184,.10);
-          box-shadow: 0 -12px 35px rgba(0,0,0,.18);
+            radial-gradient(circle at 8% 0%, rgba(59,130,246,.07), transparent 25rem),
+            radial-gradient(circle at 96% 12%, rgba(124,58,237,.06), transparent 25rem),
+            #f6f8fc;
+        }
+
+        /* =========================================
+           FIXED TOP NAVBAR
+           The existing Navbar is kept unchanged.
+        ========================================= */
+        .home-navbar-fixed {
+          position: fixed;
+          top: var(--home-safe-top);
+          left: 0;
+          right: 0;
+          z-index: 3000;
+          width: 100%;
+          height: var(--home-navbar-height);
+          flex: 0 0 var(--home-navbar-height);
+        }
+
+        /* =========================================
+           FIXED TAB BAR — DIRECTLY UNDER NAVBAR
+        ========================================= */
+        .home-tabs-fixed {
+          position: fixed;
+          top: calc(var(--home-navbar-height) + var(--home-safe-top));
+          left: 0;
+          right: 0;
+          z-index: 2900;
+          width: 100%;
+          height: var(--home-tabs-height);
+          padding: 10px 30px;
+          background: rgba(246,248,252,.96);
+          border-bottom: 1px solid rgba(15,23,42,.07);
+          box-shadow: 0 8px 22px rgba(15,23,42,.07);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
         }
 
-        /* Give common child cards a consistent premium treatment while
-           leaving their own styles in control of content/layout. */
-        .tab-content > * {
-          animation: homeContentIn .42s cubic-bezier(.2,.7,.2,1) both;
-        }
-
-        @keyframes homeContentIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Better keyboard accessibility */
-        .tab-button:focus-visible,
-        .scroll-indicator:focus-visible {
-          outline: 2px solid var(--home-cyan);
-          outline-offset: 2px;
-        }
-
-        @media (max-width: 768px) {
-          .home-container {
-            background:
-              radial-gradient(circle at 50% 0%, rgba(34,211,238,.055), transparent 17rem),
-              radial-gradient(circle at 100% 28%, rgba(139,92,246,.055), transparent 18rem),
-              var(--home-bg);
-          }
-
-          .home-container::before {
-            background-size: 30px 30px;
-            opacity: .18;
-          }
-
-          .home-main {
-            padding-left: 0;
-            padding-right: 0;
-          }
-
-          .tab-navigation-wrapper {
-            padding-top: 9px;
-            padding-bottom: 9px;
-            box-shadow: 0 10px 25px rgba(0,0,0,.12);
-          }
-
-          .tab-navigation {
-            box-shadow:
-              inset 0 1px 0 rgba(255,255,255,.05),
-              0 10px 28px rgba(0,0,0,.16);
-          }
-
-          .tab-button {
-            min-width: 112px;
-            min-height: 44px;
-            padding: 8px 12px;
-          }
-
-          .tab-content {
-            padding-top: 14px;
-          }
-
-          .tab-content::before {
-            margin-bottom: .75rem;
-          }
-
-          .refresh-indicator {
-            font-size: .48rem;
-            padding: .18rem .5rem;
-          }
-        }
-
-        @media (max-width: 420px) {
-          .tab-button {
-            min-width: 105px;
-            min-height: 42px;
-            padding: 7px 10px;
-            gap: 6px;
-          }
-
-          .tab-icon { font-size: 16px; }
-          .tab-label { font-size: 10.5px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .tab-content > *,
-          .tab-button,
-          .tab-button::before,
-          .tab-icon {
-            animation: none !important;
-            transition: none !important;
-          }
-        }
-
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-          max-width: 100%;
-          overflow-wrap: break-word;
-          word-wrap: break-word;
-        }
-
-        body {
-          background: #06060f;
-          font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-          overflow-x: hidden;
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          width: 100%;
-        }
-
-        #root {
-          display: flex;
-          flex-direction: column;
-          min-height: 100vh;
-          width: 100%;
-          overflow-x: hidden;
-        }
-
-        .home-container {
-          --footer-space: 48px;
-          --navbar-height: 70px;
-          --tabs-height: 0px;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          background: #06060f;
-          min-height: 100vh;
-          width: 100%;
-          overflow-x: hidden;
-          padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
-          padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
-        }
-
-        .home-main {
-          flex: 1;
-          max-width: 1600px;
-          width: 100%;
-          margin: 0 auto;
-          padding: 1rem 1.5rem 2rem;
-          overflow-x: hidden;
-        }
-
-        /* =============================================
-           PROFESSIONAL TAB NAVIGATION
-        ============================================= */
-        .tab-navigation-wrapper {
+        .home-tabs-inner {
           position: relative;
-          margin-bottom: 1.5rem;
-          width: 100%;
-          padding: 0 35px;
-        }
-
-        .tab-navigation {
+          width: min(1800px, 100%);
+          height: 100%;
+          margin: 0 auto;
           display: flex;
-          gap: 0.5rem;
-          padding: 0.75rem 1rem;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 16px;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          flex-wrap: nowrap;
-          backdrop-filter: blur(10px);
-          scroll-behavior: smooth;
+          align-items: center;
+          border: 1px solid rgba(255,255,255,.95);
+          border-radius: 20px;
+          background:
+            linear-gradient(
+              135deg,
+              rgba(255,255,255,.98),
+              rgba(248,250,252,.98)
+            );
+          box-shadow:
+            inset 0 1px 0 rgba(15,23,42,.04),
+            0 10px 30px rgba(15,23,42,.09);
         }
 
-        .tab-navigation::-webkit-scrollbar {
-          display: none;
-        }
-
-        /* Scroll indicators */
-        .scroll-indicator {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 32px;
-          height: 32px;
-          background: rgba(6, 6, 15, 0.9);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 50%;
-          color: rgba(255, 255, 255, 0.7);
-          cursor: pointer;
-          z-index: 10;
-          display: none;
+        .home-tabs-scroll {
+          width: 100%;
+          height: 100%;
+          display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.3s ease;
-          font-size: 1.2rem;
-          font-weight: 300;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+          gap: 8px;
+          padding: 9px;
+          overflow: hidden;
+          scrollbar-width: none;
+          overscroll-behavior-x: contain;
+          touch-action: pan-x;
         }
 
-        .scroll-indicator:hover {
-          background: rgba(6, 6, 15, 0.98);
-          color: #fff;
-          border-color: rgba(124, 58, 237, 0.4);
-          transform: translateY(-50%) scale(1.05);
+        .home-tabs-scroll::-webkit-scrollbar {
+          display: none;
         }
 
-        .scroll-indicator:active {
-          transform: translateY(-50%) scale(0.95);
-        }
-
-        .scroll-indicator.left {
-          left: 0;
-        }
-
-        .scroll-indicator.right {
-          right: 0;
-        }
-
-        .scroll-indicator.visible {
-          display: flex;
-        }
-
-        .tab-button {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.6rem 1.2rem;
-          background: transparent;
-          border: 1px solid transparent;
-          border-radius: 10px;
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 0.75rem;
-          font-weight: 600;
-          font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          white-space: nowrap;
-          min-height: 40px;
+        .home-tab {
           position: relative;
-          flex-shrink: 0;
-        }
-
-        .tab-button:hover {
-          color: rgba(255, 255, 255, 0.8);
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.08);
-          transform: translateY(-1px);
-        }
-
-        /* FRESH NEW ACTIVE COLOR - Vibrant Cyan/Teal gradient */
-        .tab-button.active {
-          color: #fff;
-          background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(16, 185, 129, 0.15));
-          border-color: rgba(6, 182, 212, 0.35);
-          box-shadow: 0 4px 25px rgba(6, 182, 212, 0.15), inset 0 1px 0 rgba(6, 182, 212, 0.1);
-        }
-
-        .tab-button.active::after {
-          content: '';
-          position: absolute;
-          bottom: -1px;
-          left: 15%;
-          right: 15%;
-          height: 2.5px;
-          background: linear-gradient(90deg, #06b6d4, #10b981, #06b6d4);
-          background-size: 200% 100%;
-          border-radius: 2px;
-          animation: shimmer 2s ease-in-out infinite;
-        }
-
-        @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
-        }
-
-        .tab-button.active .tab-icon {
-          filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.3));
-        }
-
-        .tab-icon {
-          font-size: 1.1rem;
-          line-height: 1;
-          transition: all 0.3s ease;
-        }
-
-        .tab-label {
-          font-size: 0.7rem;
-          letter-spacing: 0.3px;
-          transition: all 0.3s ease;
-        }
-
-        .tab-button.active .tab-label {
-          color: #67e8f9;
-        }
-
-        .tab-count {
+          flex: 0 0 auto;
+          min-width: 124px;
+          height: 50px;
+          padding: 0 17px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-width: 18px;
-          height: 18px;
-          padding: 0 5px;
-          background: rgba(6, 182, 212, 0.15);
-          border-radius: 20px;
-          font-size: 0.55rem;
-          color: rgba(255, 255, 255, 0.5);
-          margin-left: 2px;
-          transition: all 0.3s ease;
+          gap: 8px;
+          border: 1px solid transparent;
+          border-radius: 13px;
+          background: transparent;
+          color: #64748b;
+          cursor: pointer;
+          white-space: nowrap;
+          font-size: 12px;
+          font-weight: 700;
+          transition:
+            background .2s ease,
+            color .2s ease,
+            border-color .2s ease,
+            transform .2s ease,
+            box-shadow .2s ease;
         }
 
-        .tab-button.active .tab-count {
-          background: rgba(6, 182, 212, 0.25);
-          color: #67e8f9;
+        .home-tab:hover {
+          color: #334155;
+          background: rgba(15,23,42,.035);
+          transform: translateY(-1px);
         }
 
-        /* =============================================
-           CONTENT AREA
-        ============================================= */
-        .tab-content {
+        .home-tab.active {
+          color: #0284c7;
+          border-color: rgba(14,165,233,.25);
+          background: linear-gradient(135deg, #e0f2fe, #dcfce7);
+          box-shadow:
+            0 6px 20px rgba(14,165,233,.10),
+            inset 0 1px 0 rgba(255,255,255,.75);
+        }
+
+        .home-tab.active::after {
+          content: "";
+          position: absolute;
+          left: 20%;
+          right: 20%;
+          bottom: 5px;
+          height: 3px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, #06b6d4, #10b981, #06b6d4);
+        }
+
+        .home-tab-icon {
+          font-size: 18px;
+          line-height: 1;
+          flex: 0 0 auto;
+        }
+
+        .home-tab-label {
+          line-height: 1;
+        }
+
+        /* =========================================
+           ONLY THIS AREA SCROLLS VERTICALLY
+        ========================================= */
+        .home-page-scroll {
+          position: fixed;
+          top: calc(
+            var(--home-navbar-height) +
+            var(--home-safe-top) +
+            var(--home-tabs-height)
+          );
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 1;
+          overflow-x: hidden;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior-x: none;
+          overscroll-behavior-y: contain;
+          scroll-behavior: smooth;
+          padding: 0;
+        }
+
+        .home-page-inner {
+          width: min(1800px, 100%);
+          min-height: 100%;
+          margin: 0 auto;
+          padding: 16px 30px calc(var(--home-footer-space) + var(--home-safe-bottom) + 26px);
+          overflow: visible;
+        }
+
+        .home-search-result {
           width: 100%;
-          animation: fadeSlideIn 0.4s ease;
+          margin-bottom: 12px;
+          padding: 8px 12px;
+          border: 1px solid #bae6fd;
+          border-radius: 9px;
+          color: #0369a1;
+          background: #e0f2fe;
+          font-size: 11px;
+          text-align: center;
         }
 
-        @keyframes fadeSlideIn {
+        .home-search-result b {
+          color: #0f172a;
+        }
+
+        .home-tab-content {
+          width: 100%;
+          min-width: 0;
+          animation: homeFadeIn .25s ease both;
+        }
+
+        @keyframes homeFadeIn {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(6px);
           }
           to {
             opacity: 1;
@@ -627,546 +375,275 @@ const Home = () => {
           }
         }
 
-        /* =============================================
-           REFRESH INDICATOR
-        ============================================= */
-        .refresh-indicator {
-          position: fixed;
-          bottom: 80px;
-          right: 20px;
-          background: rgba(6, 6, 15, 0.6);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border: 1px solid rgba(124, 58, 237, 0.1);
-          border-radius: 20px;
-          padding: 0.2rem 0.6rem;
-          color: rgba(255, 255, 255, 0.3);
-          font-size: 0.5rem;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          z-index: 1000;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-          transition: all 0.5s ease;
-          user-select: none;
-          pointer-events: none;
-          opacity: 0.4;
-        }
-
-        .refresh-indicator.active {
-          border-color: rgba(124, 58, 237, 0.2);
-          background: rgba(6, 6, 15, 0.8);
-          opacity: 0.6;
-        }
-
-        .refresh-dot {
-          width: 4px;
-          height: 4px;
-          border-radius: 50%;
-          background: #10B981;
-          transition: all 0.3s ease;
-          flex-shrink: 0;
-        }
-
-        .refresh-dot.pulsing {
-          animation: pulse-dot 2s ease-in-out infinite;
-        }
-
-        .refresh-dot.refreshing {
-          background: #F59E0B;
-          animation: spin-dot 0.8s linear infinite;
-        }
-
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 0.2; transform: scale(0.8); }
-          50% { opacity: 0.8; transform: scale(1.2); }
-        }
-
-        @keyframes spin-dot {
-          0% { transform: rotate(0deg) scale(1); }
-          50% { transform: rotate(180deg) scale(1.2); }
-          100% { transform: rotate(360deg) scale(1); }
-        }
-
-        /* =============================================
-           FIXED FOOTER
-        ============================================= */
-        .footer-wrapper {
+        .home-footer-fixed {
           position: fixed;
           left: 0;
           right: 0;
           bottom: 0;
-          width: 100%;
-          min-height: var(--footer-space);
-          z-index: 5000;
-          margin: 0;
-          padding: 0 0 env(safe-area-inset-bottom, 0px);
-          background: #06060f;
+          z-index: 2500;
+          pointer-events: none;
+        }
+
+        .home-refresh-indicator {
+          position: fixed;
+          right: 16px;
+          bottom: calc(16px + var(--home-safe-bottom));
+          z-index: 4000;
           display: flex;
           align-items: center;
+          gap: 6px;
+          min-height: 22px;
+          padding: 4px 8px;
+          border: 1px solid rgba(14,165,233,.12);
+          border-radius: 999px;
+          background: rgba(255,255,255,.90);
+          color: #64748b;
+          box-shadow: 0 8px 20px rgba(15,23,42,.10);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          pointer-events: none;
+          user-select: none;
+          font-size: 8px;
+          font-weight: 800;
+          opacity: .75;
         }
 
-        .footer-wrapper > * {
-          width: 100%;
-          max-width: 100%;
-          margin: 0 !important;
+        .home-refresh-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #10b981;
         }
 
-        /* =============================================
-           RESPONSIVE DESIGN - All Screen Sizes
-        ============================================= */
-        
-        /* Large Screens (1200px+) */
-        @media (min-width: 1200px) {
-          .home-main {
-            padding: 1.5rem 2rem 2rem;
-          }
-          
-          .tab-navigation-wrapper {
-            padding: 0 40px;
-          }
-
-          .tab-navigation {
-            padding: 0.75rem 1.25rem;
-            gap: 0.6rem;
-          }
-          
-          .tab-button {
-            padding: 0.7rem 1.5rem;
-            font-size: 0.8rem;
-            min-height: 44px;
-          }
-          
-          .tab-label {
-            font-size: 0.75rem;
-          }
-          
-          .tab-icon {
-            font-size: 1.2rem;
-          }
+        .home-refresh-dot.refreshing {
+          background: #f59e0b;
+          animation: homePulse .7s ease-in-out infinite;
         }
 
-        /* Desktop (1024px - 1199px) */
-        @media (max-width: 1199px) and (min-width: 1025px) {
-          .tab-navigation-wrapper {
-            padding: 0 38px;
-          }
-
-          .tab-navigation {
-            padding: 0.6rem 1rem;
-            gap: 0.4rem;
-          }
-          
-          .tab-button {
-            padding: 0.5rem 1rem;
-            font-size: 0.7rem;
-            min-height: 38px;
-          }
-          
-          .tab-label {
-            font-size: 0.65rem;
-          }
+        @keyframes homePulse {
+          0%, 100% { transform: scale(.8); opacity: .45; }
+          50% { transform: scale(1.3); opacity: 1; }
         }
 
-        /* Tablet (768px - 1024px) */
-        @media (max-width: 1024px) {
-          .tab-navigation-wrapper {
-            padding: 0 35px;
+        /* =========================================
+           DESKTOP:
+           No horizontal tab scrolling.
+           All tabs stay visible like the screenshot.
+        ========================================= */
+        @media (min-width: 769px) {
+          .home-tabs-scroll {
+            overflow-x: hidden;
+            overflow-y: hidden;
           }
 
-          .tab-navigation {
-            padding: 0.5rem 0.75rem;
-            gap: 0.3rem;
+          .home-tab {
+            min-width: 0;
+            flex: 1 1 0;
+          }
+
+        }
+
+        /* =========================================
+           MOBILE:
+           Only the TAB BAR scrolls horizontally.
+           The page content remains vertical.
+        ========================================= */
+        @media (max-width: 768px) {
+          :root {
+            --home-navbar-height: ${NAVBAR_HEIGHT_MOBILE}px;
+            --home-tabs-height: ${TAB_HEIGHT_MOBILE}px;
+            --home-footer-space: ${FOOTER_SPACE_MOBILE}px;
+          }
+
+          .home-navbar-fixed {
+            height: var(--home-navbar-height);
+          }
+
+          .home-tabs-fixed {
+            height: var(--home-tabs-height);
+            padding: 7px 26px;
+          }
+
+          .home-tabs-inner {
             border-radius: 14px;
           }
-          
-          .tab-button {
-            padding: 0.5rem 0.8rem;
-            font-size: 0.7rem;
-            min-height: 36px;
-            border-radius: 8px;
-          }
-          
-          .tab-label {
-            font-size: 0.65rem;
-          }
-          
-          .tab-icon {
-            font-size: 1rem;
-          }
-        }
 
-        /* =============================================
-           MOBILE VIEW - FULL PAGE CONTENT + HORIZONTAL TABS
-        ============================================= */
-        @media (max-width: 768px) {
-          .home-container {
-            --navbar-height: 55px;
-            --footer-space: 58px;
-            padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
-            padding-bottom: calc(var(--footer-space) + env(safe-area-inset-bottom, 0px));
-            min-height: 100vh;
-            width: 100%;
-            overflow-x: hidden;
-            overflow-y: visible;
-          }
-
-          .home-main {
-            width: 100%;
-            max-width: 100%;
-            padding: 0;
-            margin: 0;
-            overflow: visible;
-          }
-
-          .tab-navigation-wrapper {
-            position: relative;
-            top: auto;
-            z-index: 50;
-            width: 100%;
-            margin: 0;
-            padding: 10px 34px;
-            background: #06060f;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-          }
-
-          .tab-navigation {
-            width: 100%;
-            display: flex;
-            flex-wrap: nowrap;
-            gap: 8px;
-            padding: 7px;
+          .home-tabs-scroll {
+            justify-content: flex-start;
             overflow-x: auto;
             overflow-y: hidden;
-            border-radius: 14px;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
+            gap: 7px;
+            padding: 6px 5px;
             scroll-snap-type: x proximity;
-            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
           }
 
-          .tab-navigation::-webkit-scrollbar {
-            display: none;
-          }
-
-          .tab-button {
+          .home-tab {
             flex: 0 0 auto;
-            min-width: 125px;
-            min-height: 48px;
-            padding: 10px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            white-space: nowrap;
+            min-width: 118px;
+            height: 49px;
+            padding: 0 13px;
+            border-radius: 11px;
             scroll-snap-align: start;
-          }
-
-          .tab-icon {
-            font-size: 19px;
-            flex-shrink: 0;
-          }
-
-          .tab-label {
-            font-size: 12px;
-            white-space: nowrap;
-          }
-
-          .tab-content {
-            position: relative;
-            width: 100%;
-            min-width: 0;
-            display: block;
-            padding: 18px 12px 30px;
-            overflow: visible;
-            animation: fadeSlideIn 0.25s ease;
-          }
-
-          .tab-content > * {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-          }
-
-          .scroll-indicator {
-            width: 30px;
-            height: 30px;
-            font-size: 20px;
-            z-index: 100;
-          }
-
-          .scroll-indicator.left {
-            left: 2px;
-          }
-
-          .scroll-indicator.right {
-            right: 2px;
-          }
-
-          .scroll-indicator.visible {
-            display: flex;
-          }
-
-          .footer-wrapper {
-            min-height: var(--footer-space);
-            height: var(--footer-space);
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-          }
-
-          .refresh-indicator {
-            bottom: calc(var(--footer-space) + 8px + env(safe-area-inset-bottom, 0px));
-            right: 10px;
-          }
-        }
-
-        /* Small Mobile */
-        @media (max-width: 480px) {
-          .tab-navigation-wrapper {
-            padding: 9px 30px;
-          }
-
-          .tab-navigation {
-            gap: 7px;
-            padding: 6px;
-          }
-
-          .tab-button {
-            min-width: 120px;
-            min-height: 47px;
-            padding: 9px 14px;
-            font-size: 12px;
-          }
-
-          .tab-icon {
-            font-size: 18px;
-          }
-
-          .tab-label {
-            font-size: 11.5px;
-          }
-
-          .tab-content {
-            padding: 16px 10px 28px;
-          }
-        }
-
-        /* Very Small Mobile */
-        @media (max-width: 380px) {
-          .tab-navigation-wrapper {
-            padding: 8px 27px;
-          }
-
-          .tab-button {
-            min-width: 112px;
-            min-height: 45px;
-            padding: 8px 12px;
-          }
-
-          .tab-icon {
-            font-size: 17px;
-          }
-
-          .tab-label {
             font-size: 11px;
           }
 
-          .tab-content {
-            padding: 15px 9px 26px;
+          .home-tab-icon {
+            font-size: 17px;
+          }
+
+          .home-tab-label {
+            font-size: 11px;
+          }
+
+          .home-page-scroll {
+            top: calc(
+              var(--home-navbar-height) +
+              var(--home-safe-top) +
+              var(--home-tabs-height)
+            );
+          }
+
+          .home-page-inner {
+            padding: 12px 10px calc(var(--home-footer-space) + var(--home-safe-bottom) + 18px);
+          }
+
+          .home-search-result {
+            font-size: 10px;
           }
         }
 
-        /* =============================================
-           DESKTOP - Hide scroll indicators, normal padding
-        ============================================= */
-        @media (min-width: 769px) {
-          .scroll-indicator {
-            display: none !important;
-          }
-          
-          .tab-navigation-wrapper {
-            padding: 0 0 !important;
+        @media (max-width: 480px) {
+          .home-tabs-fixed {
+            padding-left: 23px;
+            padding-right: 23px;
           }
 
-          .tab-content {
-            padding: 0 !important;
+          .home-tab {
+            min-width: 112px;
+            height: 47px;
+            padding: 0 11px;
+          }
+
+          .home-tab-label {
+            font-size: 10.5px;
+          }
+
+          .home-page-inner {
+            padding: 10px 8px calc(var(--home-footer-space) + var(--home-safe-bottom) + 18px);
           }
         }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: rgba(6, 182, 212, 0.3);
-          border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(6, 182, 212, 0.5);
-        }
-
-        /* Touch-friendly improvements */
-        @media (hover: none) {
-          .tab-button:hover {
-            transform: none;
-            background: transparent;
-          }
-          
-          .tab-button:active {
-            transform: scale(0.95);
+        @media (max-width: 380px) {
+          .home-tabs-fixed {
+            padding-left: 20px;
+            padding-right: 20px;
           }
 
-          .scroll-indicator:hover {
-            transform: translateY(-50%) scale(1);
+          .home-tab {
+            min-width: 105px;
           }
         }
 
-        /* Landscape phone support */
-        @media (max-height: 500px) and (orientation: landscape) {
-          .home-container {
-            --navbar-height: 50px;
-            --tabs-height: 56px;
-            padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
-          }
-          
-          .tab-navigation-wrapper {
-            padding: 0.3rem 28px;
-            top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
-          }
-
-          .tab-navigation {
-            padding: 0.25rem 0.4rem;
-          }
-          
-          .tab-button {
-            min-height: 32px;
-            padding: 0.3rem 0.6rem;
-            font-size: 0.6rem;
-            min-width: 85px;
-          }
-
-          .tab-icon {
-            font-size: 0.85rem;
-          }
-
-          .tab-label {
-            font-size: 0.55rem;
-          }
-          
-          .tab-content {
-            padding: 0.5rem 0.5rem 1rem;
-          }
-
-          .scroll-indicator {
-            width: 24px;
-            height: 24px;
-            font-size: 0.75rem;
+        @media (prefers-reduced-motion: reduce) {
+          .home-tab-content,
+          .home-tab,
+          .home-page-scroll {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
           }
         }
       `}</style>
 
       <div className="home-container">
-        <Navbar 
-          onSearch={setSearchQuery} 
-          onLogout={handleLogout}
-          onNavigate={handleTabChange}
-        />
+        {/* Fixed navbar — stays exactly above the tab section */}
+        <div className="home-navbar-fixed">
+          <Navbar
+            onSearch={setSearchQuery}
+            onLogout={handleLogout}
+            onNavigate={handleTabChange}
+          />
+        </div>
 
-        <main className="home-main">
-          {searchQuery && (
-            <div style={{
-              padding: '0.4rem 0.8rem',
-              marginBottom: '0.6rem',
-              background: 'rgba(6,182,212,0.12)',
-              borderRadius: '6px',
-              border: '1px solid rgba(6,182,212,0.2)',
-              color: '#67e8f9',
-              fontSize: '0.75rem',
-              textAlign: 'center',
-              width: '100%',
-              maxWidth: '100%',
-              overflow: 'hidden'
-            }}>
-              🔍 Results for: <b style={{ color: 'white' }}>{searchQuery}</b>
-            </div>
-          )}
-
-          {/* Professional Tab Navigation with Scroll - Sticky on mobile */}
-          <div className="tab-navigation-wrapper">
-            <button 
-              className={`scroll-indicator left ${showLeftArrow ? 'visible' : ''}`}
-              onClick={() => {
-                const container = tabContainerRef.current;
-                if (container) {
-                  container.scrollBy({ left: -250, behavior: 'smooth' });
-                }
-              }}
-              aria-label="Scroll tabs left"
+        {/* Fixed tab section directly below navbar */}
+        <nav
+          className="home-tabs-fixed"
+          aria-label="Dashboard sections"
+        >
+          <div className="home-tabs-inner">
+            <div
+              className="home-tabs-scroll"
+              ref={tabContainerRef}
+              role="tablist"
+              aria-label="Dashboard tabs"
             >
-              ‹
-            </button>
-
-            <div className="tab-navigation" id="tabNavigation" ref={tabContainerRef}>
-              {tabs.map((tab) => (
+              {TABS.map((tab) => (
                 <button
                   key={tab.id}
-                  className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                  type="button"
+                  className={`home-tab ${
+                    activeTab === tab.id ? "active" : ""
+                  }`}
                   onClick={() => handleTabChange(tab.id)}
-                  aria-label={`Switch to ${tab.label} tab`}
+                  aria-current={activeTab === tab.id ? "page" : undefined}
                 >
-                  <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
-                  <span className="tab-label">{tab.label}</span>
-                  {tab.count && <span className="tab-count">{tab.count}</span>}
+                  <span
+                    className="home-tab-icon"
+                    aria-hidden="true"
+                  >
+                    {tab.icon}
+                  </span>
+                  <span className="home-tab-label">
+                    {tab.label}
+                  </span>
                 </button>
               ))}
             </div>
-
-            <button 
-              className={`scroll-indicator right ${showRightArrow ? 'visible' : ''}`}
-              onClick={() => {
-                const container = tabContainerRef.current;
-                if (container) {
-                  container.scrollBy({ left: 250, behavior: 'smooth' });
-                }
-              }}
-              aria-label="Scroll tabs right"
-            >
-              ›
-            </button>
           </div>
+        </nav>
 
-          {/* Tab Content - Scrollable */}
-          <div className="tab-content" role="tabpanel">
-            <ActiveComponent 
-              refreshTrigger={refreshTrigger} 
-              navigationTarget={navigationTarget}
-              searchQuery={searchQuery}
-            />
+        {/* ONLY this section scrolls vertically */}
+        <main className="home-page-scroll">
+          <div className="home-page-inner">
+            {searchQuery ? (
+              <div className="home-search-result">
+                🔍 Results for:{" "}
+                <b>{searchQuery}</b>
+              </div>
+            ) : null}
+
+            <section
+              className="home-tab-content"
+              role="tabpanel"
+              aria-live="polite"
+            >
+              <ActiveComponent
+                key={activeTab}
+                refreshTrigger={refreshTrigger}
+                navigationTarget={navigationTarget}
+                searchQuery={searchQuery}
+              />
+            </section>
           </div>
         </main>
 
-        <div className="footer-wrapper">
+        {/* Keep your existing footer component in the same project.
+            It does not participate in the page scrolling area. */}
+        <div className="home-footer-fixed">
           <Footer />
         </div>
 
-        {/* Refresh Indicator */}
-        <div className={`refresh-indicator ${isRefreshing ? 'active' : ''}`}>
-          <span className={`refresh-dot ${isRefreshing ? 'refreshing' : 'pulsing'}`}></span>
-          <span className={`refresh-text ${isRefreshing ? 'refreshing' : ''}`}>
-            {isRefreshing ? '↻' : '30s'}
-          </span>
+        <div
+          className="home-refresh-indicator"
+          aria-hidden="true"
+        >
+          <span
+            className={`home-refresh-dot ${
+              isRefreshing ? "refreshing" : ""
+            }`}
+          />
+          <span>{isRefreshing ? "Refreshing" : "30s"}</span>
         </div>
       </div>
     </>

@@ -24,7 +24,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = (import.meta.env?.VITE_API_URL ||"https://express-project-learning-new.onrender.com/api" || "http://localhost:5000/api").replace(/\/$/, "");
 
 const money = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -79,6 +79,8 @@ export default function LoanBorrow() {
   const [detailItem, setDetailItem] = useState(null);
 
   const [toast, setToast] = useState(null);
+  const [busyAction, setBusyAction] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const [form, setForm] = useState({
     person_name: "",
@@ -336,8 +338,7 @@ export default function LoanBorrow() {
   };
 
   const deleteBorrow = async (id) => {
-    if (!window.confirm("Delete this borrow record?")) return;
-
+    setBusyAction(`delete-borrow-${id}`);
     try {
       const response = await axios.delete(
         `${API_BASE_URL}/loan-borrow/borrow/${id}`,
@@ -348,6 +349,7 @@ export default function LoanBorrow() {
         throw new Error(response.data?.error || "Failed to delete borrow");
       }
 
+      setConfirmAction(null);
       await fetchData();
       notify("success", "Borrow deleted successfully.");
     } catch (error) {
@@ -358,6 +360,8 @@ export default function LoanBorrow() {
           error.response?.data?.message ||
           "Failed to delete borrow."
       );
+    } finally {
+      setBusyAction("");
     }
   };
 
@@ -449,8 +453,7 @@ export default function LoanBorrow() {
   };
 
   const deleteLoan = async (id) => {
-    if (!window.confirm("Delete this loan record?")) return;
-
+    setBusyAction(`delete-loan-${id}`);
     try {
       const response = await axios.delete(
         `${API_BASE_URL}/loan-borrow/loan/${id}`,
@@ -461,6 +464,7 @@ export default function LoanBorrow() {
         throw new Error(response.data?.error || "Failed to delete loan");
       }
 
+      setConfirmAction(null);
       await fetchData();
       notify("success", "Loan deleted successfully.");
     } catch (error) {
@@ -471,6 +475,8 @@ export default function LoanBorrow() {
           error.response?.data?.message ||
           "Failed to delete loan."
       );
+    } finally {
+      setBusyAction("");
     }
   };
 
@@ -688,7 +694,7 @@ export default function LoanBorrow() {
         .lb-stat:after{content:"";position:absolute;width:100px;height:100px;border-radius:50%;right:-50px;top:-50px;background:rgba(99,102,241,.05)}
         .lb-stat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
         .lb-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;font-weight:900}
-        .lb-stat-value{margin-top:6px;font-size:21px;font-weight:950;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .lb-stat-value{margin-top:6px;font-size:21px;font-weight:950;letter-spacing:-.035em;overflow-wrap:anywhere;line-height:1.1}
         .lb-stat-sub{margin-top:3px;color:#94a3b8;font-size:9px}
         .lb-stat-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center}
         .indigo{background:#eef2ff;color:#4f46e5}.green{background:#ecfdf5;color:#059669}.blue{background:#eff6ff;color:#2563eb}.orange{background:#fff7ed;color:#ea580c}
@@ -723,9 +729,9 @@ export default function LoanBorrow() {
         .lb-avatar{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:0 0 42px}
         .lb-avatar.borrow{background:#eef2ff;color:#4f46e5}.lb-avatar.loan{background:#ecfeff;color:#0891b2}
         .lb-main{min-width:0}
-        .lb-name{font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .lb-name{font-size:13px;font-weight:900;overflow-wrap:anywhere;word-break:break-word;line-height:1.25}
         .lb-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;color:#94a3b8;font-size:9px}
-        .lb-note{margin-top:4px;color:#64748b;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .lb-note{margin-top:4px;color:#64748b;font-size:9px;overflow-wrap:anywhere;word-break:break-word;line-height:1.35}
         .lb-money{text-align:right;min-width:125px}.lb-money strong{display:block;font-size:14px;font-weight:950}.lb-money span{display:block;margin-top:3px;color:#94a3b8;font-size:9px}
         .lb-actions{display:flex;gap:4px}
         .lb-action{width:32px;height:32px;border:0;border-radius:9px;background:#f1f5f9;color:#64748b;display:grid;place-items:center;cursor:pointer}
@@ -753,18 +759,189 @@ export default function LoanBorrow() {
         .lb-toast.success{border-left:4px solid #059669}.lb-toast.error{border-left:4px solid #dc2626}
         .lb-toast-body{flex:1}.lb-toast-body b{display:block;font-size:12px}.lb-toast-body span{display:block;margin-top:3px;color:#64748b;font-size:10px;line-height:1.4}.lb-toast-close{width:27px;height:27px;border:0;border-radius:8px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer}
         .lb-spin{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-        @media(max-width:900px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}}
-        @media(max-width:620px){
-          .lb-page{padding:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
-          .lb-header{top:5px;padding:13px;border-radius:19px}
-          .lb-header-row{align-items:flex-start}.lb-brand h1{font-size:19px}.lb-brand p{font-size:9px}.lb-brand-icon{width:42px;height:42px;flex-basis:42px}
-          .lb-header-actions .label{display:none}.lb-btn{width:40px;padding:0}.lb-monthbar{justify-content:stretch}.lb-month{flex:1;min-width:0}.lb-today{padding:0 9px}
-          .lb-stats{gap:6px}.lb-stat{padding:11px;border-radius:14px}.lb-stat-value{font-size:16px}.lb-stat-icon{width:32px;height:32px}.lb-stat-sub{font-size:8px}
-          .lb-filters{grid-template-columns:1fr}.lb-search{grid-column:auto}
-          .lb-list-card{padding:9px}.lb-item{grid-template-columns:auto 1fr auto;gap:8px;padding:10px}.lb-money{grid-column:2;grid-row:2;text-align:left}.lb-actions{grid-column:3;grid-row:1/3;flex-direction:column}.lb-name{font-size:12px}
-          .lb-form-grid{grid-template-columns:1fr}.lb-field.full{grid-column:auto}.lb-detail-grid{grid-template-columns:1fr 1fr}
+
+        .lb-page{overflow-x:hidden;overflow-wrap:anywhere}
+        .lb-shell{min-width:0}
+        .lb-item > *{min-width:0}
+        .lb-money strong,.lb-money span{overflow-wrap:anywhere;word-break:break-word}
+        .lb-modal{width:min(560px,calc(100vw - 20px));max-width:100%;max-height:min(90vh,760px)}
+        .lb-modal-body{overflow-wrap:anywhere}
+        .lb-field input,.lb-field textarea,.lb-field select{min-width:0;max-width:100%}
+        .lb-confirm{
+          width:min(400px,calc(100vw - 28px));
+          padding:18px;
+          border-radius:18px;
+          background:#fff;
+          box-shadow:0 30px 90px rgba(15,23,42,.30);
+          text-align:center;
+          animation:lbIn .18s ease;
         }
-        @media(max-width:380px){.lb-stats{grid-template-columns:1fr 1fr}.lb-brand p{display:none}.lb-month{font-size:10px}}
+        .lb-confirm-icon{
+          width:46px;height:46px;margin:0 auto 9px;border-radius:14px;
+          display:grid;place-items:center;background:#fef2f2;color:#dc2626;
+        }
+        .lb-confirm h3{margin:0;color:#0f172a;font-size:16px;font-weight:950}
+        .lb-confirm p{margin:6px auto 0;max-width:320px;color:#64748b;font-size:10px;line-height:1.5}
+        .lb-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}
+        .lb-confirm-actions button{
+          height:38px;border:0;border-radius:10px;font-size:10px;font-weight:900;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;gap:6px;
+        }
+        .lb-confirm-cancel{background:#f1f5f9;color:#475569}
+        .lb-confirm-delete{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 8px 20px rgba(220,38,38,.18)}
+        .lb-confirm-actions button:disabled{opacity:.55;cursor:wait}
+        .lb-btn:disabled,.lb-action:disabled,.lb-submit:disabled{opacity:.55;cursor:wait;transform:none}
+        .lb-action.is-busy{color:#4f46e5;background:#eef2ff}
+
+                @media(max-width:900px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}}
+        @media(max-width:620px){
+          .lb-page{
+            width:100%;
+            padding:7px 7px calc(28px + env(safe-area-inset-bottom));
+            overflow-x:hidden;
+          }
+          .lb-header{
+            position:relative;
+            top:auto;
+            padding:11px;
+            border-radius:15px;
+            margin-bottom:8px;
+          }
+          .lb-header-row{align-items:center;gap:8px}
+          .lb-brand{gap:8px}
+          .lb-brand h1{font-size:17px}
+          .lb-brand p{font-size:8px;line-height:1.3}
+          .lb-brand-icon{width:36px;height:36px;flex-basis:36px;border-radius:10px}
+          .lb-brand-icon svg{width:18px;height:18px}
+          .lb-header-actions{gap:4px}
+          .lb-header-actions .label{display:none}
+          .lb-btn{width:34px;height:34px;padding:0;border-radius:8px}
+          .lb-btn svg{width:14px;height:14px}
+          .lb-monthbar{
+            margin-top:8px;
+            padding-top:8px;
+            justify-content:stretch;
+            gap:4px;
+          }
+          .lb-month{
+            flex:1;
+            min-width:0;
+            height:31px;
+            padding:0 7px;
+            border-radius:8px;
+            font-size:9px;
+            overflow:hidden;
+            white-space:nowrap;
+            text-overflow:ellipsis;
+          }
+          .lb-nav{width:31px;height:31px;border-radius:8px}
+          .lb-today{height:31px;padding:0 8px;border-radius:8px;font-size:9px}
+          .lb-stats{gap:5px;margin-bottom:7px}
+          .lb-stat{padding:9px;border-radius:11px}
+          .lb-stat-label{font-size:6.5px}
+          .lb-stat-value{font-size:13px;margin-top:4px}
+          .lb-stat-sub{font-size:6.5px}
+          .lb-stat-icon{width:27px;height:27px;border-radius:8px}
+          .lb-stat-icon svg{width:13px;height:13px}
+          .lb-tabs-card,.lb-filter-card,.lb-list-card{border-radius:12px}
+          .lb-tabs-card{padding:4px;margin-bottom:7px}
+          .lb-tab{height:39px;border-radius:9px;font-size:10px;gap:5px}
+          .lb-tab svg{width:15px;height:15px}
+          .lb-filter-card{padding:7px;margin-bottom:7px}
+          .lb-filters{grid-template-columns:1fr;gap:5px}
+          .lb-search,.lb-select{height:34px;border-radius:8px;font-size:9px}
+          .lb-search{padding:0 8px}
+          .lb-search input{font-size:9px}
+          .lb-select{padding:0 7px}
+          .lb-list-card{padding:7px}
+          .lb-list-head{margin-bottom:6px}
+          .lb-list-head h2{font-size:10px}
+          .lb-list-head span{font-size:7px}
+          .lb-list{gap:5px}
+          .lb-item{
+            grid-template-columns:30px minmax(0,1fr) auto;
+            gap:6px;
+            padding:8px;
+            border-radius:10px;
+            align-items:start;
+          }
+          .lb-avatar{width:30px;height:30px;border-radius:8px}
+          .lb-avatar svg{width:14px;height:14px}
+          .lb-name{font-size:9px;line-height:1.25}
+          .lb-meta{gap:4px;margin-top:3px;font-size:6.5px}
+          .lb-status{padding:3px 5px;font-size:5.8px;gap:3px}
+          .lb-note{
+            margin-top:3px;
+            font-size:6.5px;
+            white-space:normal;
+            overflow:visible;
+            line-height:1.3;
+          }
+          .lb-money{
+            grid-column:2;
+            grid-row:2;
+            min-width:0;
+            text-align:left;
+            margin-top:2px;
+          }
+          .lb-money strong{font-size:9px}
+          .lb-money span{font-size:6px;line-height:1.2}
+          .lb-actions{
+            grid-column:3;
+            grid-row:1 / span 2;
+            flex-direction:column;
+            gap:3px;
+          }
+          .lb-action{width:27px;height:27px;border-radius:7px}
+          .lb-action svg{width:12px;height:12px}
+          .lb-empty{padding:35px 12px;border-radius:11px}
+          .lb-empty-icon{width:40px;height:40px;border-radius:11px}
+          .lb-empty strong{font-size:10px}
+          .lb-empty span{font-size:7px}
+          .lb-form-grid{grid-template-columns:1fr}
+          .lb-field.full{grid-column:auto}
+          .lb-modal{
+            width:calc(100vw - 18px);
+            max-height:calc(100dvh - 22px);
+            border-radius:16px;
+          }
+          .lb-modal-head{padding:11px 12px}
+          .lb-modal-head h3{font-size:12px}
+          .lb-close{width:28px;height:28px;border-radius:7px}
+          .lb-modal-body{padding:11px}
+          .lb-form{gap:8px}
+          .lb-field{gap:4px}
+          .lb-field label{font-size:7px}
+          .lb-field input,.lb-field textarea,.lb-field select{font-size:10px;border-radius:8px}
+          .lb-field input,.lb-field select{height:36px}
+          .lb-field textarea{min-height:68px}
+          .lb-submit{height:37px;border-radius:8px;font-size:9px}
+          .lb-detail-grid{grid-template-columns:1fr}
+          .lb-detail{padding:8px;border-radius:9px}
+          .lb-detail small{font-size:6px}
+          .lb-detail strong{font-size:9px}
+          .lb-toast-wrap{padding:10px}
+          .lb-toast{width:min(340px,calc(100vw - 20px));padding:10px;border-radius:11px}
+          .lb-toast-body b{font-size:10px}
+          .lb-toast-body span{font-size:8px}
+          .lb-confirm{
+            width:calc(100vw - 24px);
+            padding:15px;
+            border-radius:15px;
+          }
+          .lb-confirm-icon{width:40px;height:40px;border-radius:11px}
+          .lb-confirm h3{font-size:13px}
+          .lb-confirm p{font-size:8px;line-height:1.45}
+          .lb-confirm-actions{gap:5px;margin-top:11px}
+          .lb-confirm-actions button{height:34px;font-size:8px;border-radius:8px}
+        }
+        @media(max-width:380px){
+          .lb-stats{grid-template-columns:1fr 1fr}
+          .lb-brand p{display:none}
+          .lb-month{font-size:8px}
+          .lb-stat-value{font-size:12px}
+          .lb-item{grid-template-columns:27px minmax(0,1fr) auto}
+        }
       `}</style>
 
       <main className="lb-page">
@@ -781,11 +958,11 @@ export default function LoanBorrow() {
               </div>
 
               <div className="lb-header-actions">
-                <button className="lb-btn lb-btn-light" onClick={refresh} disabled={refreshing}>
+                <button className="lb-btn lb-btn-light" onClick={refresh} disabled={refreshing || !!busyAction}>
                   <RefreshCw size={16} className={refreshing ? "lb-spin" : ""} />
                   <span className="label">Refresh</span>
                 </button>
-                <button className="lb-btn lb-btn-add" onClick={openAdd}>
+                <button className="lb-btn lb-btn-add" onClick={openAdd} disabled={!!busyAction}>
                   <Plus size={17} />
                   <span className="label">Add Record</span>
                 </button>
@@ -870,7 +1047,14 @@ export default function LoanBorrow() {
                     type={activeTab}
                     onView={() => openDetails(item, activeTab)}
                     onEdit={() => openEdit(item, activeTab)}
-                    onDelete={() => activeTab === "borrow" ? deleteBorrow(item.id) : deleteLoan(item.id)}
+                    onDelete={() =>
+                      setConfirmAction({
+                        type: activeTab,
+                        id: item.id,
+                        title: `Delete ${activeTab === "borrow" ? "Borrow" : "Loan"}?`,
+                        message: `This ${activeTab === "borrow" ? "borrow" : "loan"} record will be permanently deleted. This action cannot be undone.`,
+                      })
+                    }
                     onPayment={() => openPayment(item.id, activeTab)}
                   />
                 ))}
@@ -991,6 +1175,39 @@ export default function LoanBorrow() {
                 {detailItem.recordType === "loan" && <Detail label="Next EMI" value={detailItem.next_emi_date ? dateInput(detailItem.next_emi_date) : "—"} />}
                 {detailItem.notes && <Detail label="Notes" value={detailItem.notes} />}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="lb-backdrop lb-confirm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busyAction && setConfirmAction(null)}>
+          <div className="lb-confirm" role="alertdialog" aria-modal="true" aria-labelledby="lb-confirm-title">
+            <div className="lb-confirm-icon"><Trash2 size={20} /></div>
+            <h3 id="lb-confirm-title">{confirmAction.title}</h3>
+            <p>{confirmAction.message}</p>
+            <div className="lb-confirm-actions">
+              <button
+                type="button"
+                className="lb-confirm-cancel"
+                onClick={() => setConfirmAction(null)}
+                disabled={!!busyAction}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="lb-confirm-delete"
+                onClick={() =>
+                  confirmAction.type === "borrow"
+                    ? deleteBorrow(confirmAction.id)
+                    : deleteLoan(confirmAction.id)
+                }
+                disabled={!!busyAction}
+              >
+                {busyAction ? <RefreshCw size={14} className="lb-spin" /> : <Trash2 size={14} />}
+                {busyAction ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
         </div>
