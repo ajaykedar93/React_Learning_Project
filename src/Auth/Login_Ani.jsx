@@ -15,6 +15,7 @@ export default function Login_Ani() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [trustedMode, setTrustedMode] = useState(false);
   const [credentialError, setCredentialError] = useState(false);
   const [trustDevice, setTrustDevice] = useState(
     () =>
@@ -42,7 +43,8 @@ export default function Login_Ani() {
   const isLoading = status === "loading";
   const isSuccess = status === "success";
   const isError = status === "error";
-// -------------------------------------------------------
+
+  // -------------------------------------------------------
   // Validation
   // -------------------------------------------------------
   const isValidEmail = (value) => {
@@ -50,6 +52,8 @@ export default function Login_Ani() {
   };
 
   const validateFields = () => {
+    if (trustedMode) return true;
+
     if (!email.trim()) {
       setError("Please enter your email.");
       emailRef.current?.focus();
@@ -160,11 +164,8 @@ export default function Login_Ani() {
     const rememberMe = localStorage.getItem("remember_me") === "true";
 
     if (savedEmail && savedPassword && rememberMe) {
-      setEmail(savedEmail);
-      setPassword(savedPassword);
-      setTrustDevice(true);
-    } else if (savedEmail && rememberMe) {
-      setEmail(savedEmail);
+      // Trusted mode: hide credentials and require a manual Login click.
+      setTrustedMode(true);
       setTrustDevice(true);
     }
 
@@ -183,7 +184,7 @@ export default function Login_Ani() {
   // Hydraulic / magnetic button movement
   // -------------------------------------------------------
   const moveButtonAwayFromPointer = (clientX, clientY, force = 1) => {
-    if (isFilled || isLoading || isSuccess) return;
+    if (trustedMode || isFilled || isLoading || isSuccess) return;
 
     const rect = buttonAreaRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -269,7 +270,7 @@ export default function Login_Ani() {
   };
 
   const resetButtonPosition = () => {
-    if (!isFilled && !isLoading && !isSuccess) {
+    if (!trustedMode && !isFilled && !isLoading && !isSuccess) {
       setButtonOffset({ x: 0, y: 0 });
       setIsPointerNear(false);
     }
@@ -281,10 +282,8 @@ export default function Login_Ani() {
     if (isFilled) {
       setButtonOffset({ x: 0, y: 0 });
       setIsPointerNear(false);
-      setError("");
-      if (status === "error") setStatus("idle");
     }
-  }, [isFilled, status]);
+  }, [isFilled]);
 
   // -------------------------------------------------------
   // Login
@@ -294,16 +293,12 @@ export default function Login_Ani() {
 
     if (isLoading) return;
 
-    trustDisabledRef.current = false;
-    autoLoginAttemptIdRef.current += 1;
-
     setError("");
     setSuccessMessage("");
     setCredentialError(false);
 
     if (!validateFields()) {
       setStatus("error");
-      window.setTimeout(() => setStatus("idle"), 650);
       return;
     }
 
@@ -312,29 +307,36 @@ export default function Login_Ani() {
     setStatus("loading");
 
     try {
+      let loginEmail = email.trim();
+      let loginPassword = password.trim();
+
+      if (trustedMode) {
+        loginEmail = localStorage.getItem("saved_email") || "";
+        loginPassword = localStorage.getItem("saved_password") || "";
+
+        if (!loginEmail || !loginPassword) {
+          throw new Error("TRUST_EXPIRED");
+        }
+      }
+
       const data = await apiPost("/api/personal-users/login", {
-        email: email.trim(),
-        password: password.trim(),
+        email: loginEmail,
+        password: loginPassword,
       });
 
       if (!aliveRef.current) return;
 
       const token = data?.token || data?.accessToken || data?.jwt || "";
-      if (token) {
-        localStorage.setItem("token", token);
-      }
+      if (token) localStorage.setItem("token", token);
 
       if (data.success && data.data) {
         login(data.data);
 
-        if (trustDevice) {
-          localStorage.setItem("saved_email", email.trim());
-          localStorage.setItem("saved_password", password.trim());
+        // Keep trusted details only when Trust Device is enabled.
+        if (trustDevice || trustedMode) {
+          localStorage.setItem("saved_email", loginEmail);
+          localStorage.setItem("saved_password", loginPassword);
           localStorage.setItem("remember_me", "true");
-        } else {
-          localStorage.removeItem("saved_email");
-          localStorage.removeItem("saved_password");
-          localStorage.removeItem("remember_me");
         }
 
         setCredentialError(false);
@@ -350,20 +352,50 @@ export default function Login_Ani() {
         return;
       }
 
-      throw new Error(data?.message || "Login failed");
+      throw new Error(data?.message || "LOGIN_FAILED");
     } catch (err) {
       if (!aliveRef.current) return;
 
-      setStatus("error");
-      setCredentialError(true);
-      setError(
-        err?.status === 401 || err?.status === 400
-          ? "Incorrect username or password."
-          : (err?.message || "Incorrect username or password.")
-      );
+      const apiStatus = err?.status;
+      const isCredentialFailure =
+        apiStatus === 401 ||
+        apiStatus === 403 ||
+        err?.message === "LOGIN_FAILED" ||
+        /invalid|incorrect|wrong|password|credential|unauthorized/i.test(
+          err?.message || ""
+        );
+
+      if (trustedMode && (isCredentialFailure || err?.message === "TRUST_EXPIRED")) {
+        // Saved trusted credentials are no longer valid.
+        localStorage.removeItem("saved_email");
+        localStorage.removeItem("saved_password");
+        localStorage.removeItem("remember_me");
+        localStorage.removeItem("token");
+
+        setTrustedMode(false);
+        setTrustDevice(false);
+        setEmail("");
+        setPassword("");
+        setCredentialError(true);
+        setStatus("error");
+        setError("Username or Password wrong. Check again.");
+        window.setTimeout(() => emailRef.current?.focus(), 80);
+        return;
+      }
+
+      if (isCredentialFailure) {
+        setCredentialError(true);
+        setStatus("error");
+        setError("Username or Password wrong. Check again.");
+      } else {
+        setStatus("error");
+        setError(toNiceError(err, apiStatus));
+      }
 
       window.setTimeout(() => {
-        setStatus((current) => (current === "error" ? "idle" : current));
+        if (aliveRef.current && !credentialError) {
+          setStatus((current) => (current === "error" ? "idle" : current));
+        }
       }, 2400);
     }
   };
@@ -388,9 +420,10 @@ export default function Login_Ani() {
     localStorage.removeItem("token");
 
     setTrustDevice(false);
+    setTrustedMode(false);
+    setCredentialError(false);
     setStatus("idle");
     setError("");
-    setCredentialError(false);
     setSuccessMessage("");
     setEmail("");
     setPassword("");
@@ -441,8 +474,12 @@ export default function Login_Ani() {
             <h1>Login</h1>
           </header>
 
-          <form className={credentialError ? "credential-error-form" : ""} onSubmit={handleLogin} onKeyDown={handleKeyDown}>
-            {/* Email */}
+          <form
+            className={credentialError ? "credential-error-form" : ""}
+            onSubmit={handleLogin}
+            onKeyDown={handleKeyDown}
+          >
+            {!trustedMode && (
             <div className="field-group">
               <div className="field-label-row">
                 <label htmlFor="login-email">Email</label>
@@ -486,7 +523,8 @@ export default function Login_Ani() {
               </div>
             </div>
 
-            {/* Password */}
+            )}
+            {!trustedMode && (
             <div className="field-group password-group">
               <div className="field-label-row">
                 <label htmlFor="login-password">Password</label>
@@ -525,8 +563,8 @@ export default function Login_Ani() {
                   value={password}
                   onChange={(event) => {
                     setPassword(event.target.value);
-                    setError("");
                     setCredentialError(false);
+                    setError("");
                     if (status === "error") setStatus("idle");
                   }}
                   onFocus={() => setIsPointerNear(false)}
@@ -561,6 +599,17 @@ export default function Login_Ani() {
               </div>
             </div>
 
+            )}
+            {trustedMode && (
+              <div className="trusted-mode-panel" role="status">
+                <span className="trusted-mode-dot" />
+                <div>
+                  <strong>Trusted device</strong>
+                  <span>Click Login to verify and continue</span>
+                </div>
+              </div>
+            )}
+
             {/* Error */}
             <div
               className={[
@@ -573,7 +622,7 @@ export default function Login_Ani() {
               <span className="error-message-icon">
                 <AlertIcon />
               </span>
-              <span>{error || "Incorrect email or password."}</span>
+              <span>{error || "Username or Password wrong. Check again."}</span>
             </div>
 
             {/* Success */}
@@ -661,8 +710,8 @@ export default function Login_Ani() {
               }}
             >
               {/* Single hydraulic pump rod behind the Login button */}
-              {!isFilled && !isLoading && !isSuccess && !isError && (
-                <div className="hydraulic-pump" aria-hidden="true">
+              {((!isFilled && !isLoading && !isSuccess) || isError) ? (
+                <div className={`hydraulic-pump ${credentialError ? "hydraulic-pump-error" : ""}`} aria-hidden="true">
                   <span className="pump-rod pump-rod-left" />
                   <span className="pump-rod pump-rod-right" />
                   <span className="pump-core">
@@ -673,27 +722,29 @@ export default function Login_Ani() {
                   <span className="energy energy-three" />
                   <span className="energy energy-four" />
                 </div>
-              )}
+              ) : null}
 
-              <div
-                className={credentialError ? "error-button-motion" : ""}
-              >
               <button
                 type="submit"
                 className={[
                   "login-button",
                   isFilled ? "button-ready" : "",
                   isLoading ? "button-loading" : "",
-                  credentialError ? "button-error" : "",
+                  isError ? "button-error" : "",
                   isSuccess ? "button-success" : "",
-                  credentialError ? "button-error-fixed" : "",
-                  !credentialError && isPointerNear ? "button-near" : "",
+                  trustedMode ? "button-trusted" : "",
+                  isPointerNear ? "button-near" : "",
                 ].join(" ")}
-                disabled={isLoading || isSuccess || (!isFilled && false)}
-                onClick={handleEmptyButtonClick}
-                aria-disabled={!isFilled || isLoading || isSuccess}
+                disabled={isLoading || isSuccess || (!isFilled && !trustedMode)}
+                onClick={(event) => {
+                  if (trustedMode || isFilled) return;
+                  handleEmptyButtonClick(event);
+                }}
+                aria-disabled={!trustedMode && (!isFilled || isLoading || isSuccess)}
                 title={
-                  !isFilled
+                  trustedMode
+                    ? "Verify trusted device and login"
+                    : !isFilled
                     ? "Enter username/email and password first"
                     : isError
                     ? "Incorrect credentials"
@@ -721,13 +772,20 @@ export default function Login_Ani() {
                   </span>
                 )}
 
+                {credentialError && (
+                  <span className="button-error-spin" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                )}
+
                 {isSuccess && (
                   <span className="button-success-icon">
                     <CheckIcon />
                   </span>
                 )}
               </button>
-              </div>
             </div>
 
             {/* Keyboard helper */}
@@ -946,7 +1004,7 @@ const styles = `
       20px
       max(28px, env(safe-area-inset-bottom));
     background:
-      radial-gradient(circle at 50% 35%, rgba(214, 179, 90, 0.07), transparent 31%),
+      radial-gradient(circle at 50% 35%, rgba(25, 184, 151, 0.08), transparent 31%),
       linear-gradient(145deg, #090807 0%, #15110a 48%, #080706 100%);
   }
 
@@ -1008,68 +1066,13 @@ const styles = `
       );
     box-shadow:
       0 35px 90px rgba(0, 0, 0, 0.52),
-      0 0 0 1px rgba(214, 179, 90, 0.07),
-      0 0 22px rgba(214, 179, 90, 0.07),
+      0 0 0 1px rgba(0, 128, 0, 0.08),
+      0 0 22px rgba(0, 128, 0, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.045),
       inset 0 -1px 0 rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
     overflow: hidden;
-  }
-
-  .login-card {
-    animation: cardReveal 700ms cubic-bezier(.22,1,.36,1) both;
-  }
-
-  .login-card:hover {
-    box-shadow:
-      0 38px 96px rgba(0, 0, 0, 0.60),
-      0 0 38px rgba(214, 179, 90, 0.09),
-      inset 0 1px 0 rgba(255, 246, 214, 0.07);
-  }
-
-  @keyframes cardReveal {
-    from {
-      opacity: 0;
-      transform: translateY(14px) scale(.985);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  .login-card {
-    border-color: rgba(214, 179, 90, .62);
-    background:
-      radial-gradient(circle at 15% 0%, rgba(214,179,90,.055), transparent 28%),
-      linear-gradient(145deg, rgba(31,27,19,.98), rgba(9,8,7,.985));
-    box-shadow:
-      0 40px 100px rgba(0,0,0,.62),
-      0 0 34px rgba(214,179,90,.08),
-      inset 0 1px 0 rgba(255,248,220,.07);
-    animation: premiumCardIn 700ms cubic-bezier(.22,1,.36,1) both;
-  }
-
-  .brand-name {
-    color: rgba(247,241,223,.82);
-    text-shadow: 0 0 14px rgba(214,179,90,.14);
-  }
-
-  .login-header h1 {
-    color: #e8ca78;
-    text-shadow:
-      0 0 8px rgba(214,179,90,.22),
-      0 0 24px rgba(214,179,90,.12);
-  }
-
-  .field-label-row label {
-    color: rgba(247,241,223,.76);
-  }
-
-  @keyframes premiumCardIn {
-    0% { opacity: 0; transform: translateY(16px) scale(.985); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   .login-card::before {
@@ -1226,6 +1229,7 @@ const styles = `
 
   .input-shell:focus-within {
     border-color: #d6b35a;
+    border-color: #d6b35a;
     background: rgba(10, 18, 18, 0.82);
     box-shadow:
       0 0 0 3px rgba(255, 215, 0, 0.08),
@@ -1275,125 +1279,6 @@ const styles = `
 
   .input-shell.valid {
     border-color: rgba(39, 226, 188, 0.34);
-  }
-
-  /* Strong API credential-error state */
-  .credential-error-form .input-shell.error-field {
-    border: 1.5px solid #ff3f52 !important;
-    background:
-      linear-gradient(180deg, rgba(58, 10, 15, 0.56), rgba(25, 7, 10, 0.72)) !important;
-    box-shadow:
-      0 0 0 3px rgba(255, 63, 82, 0.11),
-      0 0 18px rgba(255, 45, 66, 0.24),
-      0 0 42px rgba(255, 45, 66, 0.10),
-      inset 0 0 18px rgba(255, 45, 66, 0.055) !important;
-    animation: credentialInputError 560ms cubic-bezier(.22,1,.36,1);
-  }
-
-  .credential-error-form .input-shell.error-field .input-icon,
-  .credential-error-form .input-shell.error-field .password-toggle {
-    color: #ff6675 !important;
-    filter: drop-shadow(0 0 6px rgba(255, 63, 82, .35));
-  }
-
-  .credential-error-form .input-shell.error-field input {
-    color: #fff3f4 !important;
-  }
-
-  .credential-error-form .input-shell.error-field::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    border: 1px solid rgba(255, 95, 108, .35);
-    pointer-events: none;
-    animation: errorBorderPulse 1.1s ease-in-out 2;
-  }
-
-  .error-button-motion {
-    position: relative;
-    z-index: 5;
-    display: inline-flex;
-    animation: professionalErrorMotion 720ms cubic-bezier(.22,1,.36,1);
-  }
-
-  .error-button-motion .login-button {
-    animation: none !important;
-  }
-
-  .credential-error-form .login-button.button-error {
-    color: #fff8f8 !important;
-    background:
-      linear-gradient(135deg, #ff6876 0%, #e53649 52%, #b91f32 100%) !important;
-    border: 1px solid rgba(255, 206, 210, .35) !important;
-    box-shadow:
-      0 15px 36px rgba(217, 32, 52, .34),
-      0 0 18px rgba(255, 55, 75, .30),
-      0 0 42px rgba(255, 55, 75, .13),
-      inset 0 1px 0 rgba(255,255,255,.25) !important;
-  }
-
-  .credential-error-form .login-button.button-error::after {
-    content: "";
-    position: absolute;
-    inset: 1px;
-    border-radius: inherit;
-    background: linear-gradient(
-      105deg,
-      transparent 10%,
-      rgba(255,255,255,.30) 48%,
-      transparent 82%
-    );
-    transform: translateX(-125%);
-    animation: errorLightSweep 700ms ease-out;
-    pointer-events: none;
-  }
-
-  @keyframes credentialInputError {
-    0% { transform: translateX(0); }
-    16% { transform: translateX(-5px); }
-    32% { transform: translateX(5px); }
-    48% { transform: translateX(-4px); }
-    64% { transform: translateX(4px); }
-    82% { transform: translateX(-2px); }
-    100% { transform: translateX(0); }
-  }
-
-  @keyframes errorBorderPulse {
-    0%, 100% { opacity: .25; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.008); }
-  }
-
-  @keyframes professionalErrorMotion {
-    0% {
-      transform: translate3d(0,0,0) rotate(0) scale(1);
-      filter: brightness(1);
-    }
-    15% {
-      transform: translate3d(-8px,0,0) rotate(-3deg) scale(1.035);
-    }
-    30% {
-      transform: translate3d(8px,0,0) rotate(3deg) scale(1.035);
-    }
-    45% {
-      transform: translate3d(-6px,0,0) rotate(-2deg) scale(1.02);
-    }
-    60% {
-      transform: translate3d(6px,0,0) rotate(2deg) scale(1.015);
-    }
-    78% {
-      transform: translate3d(-2px,0,0) rotate(-.6deg) scale(1.005);
-    }
-    100% {
-      transform: translate3d(0,0,0) rotate(0) scale(1);
-      filter: brightness(1);
-    }
-  }
-
-  @keyframes errorLightSweep {
-    0% { transform: translateX(-125%); opacity: 0; }
-    18% { opacity: 1; }
-    100% { transform: translateX(125%); opacity: 0; }
   }
 
   .input-shell.invalid,
@@ -1585,7 +1470,7 @@ const styles = `
       90deg,
       rgba(92, 68, 27, .18),
       rgba(214, 179, 90, .68),
-      rgba(232, 203, 117, .95)
+      rgba(87, 255, 221, .95)
     );
     box-shadow:
       0 0 5px rgba(214, 179, 90, .58),
@@ -1612,7 +1497,7 @@ const styles = `
     width: 4px;
     height: 4px;
     border: 0;
-    background: #f0d68b;
+    background: #6dffe2;
     box-shadow: 0 0 9px #35eac3;
   }
 
@@ -1634,7 +1519,7 @@ const styles = `
     transform-origin: left center;
     background: linear-gradient(
       90deg,
-      rgba(232, 203, 117, .95),
+      rgba(87, 255, 221, .95),
       rgba(214, 179, 90, .68),
       rgba(92, 68, 27, .18)
     );
@@ -1656,7 +1541,7 @@ const styles = `
     height: 19px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    border: 1px solid rgba(214, 179, 90, .8);
+    border: 1px solid rgba(74, 250, 211, .8);
     background: rgba(10, 50, 46, .92);
     box-shadow:
       0 0 8px rgba(214, 179, 90, .85),
@@ -1672,9 +1557,9 @@ const styles = `
     height: 6px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: #f0d68b;
+    background: #8affea;
     box-shadow:
-      0 0 8px #d6b35a,
+      0 0 8px #45f1cc,
       0 0 18px rgba(214, 179, 90, .7);
   }
 
@@ -1684,9 +1569,9 @@ const styles = `
     width: 3px;
     height: 3px;
     border-radius: 50%;
-    background: #f0d68b;
+    background: #9affec;
     box-shadow:
-      0 0 5px #e0c26b,
+      0 0 5px #54f5d2,
       0 0 13px rgba(214, 179, 90, .8);
     opacity: 0;
   }
@@ -1794,7 +1679,7 @@ const styles = `
   }
 
   .login-button:focus-visible {
-    outline: 2px solid rgba(214, 179, 90, 0.9);
+    outline: 2px solid rgba(47, 232, 194, 0.9);
     outline-offset: 4px;
   }
 
@@ -1830,35 +1715,12 @@ const styles = `
   }
 
   .login-button.button-error {
-    color: #fff8f8;
-    background:
-      linear-gradient(135deg, #ff6672 0%, #e13b4b 52%, #b92335 100%);
-    border: 1px solid rgba(255, 180, 185, 0.22);
+    color: #fff7f7;
+    background: linear-gradient(135deg, #ff5563, #dc3343);
     box-shadow:
-      0 14px 34px rgba(214, 35, 55, 0.30),
-      0 0 22px rgba(255, 55, 75, 0.20),
-      inset 0 1px 0 rgba(255, 255, 255, 0.20);
-    animation: errorButtonProfessional 620ms cubic-bezier(.22,1,.36,1);
-  }
-
-  .login-button.button-error::before {
-    content: "";
-    position: absolute;
-    inset: 1px;
-    border-radius: inherit;
-    background: linear-gradient(
-      110deg,
-      transparent 18%,
-      rgba(255,255,255,.22) 48%,
-      transparent 72%
-    );
-    transform: translateX(-130%);
-    animation: errorSweep 620ms ease-out;
-    pointer-events: none;
-  }
-
-  .login-button.button-error-pulse .button-label {
-    animation: errorTextPulse 620ms ease-out;
+      0 12px 30px rgba(225, 48, 65, 0.23),
+      0 0 28px rgba(255, 65, 80, 0.1);
+    animation: errorButtonShake 370ms ease;
   }
 
   .login-button.button-success {
@@ -2363,51 +2225,6 @@ const styles = `
     }
   }
 
-  @keyframes inputShake {
-    0% { transform: translateX(0); }
-    20% { transform: translateX(-4px); }
-    40% { transform: translateX(4px); }
-    60% { transform: translateX(-3px); }
-    80% { transform: translateX(3px); }
-    100% { transform: translateX(0); }
-  }
-
-  @keyframes errorButtonProfessional {
-    0% {
-      transform: translate3d(0,0,0) rotate(0deg) scale(1);
-    }
-    14% {
-      transform: translate3d(-7px,1px,0) rotate(-2deg) scale(1.02);
-    }
-    28% {
-      transform: translate3d(7px,-1px,0) rotate(2deg) scale(1.02);
-    }
-    42% {
-      transform: translate3d(-5px,1px,0) rotate(-1.5deg) scale(1.01);
-    }
-    56% {
-      transform: translate3d(5px,0,0) rotate(1.5deg) scale(1.01);
-    }
-    72% {
-      transform: translate3d(-2px,0,0) rotate(-.5deg) scale(1);
-    }
-    100% {
-      transform: translate3d(0,0,0) rotate(0deg) scale(1);
-    }
-  }
-
-  @keyframes errorSweep {
-    0% { transform: translateX(-130%); opacity: 0; }
-    20% { opacity: 1; }
-    100% { transform: translateX(130%); opacity: 0; }
-  }
-
-  @keyframes errorTextPulse {
-    0%, 100% { transform: scale(1); }
-    35% { transform: scale(1.035); }
-    65% { transform: scale(.985); }
-  }
-
   @keyframes errorButtonShake {
     0%, 100% {
       margin-left: 0;
@@ -2687,86 +2504,335 @@ const styles = `
   @keyframes cardEntrance{from{opacity:0;transform:translateY(22px) scale(.975);filter:blur(4px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}@keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes contentRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes letterReveal{from{opacity:0;transform:translateY(7px);filter:blur(3px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}@keyframes topSweep{0%,100%{opacity:.3;transform:scaleX(.7)}50%{opacity:.9;transform:scaleX(1)}}@keyframes markFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(2deg)}}@keyframes ringRotate{from{transform:rotate(0)}to{transform:rotate(360deg)}}@keyframes gridDrift{from{background-position:0 0,0 0}to{background-position:54px 54px,54px 54px}}@keyframes footerReveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @media (prefers-reduced-motion:reduce){.login-card,.brand,.brand-mark,.brand-ring,.brand-letter,.login-header,.field-group,.trust-device-row,.login-button-zone,.keyboard-hint,.register-row,.page-footer,.grid-overlay{animation:none!important}}
 
-  /* FINAL ERROR OVERRIDES — intentionally last in stylesheet */
+  /* Trusted mode: the button is directly usable and yellow/gold. */
+  .login-button.button-trusted {
+    min-width: 148px;
+    color: #171107 !important;
+    background: linear-gradient(135deg, #e8ca78 0%, #d6b35a 52%, #a88435 100%) !important;
+    border: 1px solid rgba(255, 241, 190, .55) !important;
+    box-shadow:
+      0 14px 34px rgba(214, 179, 90, .25),
+      0 0 28px rgba(214, 179, 90, .18),
+      inset 0 1px 0 rgba(255,255,255,.38) !important;
+    cursor: pointer !important;
+  }
+
+  .login-button.button-trusted:hover {
+    background: linear-gradient(135deg, #f2d98f 0%, #e0c26b 52%, #b99443 100%) !important;
+    box-shadow:
+      0 17px 38px rgba(214, 179, 90, .31),
+      0 0 34px rgba(214, 179, 90, .23),
+      inset 0 1px 0 rgba(255,255,255,.42) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  /* =========================================================
+     FINAL TRUSTED-MODE / PREMIUM LOGIN OVERRIDES
+     ========================================================= */
+
+  .trusted-mode-panel {
+    min-height: 54px;
+    margin: 4px 0 10px;
+    padding: 11px 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(214,179,90,.25);
+    border-radius: 14px;
+    background:
+      linear-gradient(135deg, rgba(214,179,90,.07), rgba(255,255,255,.018));
+    box-shadow:
+      inset 0 1px 0 rgba(255,248,220,.05),
+      0 8px 22px rgba(0,0,0,.14);
+    animation: trustedPanelIn 360ms cubic-bezier(.2,1,.3,1);
+  }
+
+  .trusted-mode-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border-radius: 50%;
+    background: #d6b35a;
+    box-shadow:
+      0 0 8px rgba(214,179,90,.55),
+      0 0 18px rgba(214,179,90,.18);
+    animation: trustedDotPulse 1.8s ease-in-out infinite;
+  }
+
+  .trusted-mode-panel div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .trusted-mode-panel strong {
+    color: #e8ca78;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+
+  .trusted-mode-panel span:not(.trusted-mode-dot) {
+    color: rgba(247,241,223,.46);
+    font-size: 10px;
+  }
+
+  .trust-device-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
+    min-height: 24px;
+    gap: 10px;
+    margin: 7px 2px 2px;
+  }
+
+  .trust-device-button {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .trust-stop-button {
+    flex: 0 0 18px;
+    margin-left: auto;
+  }
+
+  .trusted-mode-panel + .error-message {
+    margin-top: 7px;
+  }
+
+  .credential-error-form .input-shell.error-field,
+  .input-shell.error-field {
+    border-color: #ff334d !important;
+    box-shadow:
+      0 0 0 3px rgba(255,51,77,.09),
+      0 0 20px rgba(255,51,77,.20) !important;
+  }
+
+  @keyframes trustedPanelIn {
+    from {
+      opacity: 0;
+      transform: translateY(-5px) scale(.985);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes trustedDotPulse {
+    0%, 100% { transform: scale(.9); opacity: .65; }
+    50% { transform: scale(1.15); opacity: 1; }
+  }
+
+  @media (max-width: 560px) {
+    .trust-device-row {
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
+    }
+
+    .trust-device-button {
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
+
+    .trust-stop-button {
+      width: 17px;
+      height: 17px;
+      flex-basis: 17px;
+    }
+
+    .trusted-mode-panel {
+      margin-bottom: 9px;
+    }
+  }
+
+  /* =========================================================
+     CREDENTIAL ERROR ANIMATION — ADDITIVE ONLY
+     Existing empty/ready/trusted animations remain unchanged.
+     This layer activates only after API-confirmed bad credentials.
+     ========================================================= */
+
   .credential-error-form .input-shell.error-field {
     border: 2px solid #ff334d !important;
-    background: linear-gradient(180deg, rgba(55, 7, 12, .72), rgba(20, 4, 8, .82)) !important;
+    background: linear-gradient(
+      180deg,
+      rgba(63, 7, 15, .68),
+      rgba(18, 5, 8, .78)
+    ) !important;
     box-shadow:
-      0 0 0 3px rgba(255, 51, 77, .12),
-      0 0 20px rgba(255, 51, 77, .34),
-      0 0 46px rgba(255, 51, 77, .14),
-      inset 0 0 18px rgba(255, 51, 77, .07) !important;
-    animation: finalInputError 560ms ease both !important;
+      0 0 0 3px rgba(255, 51, 77, .11),
+      0 0 22px rgba(255, 51, 77, .34),
+      0 0 48px rgba(255, 51, 77, .12),
+      inset 0 0 18px rgba(255, 51, 77, .06) !important;
+    animation: credentialInputError 620ms cubic-bezier(.2,1,.3,1) both !important;
   }
 
   .credential-error-form .input-shell.error-field .input-icon,
   .credential-error-form .input-shell.error-field .password-toggle,
   .credential-error-form .input-shell.error-field .password-check {
-    color: #ff566b !important;
+    color: #ff4f63 !important;
+    filter: drop-shadow(0 0 7px rgba(255, 51, 77, .48));
+  }
+
+  .credential-error-form .error-message.visible {
+    color: #ff5668 !important;
+    text-shadow: 0 0 12px rgba(255, 51, 77, .18);
+    animation: credentialMessageIn 300ms ease both;
+  }
+
+  .credential-error-form .error-message-icon {
+    color: #ff334d !important;
     filter: drop-shadow(0 0 7px rgba(255, 51, 77, .45));
   }
 
   .credential-error-form .login-button.button-error {
-    color: #ffffff !important;
-    background: linear-gradient(135deg, #ff5267, #e32942 55%, #a9142b) !important;
-    border: 1px solid #ff9aa7 !important;
+    color: #fff !important;
+    background:
+      linear-gradient(
+        135deg,
+        #ff5b6b 0%,
+        #ef334b 48%,
+        #b91630 100%
+      ) !important;
+    border: 1px solid rgba(255, 188, 196, .62) !important;
     box-shadow:
-      0 16px 38px rgba(226, 29, 53, .38),
-      0 0 22px rgba(255, 42, 66, .34),
-      0 0 48px rgba(255, 42, 66, .16),
-      inset 0 1px 0 rgba(255,255,255,.28) !important;
+      0 14px 34px rgba(225, 38, 60, .38),
+      0 0 24px rgba(255, 51, 77, .34),
+      0 0 52px rgba(255, 51, 77, .14),
+      inset 0 1px 0 rgba(255,255,255,.34) !important;
+    animation: credentialButtonError 820ms cubic-bezier(.2,1,.3,1) both !important;
+    will-change: transform, filter;
   }
 
-  .credential-error-form .error-button-motion {
-    animation: finalButtonError 760ms cubic-bezier(.2,1,.3,1) both !important;
-  }
-
-  .credential-error-form .login-button::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    border-radius: inherit;
-    pointer-events: none;
+  /* Red hydraulic pipe/energy behind the error button. */
+  .hydraulic-pump.hydraulic-pump-error .pump-rod {
     background: linear-gradient(
-      105deg,
-      transparent 15%,
-      rgba(255,255,255,.38) 48%,
-      transparent 78%
-    );
-    transform: translateX(-125%);
-    animation: finalErrorSweep 720ms ease-out both;
+      90deg,
+      rgba(82, 7, 18, .18),
+      rgba(255, 51, 77, .78),
+      rgba(255, 120, 133, 1)
+    ) !important;
+    box-shadow:
+      0 0 6px rgba(255, 51, 77, .72),
+      0 0 16px rgba(255, 51, 77, .32) !important;
+    animation: errorPipePulse 700ms ease-in-out infinite alternate;
   }
 
-  @keyframes finalInputError {
-    0% { transform: translateX(0) scale(1); }
-    18% { transform: translateX(-5px) scale(1.002); }
-    36% { transform: translateX(5px) scale(1.002); }
-    54% { transform: translateX(-3px) scale(1.001); }
-    72% { transform: translateX(3px) scale(1); }
+  .hydraulic-pump.hydraulic-pump-error .pump-rod-right {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 120, 133, 1),
+      rgba(255, 51, 77, .78),
+      rgba(82, 7, 18, .18)
+    ) !important;
+  }
+
+  .hydraulic-pump.hydraulic-pump-error .pump-rod::before {
+    border-color: #ff5265 !important;
+    background: rgba(55, 5, 12, .96) !important;
+    box-shadow:
+      0 0 8px rgba(255, 51, 77, .72),
+      0 0 17px rgba(255, 51, 77, .28) !important;
+  }
+
+  .hydraulic-pump.hydraulic-pump-error .pump-rod::after {
+    background: #ff9aa5 !important;
+    box-shadow:
+      0 0 9px #ff5265,
+      0 0 18px rgba(255, 51, 77, .78) !important;
+  }
+
+  .hydraulic-pump.hydraulic-pump-error .pump-core {
+    border-color: #ff5265 !important;
+    background: rgba(65, 6, 15, .94) !important;
+    box-shadow:
+      0 0 10px rgba(255, 51, 77, .9),
+      0 0 28px rgba(255, 51, 77, .5) !important;
+    animation: errorCorePulse 620ms ease-in-out infinite;
+  }
+
+  .hydraulic-pump.hydraulic-pump-error .pump-core-light,
+  .hydraulic-pump.hydraulic-pump-error .energy {
+    background: #ff9aa5 !important;
+    box-shadow:
+      0 0 7px #ff5265,
+      0 0 17px rgba(255, 51, 77, .82) !important;
+  }
+
+  .hydraulic-pump.hydraulic-pump-error .energy-one,
+  .hydraulic-pump.hydraulic-pump-error .energy-two {
+    animation-name: errorEnergyToCore;
+  }
+
+  .hydraulic-pump.hydraulic-pump-error .energy-three,
+  .hydraulic-pump.hydraulic-pump-error .energy-four {
+    animation-name: errorEnergyFromCore;
+  }
+
+  /* Small professional rotating indicator inside the red Login button. */
+  .button-error-spin {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    display: inline-block;
+    animation: errorSpin 900ms linear infinite;
+  }
+
+  .button-error-spin span {
+    position: absolute;
+    left: 7px;
+    top: 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.96);
+    box-shadow: 0 0 7px rgba(255,255,255,.7);
+    transform-origin: 2px 9px;
+  }
+
+  .button-error-spin span:nth-child(1) { transform: rotate(0deg) translateY(0); opacity: 1; }
+  .button-error-spin span:nth-child(2) { transform: rotate(120deg) translateY(0); opacity: .62; }
+  .button-error-spin span:nth-child(3) { transform: rotate(240deg) translateY(0); opacity: .34; }
+
+  @keyframes credentialInputError {
+    0%   { transform: translateX(0) scale(1); }
+    14%  { transform: translateX(-5px) scale(1.004); }
+    28%  { transform: translateX(5px) scale(1.004); }
+    42%  { transform: translateX(-4px) scale(1.002); }
+    56%  { transform: translateX(4px) scale(1.002); }
+    72%  { transform: translateX(-2px) scale(1); }
     100% { transform: translateX(0) scale(1); }
   }
 
-  @keyframes finalButtonError {
+  @keyframes credentialButtonError {
     0% {
       transform: translate3d(0,0,0) rotate(0deg) scale(1);
       filter: brightness(1);
     }
     12% {
-      transform: translate3d(-9px,0,0) rotate(-3deg) scale(1.045);
+      transform: translate3d(-9px,-1px,0) rotate(-3deg) scale(1.055);
+      filter: brightness(1.08);
     }
-    24% {
-      transform: translate3d(9px,0,0) rotate(3deg) scale(1.045);
+    25% {
+      transform: translate3d(10px,1px,0) rotate(3.5deg) scale(1.055);
+      filter: brightness(1.13);
     }
-    38% {
-      transform: translate3d(-7px,0,0) rotate(-2deg) scale(1.025);
+    39% {
+      transform: translate3d(-8px,0,0) rotate(-2.7deg) scale(1.035);
     }
-    52% {
-      transform: translate3d(7px,0,0) rotate(2deg) scale(1.02);
+    53% {
+      transform: translate3d(7px,0,0) rotate(2.2deg) scale(1.025);
     }
     68% {
-      transform: translate3d(-3px,0,0) rotate(-.8deg) scale(1.008);
+      transform: translate3d(-4px,0,0) rotate(-1deg) scale(1.01);
     }
-    82% {
+    84% {
       transform: translate3d(2px,0,0) rotate(.4deg) scale(1.002);
     }
     100% {
@@ -2775,10 +2841,62 @@ const styles = `
     }
   }
 
-  @keyframes finalErrorSweep {
-    0% { opacity: 0; transform: translateX(-125%); }
+  @keyframes errorSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes credentialMessageIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes errorPipePulse {
+    from { opacity: .72; filter: saturate(.9); }
+    to { opacity: 1; filter: saturate(1.25); }
+  }
+
+  @keyframes errorCorePulse {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(.88);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.22);
+    }
+  }
+
+  @keyframes errorEnergyToCore {
+    0% {
+      opacity: 0;
+      transform: translateX(0) scale(.5);
+    }
     15% { opacity: 1; }
-    100% { opacity: 0; transform: translateX(125%); }
+    100% {
+      opacity: 0;
+      transform: translateX(220px) scale(1.15);
+    }
+  }
+
+  @keyframes errorEnergyFromCore {
+    0% {
+      opacity: 0;
+      transform: translateX(0) scale(.5);
+    }
+    15% { opacity: 1; }
+    100% {
+      opacity: 0;
+      transform: translateX(-220px) scale(1.15);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .credential-error-form .input-shell.error-field,
+    .credential-error-form .login-button.button-error,
+    .button-error-spin,
+    .hydraulic-pump.hydraulic-pump-error .pump-rod,
+    .hydraulic-pump.hydraulic-pump-error .pump-core {
+      animation: none !important;
+    }
   }
 `;
 

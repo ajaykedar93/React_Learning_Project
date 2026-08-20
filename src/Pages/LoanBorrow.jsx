@@ -1,1786 +1,1086 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import {
-  Plus,
-  RefreshCw,
-  Pencil,
-  Trash2,
-  X,
+  ArrowDownRight,
+  ArrowUpRight,
+  Banknote,
   CalendarDays,
-  IndianRupee,
-  Landmark,
-  HandCoins,
-  Clock3,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock3,
+  CreditCard,
+  Edit3,
+  Eye,
   FileText,
+  Plus,
+  RefreshCw,
+  Search,
+  Send,
+  Trash2,
+  UserRound,
+  WalletCards,
+  X,
+  AlertCircle,
 } from "lucide-react";
 
-const API_BASE_URL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1"
-    ? "http://localhost:5000"
-    : "https://express-project-learning-new.onrender.com";
-
-const PAGE_SIZE = 10;
+const API_BASE_URL = "http://localhost:5000/api";
 
 const money = (value) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 2,
-  }).format(Number(value || 0));
+  }).format(Number(value) || 0);
 
-const getToken = () =>
-  localStorage.getItem("token") ||
-  localStorage.getItem("accessToken") ||
-  sessionStorage.getItem("token") ||
-  "";
-
-const today = () => {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+const dateInput = (value = new Date()) => {
+  const d = new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
 };
 
-// Display dates everywhere in the details as: 1 Jan 2026
-const formatDisplayDate = (date) => {
-  if (!date) return "-";
+const monthParam = (date) =>
+  `${date.getDate()} ${date.toLocaleString("en-US", { month: "short" })} ${date.getFullYear()}`;
 
-  const raw = String(date).slice(0, 10);
-  const [year, month, day] = raw.split("-").map(Number);
+const monthTitle = (date) =>
+  date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
-  if (!year || !month || !day) return date;
-
-  const d = new Date(year, month - 1, day);
-
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+const safeNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return 0;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 };
 
-const monthValue = () => today().slice(0, 7);
-
-const daysBetween = (from, to) => {
-  const a = new Date(from);
-  const b = new Date(to);
-  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
-  return Math.max(0, Math.ceil((b - a) / 86400000));
+const editableNumber = (value) => {
+  if (value === "") return "";
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? value : "";
 };
 
-const remainingText = (date) => {
-  if (!date) return "-";
+export default function LoanBorrow() {
+  const [borrows, setBorrows] = useState([]);
+  const [loans, setLoans] = useState([]);
+  const [summary, setSummary] = useState(null);
 
-  const days = daysBetween(today(), date);
-
-  if (date < today()) {
-    const overdue = daysBetween(date, today());
-    return `${overdue} day${overdue === 1 ? "" : "s"} overdue`;
-  }
-
-  if (days === 0) return "Due today";
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} remaining`;
-
-  const months = Math.floor(days / 30);
-  const leftDays = days % 30;
-
-  return `${months} month${months === 1 ? "" : "s"}${
-    leftDays ? ` ${leftDays} day${leftDays === 1 ? "" : "s"}` : ""
-  } remaining`;
-};
-
-const normalizeRows = (result) => {
-  const rows =
-    result?.data?.rows ||
-    result?.data?.loans ||
-    result?.data?.borrow ||
-    result?.data ||
-    result?.loans ||
-    result?.borrow ||
-    result?.rows ||
-    result ||
-    [];
-
-  return Array.isArray(rows) ? rows : [];
-};
-
-const normalizeDateForInput = (value) => {
-  if (!value) return "";
-  const raw = String(value);
-  return raw.includes("T") ? raw.slice(0, 10) : raw.slice(0, 10);
-};
-
-const normalizeType = (value) => {
-  const type = String(value || "").trim().toLowerCase();
-  return type === "loan" ? "Loan" : "Borrow";
-};
-
-const LoanBorrow = () => {
-  const [month, setMonth] = useState(monthValue());
-  const [typeFilter, setTypeFilter] = useState("All");
-  const [rows, setRows] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [activeTab, setActiveTab] = useState("borrow");
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null);
-  const toastTimerRef = React.useRef(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [sort, setSort] = useState("date-desc");
+
+  const [modal, setModal] = useState(null);
   const [editingId, setEditingId] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState(null);
+  const [detailItem, setDetailItem] = useState(null);
+
+  const [toast, setToast] = useState(null);
 
   const [form, setForm] = useState({
-    type: "Borrow",
-    name: "",
-    amount: "",
-    loanDate: today(),
-    returnDate: "",
-    emi: "",
+    person_name: "",
+    borrow_amount: "",
+    take_date: dateInput(),
+    return_date: "",
+    bank_name: "",
+    total_loan_amount: "",
+    emi_amount: "",
+    total_emis: "",
+    next_emi_date: "",
     notes: "",
+    payment_amount: "",
+    payment_date: dateInput(),
+    payment_notes: "",
   });
 
-  const headers = () => ({
-    "Content-Type": "application/json",
-    ...(getToken()
-      ? { Authorization: `Bearer ${getToken()}` }
-      : {}),
-  });
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    "";
 
-  const showToast = (type, text) => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast({ type, text });
-    toastTimerRef.current = setTimeout(() => setToast(null), 2800);
-  };
+  const config = useMemo(
+    () => ({
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }),
+    [token]
+  );
 
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    };
+  const notify = useCallback((type, message) => {
+    setToast({ type, message });
+    window.clearTimeout(window.__loanToastTimer);
+    window.__loanToastTimer = window.setTimeout(
+      () => setToast(null),
+      2500
+    );
   }, []);
 
-  const loadData = async () => {
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+
     try {
-      setLoading(true);
-      setToast(null);
+      const month = encodeURIComponent(monthParam(selectedMonth));
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/loan-borrow?month=${encodeURIComponent(month)}&t=${Date.now()}`,
-        {
-          method: "GET",
-          headers: headers(),
-        }
+      const [borrowRes, loanRes, totalsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/loan-borrow/borrow`, config),
+        axios.get(`${API_BASE_URL}/loan-borrow/loan`, config),
+        axios.get(`${API_BASE_URL}/loan-borrow/totals?month=${month}`, config),
+      ]);
+
+      if (borrowRes.data?.success) {
+        setBorrows(borrowRes.data.data || []);
+      }
+
+      if (loanRes.data?.success) {
+        setLoans(loanRes.data.data || []);
+      }
+
+      if (totalsRes.data?.success) {
+        setSummary(totalsRes.data.data || {});
+      }
+    } catch (error) {
+      console.error("Loan/Borrow load error:", error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Internal server error. Check the Loan/Borrow API."
       );
-
-      const rawText = await response.text();
-      let result = {};
-
-      try {
-        result = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error(
-          rawText || `Server returned HTTP ${response.status}.`
-        );
-      }
-
-      if (!response.ok || result.success === false) {
-        throw new Error(
-          result.message ||
-          result.error ||
-          `Failed to load loan and borrow details. HTTP ${response.status}.`
-        );
-      }
-
-      const normalized = normalizeRows(result);
-      setRows(normalized);
-      setPage(1);
-    } catch (err) {
-      console.error("Loan/Borrow GET error:", err);
-      showToast("error", err.message || "Failed to load loan and borrow details.");
-      // Keep the last successfully loaded details visible on a transient GET error.
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth, config, notify]);
 
   useEffect(() => {
-    loadData();
-  }, [month]);
+    fetchData();
+  }, [fetchData]);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
 
   const resetForm = () => {
     setForm({
-      type: "Borrow",
-      name: "",
-      amount: "",
-      loanDate: today(),
-      returnDate: "",
-      emi: "",
+      person_name: "",
+      borrow_amount: "",
+      take_date: dateInput(),
+      return_date: "",
+      bank_name: "",
+      total_loan_amount: "",
+      emi_amount: "",
+      total_emis: "",
+      next_emi_date: "",
       notes: "",
+      payment_amount: "",
+      payment_date: dateInput(),
+      payment_notes: "",
     });
     setEditingId(null);
-    setShowForm(false);
+    setSelectedId(null);
   };
+
+  const closeModal = () => {
+    setModal(null);
+    setDetailItem(null);
+    resetForm();
+  };
+
+  const changeMonth = (amount) => {
+    setSelectedMonth((old) => {
+      const d = new Date(old);
+      d.setMonth(d.getMonth() + amount);
+      return d;
+    });
+  };
+
+  const currentMonth = () => setSelectedMonth(new Date());
 
   const openAdd = () => {
-    setEditingId(null);
-    setForm({
-      type: "Borrow",
-      name: "",
-      amount: "",
-      loanDate: today(),
-      returnDate: "",
-      emi: "",
-      notes: "",
-    });
-    setShowForm(true);
+    resetForm();
+    setModal(activeTab === "borrow" ? "add-borrow" : "add-loan");
   };
 
-  const openEdit = (item) => {
-    setEditingId(item.id ?? item.loan_id ?? item.borrow_id);
+  const openEdit = (item, type) => {
+    setEditingId(item.id);
 
-    setForm({
-      type: normalizeType(item.type ?? item.loan_type ?? item.entry_type),
-      name:
-        item.name ??
-        item.person_name ??
-        item.personName ??
-        item.loan_name ??
-        "",
-      amount: String(item.amount ?? item.loan_amount ?? ""),
-      loanDate: normalizeDateForInput(
-        item.loan_date ??
-        item.start_date ??
-        item.loanDate ??
-        item.startDate
-      ) || today(),
-      returnDate: normalizeDateForInput(
-        item.return_date ??
-        item.end_date ??
-        item.returnDate ??
-        item.endDate
-      ),
-      emi: String(item.emi ?? item.emi_amount ?? item.monthly_payment ?? ""),
-      notes: item.notes ?? item.description ?? "",
-    });
-
-    setToast(null);
-    setShowForm(true);
+    if (type === "borrow") {
+      setForm({
+        ...form,
+        person_name: item.person_name || "",
+        borrow_amount:
+          item.borrow_amount !== undefined ? String(item.borrow_amount) : "",
+        take_date: dateInput(item.take_date),
+        return_date: item.return_date ? dateInput(item.return_date) : "",
+        notes: item.notes || "",
+      });
+      setModal("edit-borrow");
+    } else {
+      setForm({
+        ...form,
+        bank_name: item.bank_name || item.person_name || "",
+        total_loan_amount:
+          item.total_loan_amount !== undefined
+            ? String(item.total_loan_amount)
+            : "",
+        emi_amount:
+          item.emi_amount !== undefined ? String(item.emi_amount) : "",
+        total_emis:
+          item.total_emis !== undefined ? String(item.total_emis) : "",
+        next_emi_date: item.next_emi_date
+          ? dateInput(item.next_emi_date)
+          : "",
+        notes: item.notes || "",
+      });
+      setModal("edit-loan");
+    }
   };
 
-  const submit = async (event) => {
-    event.preventDefault();
+  const openPayment = (id, type) => {
+    setSelectedId(id);
+    setForm((old) => ({
+      ...old,
+      payment_amount: "",
+      payment_date: dateInput(),
+      payment_notes: "",
+    }));
+    setModal(type === "borrow" ? "borrow-payment" : "loan-payment");
+  };
 
-    const amount = Number(form.amount);
+  const openDetails = (item, type) => {
+    setDetailItem({ ...item, recordType: type });
+    setModal("details");
+  };
 
-    if (!form.name.trim()) {
-      showToast("error", "Please enter the person or loan name.");
+  const addBorrow = async () => {
+    if (!form.person_name.trim()) {
+      notify("error", "Person name is required.");
       return;
     }
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      showToast("error", "Please enter a valid amount.");
+    if (safeNumber(form.borrow_amount) <= 0) {
+      notify("error", "Enter a valid borrow amount.");
       return;
     }
-
-    if (!form.loanDate) {
-      showToast(
-        "error",
-        form.type === "Loan"
-          ? "Please select loan start date."
-          : "Please select borrow date."
-      );
-      return;
-    }
-
-    if (!form.returnDate) {
-      showToast(
-        "error",
-        form.type === "Loan"
-          ? "Please select loan end date."
-          : "Please select return date."
-      );
-      return;
-    }
-
-    if (form.returnDate < form.loanDate) {
-      showToast("error", "Return/end date cannot be before the start date.");
+    if (!form.take_date || !form.return_date) {
+      notify("error", "Take date and return date are required.");
       return;
     }
 
     try {
-      setSaving(true);
-
-      const isEdit = Boolean(editingId);
-
-      const response = await fetch(
-        isEdit
-          ? `${API_BASE_URL}/api/loan-borrow/${editingId}`
-          : `${API_BASE_URL}/api/loan-borrow`,
+      const response = await axios.post(
+        `${API_BASE_URL}/loan-borrow/borrow`,
         {
-          method: isEdit ? "PUT" : "POST",
-          headers: headers(),
-          body: JSON.stringify({
-            type: form.type,
-            name: form.name.trim(),
-            amount,
-            loan_date: form.loanDate,
-            return_date: form.returnDate,
-            emi: Number(form.emi || 0),
-            notes: form.notes.trim() || null,
-            month,
-          }),
-        }
+          person_name: form.person_name.trim(),
+          borrow_amount: safeNumber(form.borrow_amount),
+          take_date: form.take_date,
+          return_date: form.return_date,
+          notes: form.notes.trim(),
+        },
+        config
       );
 
-      const rawText = await response.text();
-      let result = {};
-
-      try {
-        result = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error(
-          rawText || `Server returned HTTP ${response.status}.`
-        );
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to add borrow");
       }
 
-      if (!response.ok || result.success === false) {
-        throw new Error(
-          result.message ||
-          result.error ||
-          `Failed to ${isEdit ? "update" : "add"} entry.`
-        );
-      }
-
-      showToast(
-        "success",
-        isEdit
-          ? "Loan/Borrow updated successfully."
-          : "Loan/Borrow added successfully."
+      closeModal();
+      await fetchData();
+      notify("success", "Borrow added successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to add borrow."
       );
-
-      resetForm();
-      await loadData();
-    } catch (err) {
-      console.error("Loan/Borrow save error:", err);
-      showToast("error", err.message || "Unable to save entry.");
-    } finally {
-      setSaving(false);
     }
   };
 
-  const askDelete = (id) => setDeleteId(id);
+  const updateBorrow = async () => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/loan-borrow/borrow/${editingId}`,
+        {
+          person_name: form.person_name.trim(),
+          borrow_amount: safeNumber(form.borrow_amount),
+          take_date: form.take_date,
+          return_date: form.return_date,
+          notes: form.notes.trim(),
+        },
+        config
+      );
 
-  const deleteItem = async () => {
-    const id = deleteId;
-    if (!id) return;
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to update borrow");
+      }
 
-    setDeleteId(null);
+      closeModal();
+      await fetchData();
+      notify("success", "Borrow updated successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to update borrow."
+      );
+    }
+  };
+
+  const deleteBorrow = async (id) => {
+    if (!window.confirm("Delete this borrow record?")) return;
 
     try {
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/loan-borrow/${id}`,
-        {
-          method: "DELETE",
-          headers: headers(),
-        }
+      const response = await axios.delete(
+        `${API_BASE_URL}/loan-borrow/borrow/${id}`,
+        config
       );
 
-      const rawText = await response.text();
-      let result = {};
-
-      try {
-        result = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error(
-          rawText || `Server returned HTTP ${response.status}.`
-        );
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to delete borrow");
       }
 
-      if (!response.ok || result.success === false) {
-        throw new Error(
-          result.message ||
-          result.error ||
-          "Failed to delete entry."
-        );
-      }
-
-      showToast("success", "Entry deleted successfully.");
-      await loadData();
-    } catch (err) {
-      console.error("Loan/Borrow delete error:", err);
-      showToast("error", err.message || "Unable to delete entry.");
+      await fetchData();
+      notify("success", "Borrow deleted successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to delete borrow."
+      );
     }
   };
 
-  const filteredRows = useMemo(() => {
-    if (typeFilter === "All") return rows;
+  const addLoan = async () => {
+    if (!form.bank_name.trim()) {
+      notify("error", "Bank name is required.");
+      return;
+    }
+    if (safeNumber(form.total_loan_amount) <= 0) {
+      notify("error", "Enter a valid loan amount.");
+      return;
+    }
+    if (safeNumber(form.emi_amount) <= 0) {
+      notify("error", "Enter a valid EMI amount.");
+      return;
+    }
+    if (safeNumber(form.total_emis) <= 0) {
+      notify("error", "Enter total number of EMIs.");
+      return;
+    }
+    if (!form.next_emi_date) {
+      notify("error", "Next EMI date is required.");
+      return;
+    }
 
-    return rows.filter(
-      (item) =>
-        String(item.type || "").toLowerCase() ===
-        typeFilter.toLowerCase()
-    );
-  }, [rows, typeFilter]);
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/loan-borrow/loan`,
+        {
+          bank_name: form.bank_name.trim(),
+          total_loan_amount: safeNumber(form.total_loan_amount),
+          emi_amount: safeNumber(form.emi_amount),
+          total_emis: Math.floor(safeNumber(form.total_emis)),
+          next_emi_date: form.next_emi_date,
+          notes: form.notes.trim(),
+        },
+        config
+      );
 
-  const totalBorrow = useMemo(
-    () =>
-      rows
-        .filter(
-          (item) =>
-            String(item.type || "").toLowerCase() === "borrow"
-        )
-        .reduce(
-          (sum, item) => sum + Number(item.amount || 0),
-          0
-        ),
-    [rows]
-  );
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to add loan");
+      }
 
-  const totalLoan = useMemo(
-    () =>
-      rows
-        .filter(
-          (item) =>
-            String(item.type || "").toLowerCase() === "loan"
-        )
-        .reduce(
-          (sum, item) => sum + Number(item.amount || 0),
-          0
-        ),
-    [rows]
-  );
+      closeModal();
+      await fetchData();
+      notify("success", "Loan added successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to add loan."
+      );
+    }
+  };
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredRows.length / PAGE_SIZE)
-  );
+  const updateLoan = async () => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/loan-borrow/loan/${editingId}`,
+        {
+          bank_name: form.bank_name.trim(),
+          total_loan_amount: safeNumber(form.total_loan_amount),
+          emi_amount: safeNumber(form.emi_amount),
+          total_emis: Math.floor(safeNumber(form.total_emis)),
+          next_emi_date: form.next_emi_date,
+          notes: form.notes.trim(),
+        },
+        config
+      );
 
-  const visibleRows = filteredRows.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to update loan");
+      }
 
-  const monthLabel = useMemo(() => {
-    const [year, m] = month.split("-").map(Number);
-    return new Date(year, m - 1, 1).toLocaleString("en-IN", {
-      month: "long",
-      year: "numeric",
+      closeModal();
+      await fetchData();
+      notify("success", "Loan updated successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to update loan."
+      );
+    }
+  };
+
+  const deleteLoan = async (id) => {
+    if (!window.confirm("Delete this loan record?")) return;
+
+    try {
+      const response = await axios.delete(
+        `${API_BASE_URL}/loan-borrow/loan/${id}`,
+        config
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to delete loan");
+      }
+
+      await fetchData();
+      notify("success", "Loan deleted successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to delete loan."
+      );
+    }
+  };
+
+  const addBorrowRepayment = async () => {
+    if (safeNumber(form.payment_amount) <= 0) {
+      notify("error", "Enter a valid repayment amount.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/loan-borrow/borrow/${selectedId}/repayment`,
+        {
+          repayment_amount: safeNumber(form.payment_amount),
+          payment_date: form.payment_date,
+          notes: form.payment_notes.trim(),
+        },
+        config
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to add repayment");
+      }
+
+      closeModal();
+      await fetchData();
+      notify("success", "Repayment added successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to add repayment."
+      );
+    }
+  };
+
+  const addLoanEMI = async () => {
+    if (safeNumber(form.payment_amount) <= 0) {
+      notify("error", "Enter a valid EMI amount.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/loan-borrow/loan/${selectedId}/emi`,
+        {
+          emi_amount: safeNumber(form.payment_amount),
+          payment_date: form.payment_date,
+          notes: form.payment_notes.trim(),
+        },
+        config
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to add EMI");
+      }
+
+      closeModal();
+      await fetchData();
+      notify("success", "EMI payment added successfully.");
+    } catch (error) {
+      console.error(error);
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to add EMI payment."
+      );
+    }
+  };
+
+  const activeItems = activeTab === "borrow" ? borrows : loans;
+
+  const filteredItems = [...activeItems]
+    .filter((item) => {
+      const name = (
+        item.person_name ||
+        item.bank_name ||
+        item.person_or_bank_name ||
+        ""
+      ).toLowerCase();
+
+      const matchesSearch =
+        !search.trim() ||
+        name.includes(search.toLowerCase().trim());
+
+      const itemStatus =
+        item.calculated_status || item.status || "Active";
+
+      const matchesStatus =
+        status === "all" ||
+        itemStatus.toLowerCase() === status.toLowerCase();
+
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sort === "amount-desc") {
+        return Number(
+          b.borrow_amount || b.total_loan_amount || b.total_amount || 0
+        ) - Number(a.borrow_amount || a.total_loan_amount || a.total_amount || 0);
+      }
+
+      if (sort === "amount-asc") {
+        return Number(
+          a.borrow_amount || a.total_loan_amount || a.total_amount || 0
+        ) - Number(b.borrow_amount || b.total_loan_amount || b.total_amount || 0);
+      }
+
+      const da = new Date(a.take_date || a.created_at || a.next_emi_date);
+      const db = new Date(b.take_date || b.created_at || b.next_emi_date);
+
+      return sort === "date-asc" ? da - db : db - da;
     });
-  }, [month]);
+
+  const borrowTotal = borrows.reduce(
+    (s, x) => s + Number(x.borrow_amount || x.total_amount || 0),
+    0
+  );
+
+  const loanTotal = loans.reduce(
+    (s, x) => s + Number(x.total_loan_amount || x.total_amount || 0),
+    0
+  );
+
+  const remainingBorrow = borrows.reduce(
+    (s, x) => s + Number(x.remaining_amount || 0),
+    0
+  );
+
+  const remainingLoan = loans.reduce(
+    (s, x) => s + Number(x.remaining_amount || 0),
+    0
+  );
+
+  const summaryBorrow =
+    Number(summary?.borrow_amount || summary?.total_borrow || 0);
+
+  const summaryLoan =
+    Number(summary?.loan_amount || summary?.total_loan || 0);
+
+  const displayedBorrowTotal =
+    summaryBorrow > 0 ? summaryBorrow : borrowTotal;
+
+  const displayedLoanTotal =
+    summaryLoan > 0 ? summaryLoan : loanTotal;
 
   return (
-    <div className="loan-page">
-      <style>{styles}</style>
+    <>
+      <style>{`
+        *{box-sizing:border-box}
+        body{margin:0;background:#f6f8fc}
+        .lb-page{
+          min-height:100vh;
+          padding:18px;
+          color:#0f172a;
+          background:
+            radial-gradient(circle at 8% 0%,rgba(79,70,229,.13),transparent 28%),
+            radial-gradient(circle at 95% 5%,rgba(14,165,233,.11),transparent 25%),
+            linear-gradient(135deg,#f8fafc 0%,#eef2ff 52%,#f8fafc 100%);
+          font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+        }
+        .lb-shell{max-width:1180px;margin:auto}
+        .lb-header{
+          position:sticky;top:10px;z-index:30;
+          padding:18px;
+          border-radius:24px;
+          color:#fff;
+          overflow:hidden;
+          background:linear-gradient(135deg,#1e1b4b,#4338ca 52%,#7c3aed);
+          box-shadow:0 22px 55px rgba(49,46,129,.25);
+          margin-bottom:14px;
+        }
+        .lb-header:before{
+          content:"";position:absolute;width:260px;height:260px;border-radius:50%;
+          right:-100px;top:-150px;background:rgba(255,255,255,.09)
+        }
+        .lb-header-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px}
+        .lb-brand{display:flex;align-items:center;gap:12px;min-width:0}
+        .lb-brand-icon{
+          width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:16px;
+          background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);
+          box-shadow:inset 0 1px rgba(255,255,255,.2)
+        }
+        .lb-brand h1{margin:0;font-size:24px;font-weight:900;letter-spacing:-.04em}
+        .lb-brand p{margin:4px 0 0;color:#ddd6fe;font-size:11px}
+        .lb-header-actions{display:flex;align-items:center;gap:7px}
+        .lb-btn{
+          height:40px;border:0;border-radius:11px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;
+          gap:6px;font-weight:800;font-size:11px;cursor:pointer
+        }
+        .lb-btn-light{background:rgba(255,255,255,.13);color:#fff;border:1px solid rgba(255,255,255,.18)}
+        .lb-btn-add{background:#fff;color:#4338ca;box-shadow:0 10px 25px rgba(0,0,0,.12)}
+        .lb-btn:hover{transform:translateY(-1px)}
+        .lb-monthbar{
+          margin-top:14px;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:6px;
+          padding-top:13px;border-top:1px solid rgba(255,255,255,.15)
+        }
+        .lb-month{
+          min-width:175px;height:38px;display:flex;align-items:center;justify-content:center;gap:7px;
+          padding:0 12px;border-radius:11px;background:rgba(255,255,255,.12);font-size:12px;font-weight:850
+        }
+        .lb-nav{
+          width:38px;height:38px;border:0;border-radius:11px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;cursor:pointer
+        }
+        .lb-nav:hover{background:rgba(255,255,255,.2)}
+        .lb-today{height:38px;border:0;border-radius:11px;padding:0 12px;background:#fff;color:#4338ca;font-size:11px;font-weight:850;cursor:pointer}
+        .lb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+        .lb-stat{
+          position:relative;overflow:hidden;padding:15px;border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.9);
+          box-shadow:0 10px 30px rgba(15,23,42,.055);transition:.2s
+        }
+        .lb-stat:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(15,23,42,.09)}
+        .lb-stat:after{content:"";position:absolute;width:100px;height:100px;border-radius:50%;right:-50px;top:-50px;background:rgba(99,102,241,.05)}
+        .lb-stat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+        .lb-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;font-weight:900}
+        .lb-stat-value{margin-top:6px;font-size:21px;font-weight:950;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .lb-stat-sub{margin-top:3px;color:#94a3b8;font-size:9px}
+        .lb-stat-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center}
+        .indigo{background:#eef2ff;color:#4f46e5}.green{background:#ecfdf5;color:#059669}.blue{background:#eff6ff;color:#2563eb}.orange{background:#fff7ed;color:#ea580c}
+        .lb-tabs-card,.lb-filter-card,.lb-list-card{
+          border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(15,23,42,.05)
+        }
+        .lb-tabs-card{padding:5px;margin-bottom:10px}
+        .lb-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+        .lb-tab{
+          height:48px;border:0;border-radius:13px;background:transparent;color:#64748b;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:900
+        }
+        .lb-tab.active{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 9px 22px rgba(79,70,229,.24)}
+        .lb-filter-card{padding:12px;margin-bottom:10px}
+        .lb-filters{display:grid;grid-template-columns:1fr 170px 170px;gap:7px}
+        .lb-search,.lb-select{
+          height:39px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc;color:#334155;outline:none;font-size:11px
+        }
+        .lb-search{display:flex;align-items:center;gap:7px;padding:0 11px}
+        .lb-search input{width:100%;border:0;outline:0;background:transparent;font-size:11px}
+        .lb-select{padding:0 9px}
+        .lb-list-card{padding:12px}
+        .lb-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+        .lb-list-head h2{margin:0;font-size:14px;font-weight:950;letter-spacing:-.02em}
+        .lb-list-head span{color:#94a3b8;font-size:9px;font-weight:750}
+        .lb-list{display:grid;gap:8px}
+        .lb-item{
+          display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:11px;
+          padding:12px;border:1px solid #e5e7eb;border-radius:15px;background:#fff;transition:.2s
+        }
+        .lb-item:hover{transform:translateY(-2px);border-color:#c7d2fe;box-shadow:0 10px 26px rgba(15,23,42,.07)}
+        .lb-avatar{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:0 0 42px}
+        .lb-avatar.borrow{background:#eef2ff;color:#4f46e5}.lb-avatar.loan{background:#ecfeff;color:#0891b2}
+        .lb-main{min-width:0}
+        .lb-name{font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .lb-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;color:#94a3b8;font-size:9px}
+        .lb-note{margin-top:4px;color:#64748b;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .lb-money{text-align:right;min-width:125px}.lb-money strong{display:block;font-size:14px;font-weight:950}.lb-money span{display:block;margin-top:3px;color:#94a3b8;font-size:9px}
+        .lb-actions{display:flex;gap:4px}
+        .lb-action{width:32px;height:32px;border:0;border-radius:9px;background:#f1f5f9;color:#64748b;display:grid;place-items:center;cursor:pointer}
+        .lb-action:hover{background:#eef2ff;color:#4f46e5}.lb-action.pay:hover{background:#ecfdf5;color:#059669}.lb-action.delete:hover{background:#fef2f2;color:#dc2626}
+        .lb-status{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:99px;font-size:8px;font-weight:900}
+        .status-active{background:#eff6ff;color:#2563eb}.status-completed{background:#ecfdf5;color:#059669}.status-overdue{background:#fef2f2;color:#dc2626}
+        .lb-empty{padding:55px 20px;text-align:center;border:1px dashed #cbd5e1;border-radius:16px;background:linear-gradient(180deg,#fff,#f8fafc);color:#94a3b8}
+        .lb-empty-icon{width:48px;height:48px;margin:0 auto 9px;border-radius:15px;background:#eef2ff;color:#6366f1;display:grid;place-items:center}
+        .lb-empty strong{display:block;color:#334155;font-size:13px}.lb-empty span{display:block;margin-top:4px;font-size:10px}
+        .lb-backdrop{position:fixed;inset:0;z-index:1000;padding:12px;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.62);backdrop-filter:blur(8px)}
+        .lb-modal{width:min(520px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 90px rgba(15,23,42,.28);animation:lbIn .2s ease}
+        @keyframes lbIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+        .lb-modal-head{position:sticky;top:0;z-index:2;padding:15px 16px;border-bottom:1px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:space-between}
+        .lb-modal-head h3{margin:0;font-size:16px;font-weight:950}.lb-close{width:32px;height:32px;border:0;border-radius:9px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer}
+        .lb-modal-body{padding:16px}
+        .lb-form{display:grid;gap:11px}.lb-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .lb-field{display:grid;gap:5px}.lb-field.full{grid-column:1/-1}.lb-field label{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:900}
+        .lb-field input,.lb-field textarea,.lb-field select{width:100%;border:1px solid #dbe3ee;border-radius:11px;background:#f8fafc;padding:10px;color:#0f172a;font-size:12px;outline:none}
+        .lb-field input,.lb-field select{height:41px}.lb-field textarea{min-height:80px;resize:vertical}
+        .lb-submit{width:100%;height:42px;border:0;border-radius:11px;color:#fff;background:linear-gradient(135deg,#4f46e5,#7c3aed);font-weight:900;font-size:11px;cursor:pointer;box-shadow:0 9px 22px rgba(79,70,229,.22)}
+        .lb-submit.green-btn{background:linear-gradient(135deg,#059669,#10b981)}
+        .lb-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.lb-detail{padding:11px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}.lb-detail small{display:block;color:#94a3b8;font-size:8px;text-transform:uppercase;font-weight:900}.lb-detail strong{display:block;margin-top:4px;font-size:12px;overflow-wrap:anywhere}
+        .lb-toast-wrap{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:14px;pointer-events:none}
+        .lb-toast{pointer-events:auto;width:min(370px,calc(100vw - 28px));display:flex;gap:9px;align-items:flex-start;padding:13px;border-radius:15px;background:rgba(255,255,255,.97);backdrop-filter:blur(15px);box-shadow:0 25px 75px rgba(15,23,42,.22);border:1px solid #e2e8f0;animation:lbIn .18s ease}
+        .lb-toast.success{border-left:4px solid #059669}.lb-toast.error{border-left:4px solid #dc2626}
+        .lb-toast-body{flex:1}.lb-toast-body b{display:block;font-size:12px}.lb-toast-body span{display:block;margin-top:3px;color:#64748b;font-size:10px;line-height:1.4}.lb-toast-close{width:27px;height:27px;border:0;border-radius:8px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer}
+        .lb-spin{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+        @media(max-width:900px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}}
+        @media(max-width:620px){
+          .lb-page{padding:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+          .lb-header{top:5px;padding:13px;border-radius:19px}
+          .lb-header-row{align-items:flex-start}.lb-brand h1{font-size:19px}.lb-brand p{font-size:9px}.lb-brand-icon{width:42px;height:42px;flex-basis:42px}
+          .lb-header-actions .label{display:none}.lb-btn{width:40px;padding:0}.lb-monthbar{justify-content:stretch}.lb-month{flex:1;min-width:0}.lb-today{padding:0 9px}
+          .lb-stats{gap:6px}.lb-stat{padding:11px;border-radius:14px}.lb-stat-value{font-size:16px}.lb-stat-icon{width:32px;height:32px}.lb-stat-sub{font-size:8px}
+          .lb-filters{grid-template-columns:1fr}.lb-search{grid-column:auto}
+          .lb-list-card{padding:9px}.lb-item{grid-template-columns:auto 1fr auto;gap:8px;padding:10px}.lb-money{grid-column:2;grid-row:2;text-align:left}.lb-actions{grid-column:3;grid-row:1/3;flex-direction:column}.lb-name{font-size:12px}
+          .lb-form-grid{grid-template-columns:1fr}.lb-field.full{grid-column:auto}.lb-detail-grid{grid-template-columns:1fr 1fr}
+        }
+        @media(max-width:380px){.lb-stats{grid-template-columns:1fr 1fr}.lb-brand p{display:none}.lb-month{font-size:10px}}
+      `}</style>
 
-      <header className="loan-header">
-        <div>
-          <div className="loan-title">
-            <Landmark size={22} />
-            <h1>Loan & Borrow</h1>
-          </div>
-          <p>
-            Track borrowed money, loans, dates and remaining time for{" "}
-            {monthLabel}.
-          </p>
-        </div>
+      <main className="lb-page">
+        <div className="lb-shell">
 
-        <div className="loan-actions">
-          <label className="month-picker">
-            <CalendarDays size={17} />
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-            />
-          </label>
+          <header className="lb-header">
+            <div className="lb-header-row">
+              <div className="lb-brand">
+                <div className="lb-brand-icon"><WalletCards size={23} /></div>
+                <div>
+                  <h1>Loans & Borrows</h1>
+                  <p>Track money you borrowed and money you lent</p>
+                </div>
+              </div>
 
-          <button
-            className="icon-button"
-            onClick={loadData}
-            title="Refresh"
-          >
-            <RefreshCw size={17} />
-          </button>
-
-          <button className="add-button" onClick={openAdd}>
-            <Plus size={17} />
-            Add
-          </button>
-        </div>
-      </header>
-
-      {toast && (
-        <div className={`toast-notification ${toast.type}`} role="status">
-          <span className="toast-icon">
-            {toast.type === "success" ? "✓" : "!"}
-          </span>
-          <span className="toast-text">{toast.text}</span>
-          <button
-            type="button"
-            className="toast-close"
-            onClick={() => setToast(null)}
-            aria-label="Close notification"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      <section className="totals-grid">
-        <div className="total-card">
-          <div className="total-icon borrow">
-            <HandCoins size={19} />
-          </div>
-          <span>Total Borrow</span>
-          <strong>{money(totalBorrow)}</strong>
-        </div>
-
-        <div className="total-card">
-          <div className="total-icon loan">
-            <Landmark size={19} />
-          </div>
-          <span>Total Loan</span>
-          <strong>{money(totalLoan)}</strong>
-        </div>
-
-        <div className="total-card">
-          <div className="total-icon combined">
-            <IndianRupee size={19} />
-          </div>
-          <span>Both Total</span>
-          <strong>{money(totalBorrow + totalLoan)}</strong>
-        </div>
-      </section>
-
-      <section className="list-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Loan & Borrow Details</h2>
-            <p>
-              Start/end or return dates automatically show the
-              remaining time.
-            </p>
-          </div>
-
-          <select
-            className="type-filter"
-            value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="All">All</option>
-            <option value="Borrow">Borrow</option>
-            <option value="Loan">Loan</option>
-          </select>
-        </div>
-
-        {loading ? (
-          <div className="empty-state">
-            <RefreshCw className="spin" size={26} />
-            <span>Loading details...</span>
-          </div>
-        ) : visibleRows.length === 0 ? (
-          <div className="empty-state">
-            <Landmark size={28} />
-            <span>No loan or borrow details found.</span>
-          </div>
-        ) : (
-          <>
-            <div className="loan-list">
-              {visibleRows.map((item) => {
-                const type =
-                  String(item.type || "Borrow").toLowerCase() ===
-                  "loan"
-                    ? "Loan"
-                    : "Borrow";
-
-                const startDate =
-                  item.loan_date ||
-                  item.start_date ||
-                  item.loanDate;
-
-                const endDate =
-                  item.return_date ||
-                  item.end_date ||
-                  item.returnDate;
-
-                const remaining =
-                  item.remaining_amount ??
-                  item.remainingAmount ??
-                  item.amount;
-
-                const isOverdue =
-                  endDate && endDate < today();
-
-                return (
-                  <article
-                    className={`loan-item ${
-                      type === "Loan" ? "loan" : "borrow"
-                    }`}
-                    key={item.id}
-                  >
-                    <div className="loan-main">
-                      <div className="type-icon">
-                        {type === "Loan" ? (
-                          <Landmark size={19} />
-                        ) : (
-                          <HandCoins size={19} />
-                        )}
-                      </div>
-
-                      <div className="loan-info">
-                        <div className="name-row">
-                          <h3>
-                            {item.name ??
-                              item.person_name ??
-                              item.personName ??
-                              item.loan_name ??
-                              "-"}
-                          </h3>
-                          <span
-                            className={`type-tag ${
-                              type === "Loan"
-                                ? "loan-tag"
-                                : "borrow-tag"
-                            }`}
-                          >
-                            {type}
-                          </span>
-                        </div>
-
-                        <div className="date-row">
-                          <span>
-                            Start: {formatDisplayDate(startDate)}
-                          </span>
-                          <span>
-                            {type === "Loan"
-                              ? `End: ${formatDisplayDate(endDate)}`
-                              : `Return: ${formatDisplayDate(endDate)}`}
-                          </span>
-                        </div>
-
-                        {item.notes && (
-                          <div className="notes">
-                            <FileText size={13} />
-                            <span>{item.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="loan-right">
-                      <strong>{money(remaining)}</strong>
-
-                      <span
-                        className={`remaining ${
-                          isOverdue ? "overdue" : ""
-                        }`}
-                      >
-                        <Clock3 size={13} />
-                        {remainingText(endDate)}
-                      </span>
-
-                      <div className="item-actions">
-                        <button
-                          onClick={() => openEdit(item)}
-                          title="Edit"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="delete"
-                          onClick={() => askDelete(item.id)}
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+              <div className="lb-header-actions">
+                <button className="lb-btn lb-btn-light" onClick={refresh} disabled={refreshing}>
+                  <RefreshCw size={16} className={refreshing ? "lb-spin" : ""} />
+                  <span className="label">Refresh</span>
+                </button>
+                <button className="lb-btn lb-btn-add" onClick={openAdd}>
+                  <Plus size={17} />
+                  <span className="label">Add Record</span>
+                </button>
+              </div>
             </div>
 
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  disabled={page <= 1}
-                  onClick={() =>
-                    setPage((p) => Math.max(1, p - 1))
-                  }
-                >
-                  <ChevronLeft size={17} />
-                </button>
+            <div className="lb-monthbar">
+              <button className="lb-nav" onClick={() => changeMonth(-1)}><ChevronLeft size={18} /></button>
+              <div className="lb-month"><CalendarDays size={15} />{monthTitle(selectedMonth)}</div>
+              <button className="lb-nav" onClick={() => changeMonth(1)}><ChevronRight size={18} /></button>
+              <button className="lb-today" onClick={currentMonth}>Today</button>
+            </div>
+          </header>
 
-                <span>
-                  Page {page} of {totalPages}
-                </span>
+          <section className="lb-stats">
+            <Stat icon={<ArrowDownRight />} iconClass="indigo" title="Total Borrowed" value={money(displayedBorrowTotal)} sub={`${borrows.length} records`} />
+            <Stat icon={<ArrowUpRight />} iconClass="blue" title="Total Loans" value={money(displayedLoanTotal)} sub={`${loans.length} records`} />
+            <Stat icon={<WalletCards />} iconClass="green" title="Borrow Remaining" value={money(remainingBorrow)} sub="Outstanding amount" />
+            <Stat icon={<CreditCard />} iconClass="orange" title="Loan Remaining" value={money(remainingLoan)} sub="Outstanding amount" />
+          </section>
 
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() =>
-                    setPage((p) =>
-                      Math.min(totalPages, p + 1)
-                    )
-                  }
-                >
-                  <ChevronRight size={17} />
-                </button>
+          <section className="lb-tabs-card">
+            <div className="lb-tabs">
+              <button className={`lb-tab ${activeTab === "borrow" ? "active" : ""}`} onClick={() => setActiveTab("borrow")}>
+                <UserRound size={18} /> Borrows <span>({borrows.length})</span>
+              </button>
+              <button className={`lb-tab ${activeTab === "loan" ? "active" : ""}`} onClick={() => setActiveTab("loan")}>
+                <Banknote size={18} /> Loans <span>({loans.length})</span>
+              </button>
+            </div>
+          </section>
+
+          <section className="lb-filter-card">
+            <div className="lb-filters">
+              <div className="lb-search">
+                <Search size={15} />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${activeTab === "borrow" ? "person" : "bank"}...`} />
+              </div>
+
+              <select className="lb-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+                <option value="Overdue">Overdue</option>
+              </select>
+
+              <select className="lb-select" value={sort} onChange={(e) => setSort(e.target.value)}>
+                <option value="date-desc">Newest First</option>
+                <option value="date-asc">Oldest First</option>
+                <option value="amount-desc">Highest Amount</option>
+                <option value="amount-asc">Lowest Amount</option>
+              </select>
+            </div>
+          </section>
+
+          <section className="lb-list-card">
+            <div className="lb-list-head">
+              <div>
+                <h2>{activeTab === "borrow" ? "Borrow Records" : "Loan Records"}</h2>
+              </div>
+              <span>{filteredItems.length} shown</span>
+            </div>
+
+            {loading ? (
+              <div className="lb-empty">
+                <div className="lb-empty-icon"><RefreshCw size={22} className="lb-spin" /></div>
+                <strong>Loading records</strong>
+                <span>Please wait while your data is loaded.</span>
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="lb-empty">
+                <div className="lb-empty-icon">{activeTab === "borrow" ? <UserRound size={22} /> : <Banknote size={22} />}</div>
+                <strong>No {activeTab === "borrow" ? "borrow" : "loan"} records</strong>
+                <span>Tap “Add Record” to create your first record.</span>
+              </div>
+            ) : (
+              <div className="lb-list">
+                {filteredItems.map((item) => (
+                  <RecordCard
+                    key={item.id}
+                    item={item}
+                    type={activeTab}
+                    onView={() => openDetails(item, activeTab)}
+                    onEdit={() => openEdit(item, activeTab)}
+                    onDelete={() => activeTab === "borrow" ? deleteBorrow(item.id) : deleteLoan(item.id)}
+                    onPayment={() => openPayment(item.id, activeTab)}
+                  />
+                ))}
               </div>
             )}
-          </>
-        )}
-      </section>
+          </section>
+        </div>
+      </main>
 
-      {deleteId && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setDeleteId(null);
-          }}
-        >
-          <div className="confirm-modal" role="dialog" aria-modal="true">
-            <div className="confirm-icon danger">
-              <Trash2 size={20} />
+      {modal && modal !== "details" && (
+        <div className="lb-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
+          <div className="lb-modal">
+            <div className="lb-modal-head">
+              <h3>
+                {modal === "add-borrow" && "Add Borrow"}
+                {modal === "edit-borrow" && "Edit Borrow"}
+                {modal === "add-loan" && "Add Loan"}
+                {modal === "edit-loan" && "Edit Loan"}
+                {modal === "borrow-payment" && "Record Borrow Repayment"}
+                {modal === "loan-payment" && "Record EMI Payment"}
+              </h3>
+              <button className="lb-close" onClick={closeModal}><X size={17} /></button>
             </div>
-            <h3>Delete entry?</h3>
-            <p>This action cannot be undone.</p>
-            <div className="confirm-actions">
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={() => setDeleteId(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="delete-confirm-button"
-                onClick={deleteItem}
-              >
-                Delete
-              </button>
+
+            <div className="lb-modal-body">
+              {(modal === "add-borrow" || modal === "edit-borrow") && (
+                <div className="lb-form">
+                  <div className="lb-form-grid">
+                    <Field label="Person Name">
+                      <input value={form.person_name} onChange={(e) => setForm({ ...form, person_name: e.target.value })} placeholder="Enter person name" />
+                    </Field>
+                    <Field label="Amount">
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.borrow_amount} onChange={(e) => setForm({ ...form, borrow_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                    </Field>
+                    <Field label="Take Date">
+                      <input type="date" value={form.take_date} onChange={(e) => setForm({ ...form, take_date: e.target.value })} />
+                    </Field>
+                    <Field label="Return Date">
+                      <input type="date" value={form.return_date} onChange={(e) => setForm({ ...form, return_date: e.target.value })} />
+                    </Field>
+                    <Field label="Notes" full>
+                      <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+                    </Field>
+                  </div>
+                  <button className="lb-submit" onClick={modal === "add-borrow" ? addBorrow : updateBorrow}>
+                    <SaveIcon /> {modal === "add-borrow" ? "Add Borrow" : "Update Borrow"}
+                  </button>
+                </div>
+              )}
+
+              {(modal === "add-loan" || modal === "edit-loan") && (
+                <div className="lb-form">
+                  <div className="lb-form-grid">
+                    <Field label="Bank Name">
+                      <input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="Enter bank name" />
+                    </Field>
+                    <Field label="Loan Amount">
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.total_loan_amount} onChange={(e) => setForm({ ...form, total_loan_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                    </Field>
+                    <Field label="EMI Amount">
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.emi_amount} onChange={(e) => setForm({ ...form, emi_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                    </Field>
+                    <Field label="Number of EMIs">
+                      <input type="number" min="0" step="1" inputMode="numeric" value={form.total_emis} onChange={(e) => setForm({ ...form, total_emis: editableNumber(e.target.value) })} placeholder="0" />
+                    </Field>
+                    <Field label="Next EMI Date">
+                      <input type="date" value={form.next_emi_date} onChange={(e) => setForm({ ...form, next_emi_date: e.target.value })} />
+                    </Field>
+                    <Field label="Notes" full>
+                      <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+                    </Field>
+                  </div>
+                  <button className="lb-submit" onClick={modal === "add-loan" ? addLoan : updateLoan}>
+                    <SaveIcon /> {modal === "add-loan" ? "Add Loan" : "Update Loan"}
+                  </button>
+                </div>
+              )}
+
+              {(modal === "borrow-payment" || modal === "loan-payment") && (
+                <div className="lb-form">
+                  <div className="lb-form-grid">
+                    <Field label={modal === "borrow-payment" ? "Repayment Amount" : "EMI Amount"}>
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.payment_amount} onChange={(e) => setForm({ ...form, payment_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                    </Field>
+                    <Field label="Payment Date">
+                      <input type="date" value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+                    </Field>
+                    <Field label="Notes" full>
+                      <textarea value={form.payment_notes} onChange={(e) => setForm({ ...form, payment_notes: e.target.value })} placeholder="Optional payment notes" />
+                    </Field>
+                  </div>
+                  <button className="lb-submit green-btn" onClick={modal === "borrow-payment" ? addBorrowRepayment : addLoanEMI}>
+                    <CheckCircle2 size={16} /> {modal === "borrow-payment" ? "Save Repayment" : "Save EMI Payment"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {showForm && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) resetForm();
-          }}
-        >
-          <form className="loan-modal" onSubmit={submit}>
-            <div className="modal-heading">
-              <div>
-                <h2>
-                  {editingId ? "Update" : "Add"}{" "}
-                  {form.type === "Loan" ? "Loan" : "Borrow"}
-                </h2>
-                <p>
-                  Add the complete start and repayment/end period.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="close-button"
-                onClick={resetForm}
-              >
-                <X size={18} />
-              </button>
+      {modal === "details" && detailItem && (
+        <div className="lb-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
+          <div className="lb-modal">
+            <div className="lb-modal-head">
+              <h3>Record Details</h3>
+              <button className="lb-close" onClick={closeModal}><X size={17} /></button>
             </div>
-
-            <label>
-              Type
-              <select
-                value={form.type}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    type: e.target.value,
-                  }))
-                }
-              >
-                <option value="Borrow">Borrow</option>
-                <option value="Loan">Loan</option>
-              </select>
-            </label>
-
-            <label>
-              {form.type === "Loan"
-                ? "Loan Name"
-                : "Person Name"}
-              <input
-                type="text"
-                placeholder={
-                  form.type === "Loan"
-                    ? "Enter loan name"
-                    : "Enter person name"
-                }
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    name: e.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            <label>
-              Amount
-              <div className="amount-box">
-                <IndianRupee size={15} />
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="Enter amount"
-                  value={form.amount}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      amount: e.target.value,
-                    }))
-                  }
-                />
+            <div className="lb-modal-body">
+              <div className="lb-detail-grid">
+                <Detail label="Type" value={detailItem.recordType === "borrow" ? "Borrow" : "Loan"} />
+                <Detail label="Status" value={detailItem.calculated_status || detailItem.status || "Active"} />
+                <Detail label={detailItem.recordType === "borrow" ? "Person" : "Bank"} value={detailItem.person_name || detailItem.bank_name || detailItem.person_or_bank_name} />
+                <Detail label="Amount" value={money(detailItem.borrow_amount || detailItem.total_loan_amount || detailItem.total_amount)} />
+                <Detail label="Remaining" value={money(detailItem.remaining_amount)} />
+                <Detail label="Date" value={dateInput(detailItem.take_date || detailItem.created_at)} />
+                {detailItem.recordType === "loan" && <Detail label="EMI" value={money(detailItem.emi_amount)} />}
+                {detailItem.recordType === "loan" && <Detail label="Next EMI" value={detailItem.next_emi_date ? dateInput(detailItem.next_emi_date) : "—"} />}
+                {detailItem.notes && <Detail label="Notes" value={detailItem.notes} />}
               </div>
-            </label>
-
-            <div className="two-columns">
-              <label>
-                {form.type === "Loan"
-                  ? "Loan Start Date"
-                  : "Borrow Date"}
-                <input
-                  type="date"
-                  value={form.loanDate}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      loanDate: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-
-              <label>
-                {form.type === "Loan"
-                  ? "Loan End Date"
-                  : "Return Date"}
-                <input
-                  type="date"
-                  min={form.loanDate}
-                  value={form.returnDate}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      returnDate: e.target.value,
-                    }))
-                  }
-                />
-              </label>
             </div>
-
-            <label>
-              EMI / Monthly Payment
-              <div className="amount-box">
-                <IndianRupee size={15} />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Optional"
-                  value={form.emi}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      emi: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </label>
-
-            <label>
-              Notes <span>(Optional)</span>
-              <textarea
-                rows="3"
-                placeholder="Add optional notes..."
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    notes: e.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={resetForm}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="save-button"
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <RefreshCw className="spin" size={15} />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Plus size={15} />
-                    {editingId ? "Update" : "Save"}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       )}
+
+      {toast && (
+        <div className="lb-toast-wrap">
+          <div className={`lb-toast ${toast.type}`}>
+            {toast.type === "success" ? <CheckCircle2 size={19} color="#059669" /> : <AlertCircle size={19} color="#dc2626" />}
+            <div className="lb-toast-body">
+              <b>{toast.type === "success" ? "Success" : "Error"}</b>
+              <span>{toast.message}</span>
+            </div>
+            <button className="lb-toast-close" onClick={() => setToast(null)}><X size={14} /></button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Stat({ icon, iconClass, title, value, sub }) {
+  return (
+    <div className="lb-stat">
+      <div className="lb-stat-top">
+        <div>
+          <div className="lb-stat-label">{title}</div>
+          <div className="lb-stat-value">{value}</div>
+          <div className="lb-stat-sub">{sub}</div>
+        </div>
+        <div className={`lb-stat-icon ${iconClass}`}>{icon}</div>
+      </div>
     </div>
   );
-};
-
-const styles = `
-.loan-page {
-  width: 100%;
-  min-height: 100%;
-  box-sizing: border-box;
-  padding: 18px;
-  overflow-x: hidden;
-  color: #fff;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.loan-header,
-.loan-title,
-.loan-actions,
-.panel-header,
-.name-row,
-.date-row,
-.loan-main,
-.loan-right,
-.modal-heading,
-.modal-actions {
-  display: flex;
-  align-items: center;
-}
-
-.loan-header {
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.loan-title {
-  gap: 9px;
-}
-
-.loan-title h1 {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 800;
-}
-
-.loan-header p,
-.panel-header p {
-  margin: 5px 0 0;
-  color: rgba(255,255,255,.5);
-  font-size: .76rem;
-  line-height: 1.45;
-}
-
-.loan-actions {
-  gap: 8px;
-}
-
-.month-picker,
-.icon-button,
-.add-button {
-  height: 40px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 11px;
-  background: rgba(255,255,255,.05);
-  color: #fff;
-}
-
-.month-picker {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-}
-
-.month-picker input {
-  width: 125px;
-  color: #fff;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  font-size: .76rem;
-  font-weight: 650;
-}
-
-.icon-button,
-.add-button {
-  cursor: pointer;
-}
-
-.icon-button {
-  width: 40px;
-  display: grid;
-  place-items: center;
-}
-
-.add-button,
-.save-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 13px;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  border: 0;
-  font-weight: 750;
-}
-
-.icon-button:hover,
-.add-button:hover,
-.save-button:hover {
-  transform: translateY(-1px);
-}
-
-.toast-notification {
-  position: fixed;
-  top: max(12px, env(safe-area-inset-top));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 12000;
-  width: min(380px, calc(100vw - 24px));
-  min-height: 48px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 11px;
-  border-radius: 11px;
-  color: #fff;
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,.1);
-  box-shadow: 0 18px 50px rgba(0,0,0,.35);
-  animation: toast-in .2s ease;
-}
-.toast-notification.success { border-color: rgba(16,185,129,.35); }
-.toast-notification.error { border-color: rgba(239,68,68,.35); }
-.toast-icon {
-  width: 25px;
-  height: 25px;
-  flex: 0 0 25px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #fff;
-  background: #16a34a;
-  font-size: .75rem;
-  font-weight: 800;
-}
-.toast-notification.error .toast-icon { background: #dc2626; }
-.toast-text {
-  min-width: 0;
-  flex: 1;
-  font-size: .72rem;
-  line-height: 1.35;
-}
-.toast-close {
-  width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 7px;
-  color: rgba(255,255,255,.65);
-  background: transparent;
-  cursor: pointer;
-}
-.toast-close:hover { color: #fff; background: rgba(255,255,255,.08); }
-
-.confirm-modal {
-  width: min(330px, calc(100vw - 30px));
-  box-sizing: border-box;
-  padding: 18px;
-  text-align: center;
-  color: #fff;
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 15px;
-  box-shadow: 0 25px 70px rgba(0,0,0,.48);
-  animation: modal-in .2s ease;
-}
-.confirm-icon {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 10px;
-  display: grid;
-  place-items: center;
-  border-radius: 11px;
-}
-.confirm-icon.danger {
-  color: #fca5a5;
-  background: rgba(239,68,68,.12);
-  border: 1px solid rgba(239,68,68,.2);
-}
-.confirm-modal h3 { margin: 0; font-size: .92rem; }
-.confirm-modal p {
-  margin: 6px 0 16px;
-  color: rgba(255,255,255,.45);
-  font-size: .68rem;
-}
-.confirm-actions {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-.delete-confirm-button {
-  min-height: 37px;
-  padding: 0 15px;
-  border: 0;
-  border-radius: 9px;
-  color: #fff;
-  background: #dc2626;
-  font-size: .68rem;
-  font-weight: 750;
-  cursor: pointer;
-}
-.delete-confirm-button:hover { background: #b91c1c; }
-
-.notice {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  border-radius: 11px;
-  font-size: .76rem;
-}
-
-.notice button {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.notice.error {
-  color: #fecaca;
-  background: rgba(239,68,68,.09);
-  border: 1px solid rgba(239,68,68,.2);
-}
-
-.notice.success {
-  color: #a7f3d0;
-  background: rgba(16,185,129,.08);
-  border: 1px solid rgba(16,185,129,.2);
-}
-
-.totals-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.total-card,
-.list-panel {
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.14);
-}
-
-.total-card {
-  padding: 15px;
-}
-
-.total-icon {
-  width: 35px;
-  height: 35px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-}
-
-.total-icon.borrow {
-  color: #67e8f9;
-  background: rgba(34,211,238,.1);
-}
-
-.total-icon.loan {
-  color: #c4b5fd;
-  background: rgba(124,58,237,.12);
-}
-
-.total-icon.combined {
-  color: #6ee7b7;
-  background: rgba(16,185,129,.1);
-}
-
-.total-card span {
-  display: block;
-  margin-top: 10px;
-  color: rgba(255,255,255,.5);
-  font-size: .7rem;
-}
-
-.total-card strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 1.05rem;
-  overflow-wrap: anywhere;
-}
-
-.list-panel {
-  padding: 16px;
-}
-
-.panel-header {
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 13px;
-}
-
-.panel-header h2 {
-  margin: 0;
-  font-size: .9rem;
-  font-weight: 800;
-}
-
-.type-filter {
-  min-width: 125px;
-  height: 36px;
-  padding: 0 9px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 9px;
-  color: #111827;
-  background: #fff;
-  outline: 0;
-  cursor: pointer;
-  color-scheme: light;
-  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
-}
-
-.type-filter:hover {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124,58,237,.10);
-}
-
-.type-filter:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
-}
-
-.type-filter option,
-.loan-modal select option {
-  background: #fff;
-  color: #111827;
-}
-
-.type-filter option:hover,
-.loan-modal select option:hover {
-  background: #7c3aed;
-  color: #fff;
-}
-
-.type-filter option:checked,
-.loan-modal select option:checked {
-  background: #7c3aed;
-  color: #fff;
-}
-
-.loan-list {
-  display: grid;
-  gap: 9px;
-}
-
-.loan-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 13px;
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 13px;
-  background: rgba(255,255,255,.025);
-  transition: .2s ease;
-}
-
-.loan-item:hover {
-  transform: translateY(-1px);
-}
-
-.loan-item.loan:hover {
-  border-color: rgba(167,139,250,.3);
-}
-
-.loan-item.borrow:hover {
-  border-color: rgba(103,232,249,.3);
-}
-
-.loan-main {
-  min-width: 0;
-  gap: 10px;
-}
-
-.type-icon {
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  color: #67e8f9;
-  background: rgba(34,211,238,.1);
-}
-
-.loan-item.loan .type-icon {
-  color: #c4b5fd;
-  background: rgba(124,58,237,.1);
-}
-
-.loan-info {
-  min-width: 0;
-}
-
-.name-row {
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.name-row h3 {
-  margin: 0;
-  font-size: .78rem;
-  font-weight: 750;
-  overflow-wrap: anywhere;
-}
-
-.type-tag {
-  padding: 4px 7px;
-  border-radius: 7px;
-  font-size: .57rem;
-  font-weight: 750;
 }
 
-.borrow-tag {
-  color: #67e8f9;
-  background: rgba(34,211,238,.08);
+function RecordCard({ item, type, onView, onEdit, onDelete, onPayment }) {
+  const status = item.calculated_status || item.status || "Active";
+  const normalized = status.toLowerCase();
+  const name = item.person_name || item.bank_name || item.person_or_bank_name || "Unknown";
+  const amount = item.borrow_amount || item.total_loan_amount || item.total_amount || 0;
+  const remaining = item.remaining_amount;
+  const date = item.take_date || item.created_at || item.next_emi_date;
+
+  return (
+    <article className="lb-item">
+      <div className={`lb-avatar ${type}`}>
+        {type === "borrow" ? <UserRound size={19} /> : <Banknote size={19} />}
+      </div>
+
+      <div className="lb-main">
+        <div className="lb-name">{name}</div>
+        <div className="lb-meta">
+          <span>{date ? new Date(date).toLocaleDateString("en-IN") : "No date"}</span>
+          <span className={`lb-status status-${normalized}`}>
+            {normalized === "completed" ? <CheckCircle2 size={9} /> : normalized === "overdue" ? <AlertCircle size={9} /> : <Clock3 size={9} />}
+            {status}
+          </span>
+        </div>
+        {item.notes && <div className="lb-note">{item.notes}</div>}
+      </div>
+
+      <div className="lb-money">
+        <strong>{money(amount)}</strong>
+        <span>{remaining !== undefined ? `Remaining ${money(remaining)}` : type === "loan" ? `EMI ${money(item.emi_amount)}` : "Total amount"}</span>
+      </div>
+
+      <div className="lb-actions">
+        <button className="lb-action" title="View" onClick={onView}><Eye size={15} /></button>
+        <button className="lb-action pay" title={type === "borrow" ? "Repay" : "Pay EMI"} onClick={onPayment}><Send size={15} /></button>
+        <button className="lb-action" title="Edit" onClick={onEdit}><Edit3 size={15} /></button>
+        <button className="lb-action delete" title="Delete" onClick={onDelete}><Trash2 size={15} /></button>
+      </div>
+    </article>
+  );
+}
+
+function Field({ label, children, full = false }) {
+  return <div className={`lb-field ${full ? "full" : ""}`}><label>{label}</label>{children}</div>;
+}
+
+function Detail({ label, value }) {
+  return (
+    <div className="lb-detail">
+      <small>{label}</small>
+      <strong>{value || "—"}</strong>
+    </div>
+  );
+}
+
+function SaveIcon() {
+  return <FileText size={16} />;
 }
-
-.loan-tag {
-  color: #c4b5fd;
-  background: rgba(124,58,237,.1);
-}
-
-.date-row {
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 5px;
-  color: rgba(255,255,255,.4);
-  font-size: .62rem;
-}
-
-.notes {
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-  margin-top: 6px;
-  color: rgba(255,255,255,.48);
-  font-size: .64rem;
-  line-height: 1.4;
-}
-
-.notes span {
-  overflow-wrap: anywhere;
-}
-
-.loan-right {
-  flex: 0 0 auto;
-  align-items: flex-end;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.loan-right > strong {
-  font-size: .83rem;
-  white-space: nowrap;
-}
-
-.remaining {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #fcd34d;
-  font-size: .62rem;
-  text-align: right;
-}
-
-.remaining.overdue {
-  color: #fca5a5;
-}
-
-.item-actions {
-  display: flex;
-  gap: 5px;
-}
-
-.item-actions button {
-  width: 29px;
-  height: 29px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 8px;
-  color: rgba(255,255,255,.65);
-  background: rgba(255,255,255,.04);
-  cursor: pointer;
-}
-
-.item-actions button:hover {
-  border-color: rgba(103,232,249,.3);
-}
-
-.item-actions .delete:hover {
-  color: #fca5a5;
-  border-color: rgba(239,68,68,.3);
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 13px;
-}
-
-.pagination button {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.pagination button:disabled {
-  opacity: .35;
-  cursor: not-allowed;
-}
-
-.pagination span {
-  color: rgba(255,255,255,.48);
-  font-size: .68rem;
-}
-
-.empty-state {
-  min-height: 170px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 8px;
-  color: rgba(255,255,255,.4);
-  font-size: .72rem;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-  background: rgba(2,6,23,.74);
-  backdrop-filter: blur(8px);
-}
-
-.loan-modal {
-  width: min(460px, calc(100vw - 30px));
-  box-sizing: border-box;
-  max-height: calc(100vh - 36px);
-  overflow-y: auto;
-  padding: 18px;
-  color: #fff;
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 17px;
-  box-shadow: 0 25px 70px rgba(0,0,0,.45);
-  animation: modal-in .2s ease;
-}
-
-.modal-heading {
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 17px;
-}
-
-.modal-heading h2 {
-  margin: 0;
-  font-size: .95rem;
-}
-
-.modal-heading p {
-  margin: 4px 0 0;
-  color: rgba(255,255,255,.42);
-  font-size: .65rem;
-  line-height: 1.4;
-}
-
-.close-button {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 8px;
-  color: #fff;
-  background: rgba(255,255,255,.05);
-  cursor: pointer;
-}
-
-.loan-modal label {
-  display: block;
-  margin-bottom: 13px;
-  color: rgba(255,255,255,.72);
-  font-size: .68rem;
-  font-weight: 650;
-}
-
-.loan-modal label span {
-  color: rgba(255,255,255,.35);
-  font-weight: 400;
-}
-
-.loan-modal input,
-.loan-modal select,
-.loan-modal textarea {
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 6px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 9px;
-  outline: none;
-  color: #fff;
-  background: rgba(255,255,255,.055);
-  font: inherit;
-}
-
-.loan-modal select {
-  cursor: pointer;
-  color-scheme: light;
-}
-
-.loan-modal select:hover {
-  border-color: #7c3aed;
-}
-
-.loan-modal select:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124,58,237,.14);
-}
-
-.loan-modal input,
-.loan-modal select {
-  height: 39px;
-  padding: 0 10px;
-}
-
-.loan-modal textarea {
-  padding: 9px 10px;
-  resize: vertical;
-  line-height: 1.45;
-}
-
-.loan-modal input:focus,
-.loan-modal select:focus,
-.loan-modal textarea:focus {
-  border-color: rgba(103,232,249,.5);
-  box-shadow: 0 0 0 3px rgba(34,211,238,.06);
-}
-
-.amount-box {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  padding-left: 10px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 9px;
-  background: rgba(255,255,255,.055);
-}
-
-.amount-box input {
-  margin-top: 0;
-  border: 0;
-  background: transparent;
-}
-
-.two-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.modal-actions {
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.cancel-button,
-.save-button {
-  min-height: 37px;
-  padding: 0 13px;
-  border-radius: 9px;
-  font-size: .68rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.cancel-button {
-  color: rgba(255,255,255,.7);
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.1);
-}
-
-.save-button {
-  border: 0;
-}
-
-.cancel-button:disabled,
-.save-button:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translate(-50%, -8px) scale(.98); }
-  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
-}
-
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@media (max-width: 800px) {
-  .loan-page {
-    padding: 10px;
-  }
-
-  .loan-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .loan-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .month-picker {
-    flex: 1;
-  }
-
-  .month-picker input {
-    width: 100%;
-  }
-
-  .totals-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .type-filter {
-    width: 100%;
-  }
-}
-
-@media (max-width: 560px) {
-  .toast-notification { width: calc(100vw - 20px); }
-  .confirm-actions { width: 100%; }
-  .confirm-actions button { flex: 1; }
-
-  .loan-page {
-    padding: 8px;
-  }
-
-  .loan-title h1 {
-    font-size: 1.15rem;
-  }
-
-  .loan-item {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .loan-right {
-    width: 100%;
-    align-items: flex-start;
-  }
-
-  .remaining {
-    text-align: left;
-  }
-
-  .two-columns {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .loan-modal {
-    padding: 15px;
-  }
-}
-`;
-
-export default LoanBorrow;

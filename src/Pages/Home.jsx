@@ -11,7 +11,6 @@ import Expense from './Expense';
 import LoanBorrow from './LoanBorrow';
 import Payment from './Payment';
 import Performance from './Performance';
-import Summary from './Summary';
 import ExportDetails from './ExportDetails';
 
 const Home = () => {
@@ -39,7 +38,7 @@ const Home = () => {
     { id: 'loan-borrow', label: 'Loan & Borrow', icon: '💰', component: LoanBorrow },
     { id: 'payment', label: 'Payments', icon: '💎', component: Payment },
     { id: 'performance', label: 'Performance', icon: '📈', component: Performance },
-    { id: 'summary', label: 'Summary', icon: '📋', component: Summary },
+
     { id: 'trading', label: 'Trading', icon: '📊', component: Trading },
    
     { id: 'export', label: 'Export', icon: '📤', component: ExportDetails },

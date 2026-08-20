@@ -1,2196 +1,1879 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import {
-  RefreshCw,
-  CalendarDays,
-  TrendingUp,
-  TrendingDown,
-  WalletCards,
-  Landmark,
-  HandCoins,
-  CheckCircle2,
-  Clock3,
   AlertCircle,
-  IndianRupee,
-  Activity,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  CreditCard,
+  DollarSign,
+  PieChart,
+  PiggyBank,
+  RefreshCw,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  Users,
+  Wallet,
+  X,
 } from "lucide-react";
 
-const API_BASE_URL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1"
-    ? "http://localhost:5000"
-    : "https://express-project-learning-new.onrender.com";
+/*
+  ============================================================
+  Performance.jsx
+  ============================================================
 
-const getToken = () =>
-  localStorage.getItem("token") ||
-  localStorage.getItem("accessToken") ||
-  sessionStorage.getItem("token") ||
-  "";
+  Frontend endpoint mapping for the supplied performance API:
 
-const today = () => new Date().toISOString().slice(0, 10);
-const currentMonth = () => today().slice(0, 7);
+    GET /api/performance?month=1%20Aug%202026
+    GET /api/performance/widgets?month=1%20Aug%202026
 
-/* Amount display:
-   2000      -> ₹2,000
-   2000.70   -> ₹2,000.70
-   No unnecessary .00 is shown.
+  Change API_ROOT only if your app.use() mount is different.
+
+  The JSX follows the response structure:
+    data.month
+    data.summary
+    data.income_breakdown
+    data.expense_breakdown
+    data.loan_borrow_summary
+    data.payment_summary
+    data.recent_transactions
+    data.quick_stats
+
+  Important:
+  This page does not invent database columns.
+  It reads the API response fields only.
 */
-const money = (value) => {
-  const number = Number(value || 0);
-  return `₹${new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(number)}`;
-};
 
-const numberValue = (value) => {
-  const n = Number(value || 0);
-  return Number.isFinite(n) ? n : 0;
-};
+const API_ROOT = "http://localhost:5000/api";
+const DASHBOARD_ENDPOINT = `${API_ROOT}/performance`;
+const WIDGETS_ENDPOINT = `${API_ROOT}/performance/widgets`;
 
-const formatDate = (date) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+const formatMonthQuery = (date) =>
+  `${date.getDate()} ${date.toLocaleString("en-US", {
+    month: "short",
+  })} ${date.getFullYear()}`;
+
+const formatMonthLabel = (date) =>
+  date.toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+
+const formatDate = (value) => {
+  if (!value) return "—";
+  const d = new Date(value);
+
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  return d.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+};
 
-const monthLabelFromValue = (value) => {
-  const [year, month] = value.split("-").map(Number);
-  return new Date(year, month - 1, 1).toLocaleString("en-IN", {
-    month: "long",
-    year: "numeric",
+const currency = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
+const number = (value) =>
+  new Intl.NumberFormat("en-IN").format(
+    Number(value) || 0
+  );
+
+const safeArray = (value) =>
+  Array.isArray(value) ? value : [];
+
+const safeObject = (value) =>
+  value && typeof value === "object" ? value : {};
+
+export default function Performance() {
+  const [selectedMonth, setSelectedMonth] =
+    useState(new Date());
+
+  const [dashboardData, setDashboardData] =
+    useState(null);
+
+  const [widgets, setWidgets] = useState({
+    top_expenses: [],
+    upcoming_emis: [],
+    overdue_payments: [],
   });
-};
 
-const getMonthWeeks = (month) => {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const lastDay = new Date(year, monthNumber, 0).getDate();
+  const [loading, setLoading] =
+    useState(true);
 
-  const ranges = [
-    [1, 7],
-    [8, 14],
-    [15, 21],
-    [22, 28],
-    [29, lastDay],
-  ];
+  const [refreshing, setRefreshing] =
+    useState(false);
 
-  return ranges
-    .filter(([start]) => start <= lastDay)
-    .map(([start, end], index) => ({
-      week: index + 1,
-      start: `${month}-${String(start).padStart(2, "0")}`,
-      end: `${month}-${String(end).padStart(2, "0")}`,
-      label: `${formatDate(`${month}-${String(start).padStart(2, "0")}`)} – ${formatDate(
-        `${month}-${String(end).padStart(2, "0")}`
-      )}`,
-    }));
-};
+  const [error, setError] =
+    useState("");
 
-const safeArray = (value) => (Array.isArray(value) ? value : []);
+  const [toast, setToast] =
+    useState(null);
 
-const getField = (object, keys, fallback = 0) => {
-  for (const key of keys) {
-    if (
-      object &&
-      object[key] !== undefined &&
-      object[key] !== null
-    ) {
-      return object[key];
-    }
-  }
-  return fallback;
-};
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    "";
 
-const Performance = () => {
-  const [month, setMonth] = useState(currentMonth());
-  const [performance, setPerformance] = useState(null);
-  const [monthlyData, setMonthlyData] = useState(null);
-  const [pieData, setPieData] = useState(null);
+  const axiosConfig = useMemo(
+    () => ({
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }),
+    [token]
+  );
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
+  const showToast = useCallback(
+    (type, message) => {
+      setToast({
+        type,
+        message,
+      });
 
-  const headers = () => {
-    const token = getToken();
-
-    return {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(token
-        ? { Authorization: `Bearer ${token}` }
-        : {}),
-    };
-  };
-
-  const apiGet = async (url) => {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: headers(),
-    });
-
-    let result = {};
-    try {
-      result = await response.json();
-    } catch {
-      throw new Error("Server returned an invalid response.");
-    }
-
-    if (!response.ok || result.success === false) {
-      throw new Error(
-        result.message ||
-          `Request failed with status ${response.status}`
+      clearTimeout(
+        window.__performanceToast
       );
-    }
 
-    return result;
-  };
+      window.__performanceToast =
+        setTimeout(() => {
+          setToast(null);
+        }, 2600);
+    },
+    []
+  );
 
-  const loadAll = async (showLoader = true) => {
-    try {
-      if (showLoader) setLoading(true);
-      else setRefreshing(true);
+  const fetchPerformance = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
 
-      setError("");
+      try {
+        setError("");
 
-      const encodedMonth = encodeURIComponent(month);
-      const year = month.slice(0, 4);
+        const month =
+          formatMonthQuery(selectedMonth);
 
-      const [main, monthly, pie] = await Promise.all([
-        apiGet(
-          `${API_BASE_URL}/api/performance?month=${encodedMonth}`
-        ),
-        apiGet(
-          `${API_BASE_URL}/api/performance/monthly?year=${encodeURIComponent(
-            year
-          )}`
-        ),
-        apiGet(
-          `${API_BASE_URL}/api/performance/pie?month=${encodedMonth}`
-        ),
-      ]);
+        const dashboardResponse =
+          await axios.get(
+            DASHBOARD_ENDPOINT,
+            {
+              ...axiosConfig,
+              params: { month },
+            }
+          );
 
-      setPerformance(main?.data || main || {});
-      setMonthlyData(monthly?.data || monthly || {});
-      setPieData(pie?.data || pie || {});
-    } catch (err) {
-      console.error("Performance GET error:", err);
-      setError(
-        err?.message ||
-          "Unable to load performance details."
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+        const dashboardPayload =
+          dashboardResponse.data;
+
+        if (
+          !dashboardPayload?.success
+        ) {
+          throw new Error(
+            dashboardPayload?.error ||
+              "Failed to load performance data."
+          );
+        }
+
+        setDashboardData(
+          dashboardPayload.data || null
+        );
+
+        // Optional widgets endpoint intentionally not required
+        // for the main Performance page.
+      } catch (err) {
+        console.error(
+          "Performance API error:",
+          err
+        );
+
+        const message =
+          err.response?.data?.error ||
+          err.response?.data?.message ||
+          err.message ||
+          "Could not load performance.";
+
+        setError(message);
+        showToast("error", message);
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [
+      selectedMonth,
+      axiosConfig,
+      showToast,
+    ]
+  );
 
   useEffect(() => {
-    loadAll(true);
-  }, [month]);
+    fetchPerformance();
+  }, [fetchPerformance]);
 
-  const monthLabel = useMemo(
-    () => monthLabelFromValue(month),
-    [month]
-  );
-
-  const apiWeeks = useMemo(() => {
-    return safeArray(
-      performance?.weekly ||
-        performance?.weeks ||
-        performance?.weekly_details
-    );
-  }, [performance]);
-
-  const weeklyData = useMemo(() => {
-    if (!apiWeeks.length) return [];
-
-    const monthWeeks = getMonthWeeks(month);
-
-    return monthWeeks.map((range) => {
-      const item =
-        apiWeeks.find(
-          (row) =>
-            Number(row.week) === range.week ||
-            row.start_date === range.start ||
-            row.start === range.start ||
-            row.week_start === range.start
-        ) || null;
-
-      if (!item) return null;
-
-      const expenseDetails = safeArray(
-        getField(item, [
-          "expenses",
-          "expense_details",
-          "expenseDetails",
-        ], [])
-      );
-
-      const loanDetails = safeArray(
-        getField(item, [
-          "loans",
-          "loan_details",
-          "loanDetails",
-        ], [])
-      );
-
-      const borrowDetails = safeArray(
-        getField(item, [
-          "borrows",
-          "borrow_details",
-          "borrowDetails",
-        ], [])
-      );
-
-      const payments = safeArray(
-        getField(item, [
-          "payments",
-          "payment_details",
-          "paymentDetails",
-        ], [])
-      );
-
-      const receivedDetails = safeArray(
-        getField(
-          item,
-          ["received_payments", "receivedPayments"],
-          payments.filter(
-            (p) =>
-              String(p.status || "").toLowerCase() ===
-              "received"
-          )
-        )
-      );
-
-      const pendingDetails = safeArray(
-        getField(
-          item,
-          ["pending_payments", "pendingPayments"],
-          payments.filter(
-            (p) =>
-              String(p.status || "").toLowerCase() ===
-              "pending"
-          )
-        )
-      );
-
-      const expenseTotal = numberValue(
-        getField(item, [
-          "expense_total",
-          "total_expense",
-          "expenses",
-        ], 0)
-      );
-
-      const loanTotal = numberValue(
-        getField(item, [
-          "loan_total",
-          "total_loan",
-          "loans",
-        ], 0)
-      );
-
-      const borrowTotal = numberValue(
-        getField(item, [
-          "borrow_total",
-          "total_borrow",
-          "borrow",
-        ], 0)
-      );
-
-      const receivedTotal = numberValue(
-        getField(item, [
-          "received_total",
-          "total_received",
-          "received_payment",
-        ], 0)
-      );
-
-      const pendingTotal = numberValue(
-        getField(item, [
-          "pending_total",
-          "total_pending",
-          "pending_payment",
-        ], 0)
-      );
-
-      const income = numberValue(
-        getField(item, [
-          "income",
-          "total_income",
-        ], receivedTotal)
-      );
-
-      const outflow = numberValue(
-        getField(item, [
-          "outflow",
-          "total_outgoing",
-        ], expenseTotal + loanTotal + borrowTotal)
-      );
-
-      const net = numberValue(
-        getField(item, [
-          "net",
-          "net_profit_loss",
-        ], income - outflow)
-      );
-
-      const status =
-        item.status ||
-        (income === 0 && outflow === 0
-          ? "No Activity"
-          : net > 0
-          ? "Profit"
-          : net < 0
-          ? "Loss"
-          : "Break Even");
-
-      const hasActivity =
-        income !== 0 ||
-        outflow !== 0 ||
-        expenseTotal !== 0 ||
-        loanTotal !== 0 ||
-        borrowTotal !== 0 ||
-        receivedTotal !== 0 ||
-        pendingTotal !== 0 ||
-        payments.length > 0 ||
-        expenseDetails.length > 0 ||
-        loanDetails.length > 0 ||
-        borrowDetails.length > 0 ||
-        receivedDetails.length > 0 ||
-        pendingDetails.length > 0 ||
-        String(status).toLowerCase() !== "no activity";
-
-      return hasActivity
-        ? {
-        ...range,
-        ...item,
-        expenseDetails,
-        loanDetails,
-        borrowDetails,
-        payments,
-        receivedDetails,
-        pendingDetails,
-        expenseTotal,
-        loanTotal,
-        borrowTotal,
-        receivedTotal,
-        pendingTotal,
-        income,
-        outflow,
-        net,
-        status,
-      }
-        : null;
-    }).filter(Boolean);
-  }, [month, apiWeeks]);
-
-  const totals = useMemo(() => {
-    const apiTotals = performance?.totals;
-
-    if (apiTotals) {
-      return {
-        income: numberValue(
-          getField(apiTotals, [
-            "total_income",
-            "income",
-          ])
-        ),
-        expense: numberValue(
-          getField(apiTotals, [
-            "expenses",
-            "expense",
-          ])
-        ),
-        loan: numberValue(
-          getField(apiTotals, [
-            "total_loans",
-            "loans",
-            "loan",
-          ])
-        ),
-        borrow: numberValue(
-          getField(apiTotals, [
-            "borrow_repayment",
-            "borrow",
-          ])
-        ),
-        received: numberValue(
-          getField(apiTotals, [
-            "received_payment",
-            "received",
-          ])
-        ),
-        pending: numberValue(
-          getField(apiTotals, [
-            "pending_payment",
-            "pending",
-          ])
-        ),
-        overdue: numberValue(
-          getField(apiTotals, ["overdue_payment", "overdue"])
-        ),
-        lost: numberValue(
-          getField(apiTotals, ["lost_payment", "lost"])
-        ),
-        outflow: numberValue(
-          getField(apiTotals, [
-            "total_outgoing",
-            "outflow",
-          ])
-        ),
-        net: numberValue(apiTotals.net),
-        status: apiTotals.status || "No Activity",
-      };
-    }
-
-    const result = weeklyData.reduce(
-      (acc, row) => {
-        acc.income += row.income;
-        acc.expense += row.expenseTotal;
-        acc.loan += row.loanTotal;
-        acc.borrow += row.borrowTotal;
-        acc.received += row.receivedTotal;
-        acc.pending += row.pendingTotal;
-        acc.outflow += row.outflow;
-        acc.net += row.net;
-        return acc;
-      },
-      {
-        income: 0,
-        expense: 0,
-        loan: 0,
-        borrow: 0,
-        received: 0,
-        pending: 0,
-        overdue: 0,
-        lost: 0,
-        outflow: 0,
-        net: 0,
-      }
+  useEffect(() => {
+    const timer = setInterval(
+      () => fetchPerformance(true),
+      60000
     );
 
-    result.status =
-      result.income === 0 && result.outflow === 0
-        ? "No Activity"
-        : result.net > 0
-        ? "Profit"
-        : result.net < 0
-        ? "Loss"
-        : "Break Even";
+    return () =>
+      clearInterval(timer);
+  }, [fetchPerformance]);
 
-    return result;
-  }, [performance, weeklyData]);
+  const refresh = async () => {
+    setRefreshing(true);
+    await fetchPerformance();
+    setRefreshing(false);
 
-  const pieSegments = useMemo(() => {
-    const apiPie = safeArray(
-      pieData?.pie ||
-        pieData?.data ||
-        pieData?.chart
-    );
-
-    const fallback = [
-      { label: "Expenses", value: totals.expense },
-      { label: "Loans", value: totals.loan },
-      { label: "Borrow", value: totals.borrow },
-      { label: "Received", value: totals.received },
-      { label: "Pending", value: totals.pending },
-    ];
-
-    const source =
-      apiPie.length >= 5
-        ? apiPie.slice(0, 5).map((item) => ({
-            label: item.label,
-            value: numberValue(
-              item.value ?? item.amount
-            ),
-          }))
-        : fallback;
-
-    const total = source.reduce(
-      (sum, item) => sum + item.value,
-      0
-    );
-
-    let cursor = 0;
-
-    const colors = [
-      "#8b5cf6",
-      "#06b6d4",
-      "#f59e0b",
-      "#10b981",
-      "#ef4444",
-    ];
-
-    const segments = source.map((item, index) => {
-      const percentage =
-        total > 0 ? (item.value / total) * 100 : 0;
-
-      const start = cursor;
-      cursor += percentage;
-
-      return {
-        ...item,
-        percentage,
-        start,
-        end: cursor,
-        color: colors[index],
-      };
-    });
-
-    return {
-      total,
-      segments,
-      gradient:
-        total > 0
-          ? `conic-gradient(${segments
-              .map(
-                (item) =>
-                  `${item.color} ${item.start}% ${item.end}%`
-              )
-              .join(", ")})`
-          : "rgba(255,255,255,.08)",
-    };
-  }, [pieData, totals]);
-
-  const yearlyMonths = useMemo(() => {
-    const rows = safeArray(
-      monthlyData?.months ||
-        monthlyData?.monthly ||
-        monthlyData?.data
-    );
-
-    return rows.filter((row) => {
-      const loans =
-        numberValue(row.loans) ||
-        numberValue(row.loan_emi) +
-          numberValue(row.loan_repayment);
-
-      const hasAmount =
-        numberValue(row.income) !== 0 ||
-        numberValue(row.expenses) !== 0 ||
-        loans !== 0 ||
-        numberValue(row.borrow_repayment) !== 0 ||
-        numberValue(row.net) !== 0;
-
-      const hasDetails =
-        safeArray(row.details).length > 0 ||
-        safeArray(row.transactions).length > 0 ||
-        safeArray(row.expenses_details).length > 0 ||
-        safeArray(row.loan_details).length > 0 ||
-        safeArray(row.borrow_details).length > 0;
-
-      return (
-        hasAmount ||
-        hasDetails ||
-        String(row.status || "").toLowerCase() !== "no activity"
-      );
-    });
-  }, [monthlyData]);
-
-  const yearlyTotal = useMemo(() => {
-    const apiTotals = monthlyData?.totals;
-
-    if (apiTotals) {
-      return {
-        income: numberValue(
-          apiTotals.income
-        ),
-        expenses: numberValue(
-          apiTotals.expenses
-        ),
-        loans: numberValue(
-          apiTotals.loans ??
-            apiTotals.loan_emi +
-              apiTotals.loan_repayment
-        ),
-        borrow: numberValue(
-          apiTotals.borrow_repayment
-        ),
-        net: numberValue(apiTotals.net),
-      };
-    }
-
-    return yearlyMonths.reduce(
-      (acc, row) => {
-        acc.income += numberValue(row.income);
-        acc.expenses += numberValue(row.expenses);
-        acc.loans += numberValue(
-          row.loans ??
-            numberValue(row.loan_emi) +
-              numberValue(row.loan_repayment)
-        );
-        acc.borrow += numberValue(
-          row.borrow_repayment
-        );
-        acc.net += numberValue(row.net);
-        return acc;
-      },
-      {
-        income: 0,
-        expenses: 0,
-        loans: 0,
-        borrow: 0,
-        net: 0,
-      }
-    );
-  }, [monthlyData, yearlyMonths]);
-
-  const hasYearlyActivity =
-    yearlyMonths.length > 0 ||
-    yearlyTotal.income !== 0 ||
-    yearlyTotal.expenses !== 0 ||
-    yearlyTotal.loans !== 0 ||
-    yearlyTotal.borrow !== 0 ||
-    yearlyTotal.net !== 0;
-
-  const hasWeeklyActivity = weeklyData.length > 0;
-
-  const renderStatus = (status) => {
-    const value = String(status || "").toLowerCase();
-
-    if (value === "profit") {
-      return (
-        <span className="status profit">
-          <TrendingUp size={13} />
-          Profit
-        </span>
-      );
-    }
-
-    if (value === "loss") {
-      return (
-        <span className="status loss">
-          <TrendingDown size={13} />
-          Loss
-        </span>
-      );
-    }
-
-    if (value === "break even") {
-      return (
-        <span className="status neutral">
-          <Activity size={13} />
-          Break Even
-        </span>
-      );
-    }
-
-    return (
-      <span className="status neutral">
-        <Activity size={13} />
-        No Activity
-      </span>
+    showToast(
+      "success",
+      "Performance refreshed."
     );
   };
 
+  const previousMonth = () => {
+    setSelectedMonth((old) => {
+      const d = new Date(old);
+      d.setMonth(d.getMonth() - 1);
+      return d;
+    });
+  };
+
+  const nextMonth = () => {
+    setSelectedMonth((old) => {
+      const d = new Date(old);
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    });
+  };
+
+  const currentMonth = () =>
+    setSelectedMonth(new Date());
+
+  const summary = safeObject(
+    dashboardData?.summary
+  );
+
+  const income =
+    safeObject(
+      dashboardData?.income_breakdown
+    );
+
+  const expenses =
+    safeObject(
+      dashboardData?.expense_breakdown
+    );
+
+  const debt =
+    safeObject(
+      dashboardData?.loan_borrow_summary
+    );
+
+  const payments =
+    safeObject(
+      dashboardData?.payment_summary
+    );
+
+  const recent =
+    safeArray(
+      dashboardData?.recent_transactions
+    );
+
+  const activeLoans =
+    safeArray(debt.active_loans);
+
+  const activeBorrows =
+    safeArray(debt.active_borrows);
+
+  const categories =
+    safeArray(expenses.categories);
+
+  const weekly =
+    safeArray(expenses.weekly);
+
+  const paymentTotals =
+    safeObject(payments.totals);
+
+  const paymentBreakdown =
+    safeObject(payments.breakdown);
+
+  const savingsStatus =
+    summary.savings_status ||
+    "break_even";
+
   return (
-    <main className="performance-page">
+    <>
       <style>{styles}</style>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow">
-            <Activity size={15} />
-            Financial Dashboard
-          </div>
+      <main className="performance-page">
+        <div className="performance-shell">
 
-          <div className="title-row">
-            <div className="title-icon">
-              <TrendingUp size={24} />
-            </div>
+          {/* HEADER */}
+          <header className="performance-header">
 
-            <div>
-              <h1>Performance</h1>
-              <p>
-                Weekly financial performance and selected-month
-                activity for <strong>{monthLabel}</strong>.
-              </p>
-            </div>
-          </div>
-        </div>
+            <div className="performance-header-top">
 
-        <div className="controls">
-          <label className="month-control">
-            <CalendarDays size={17} />
-            <input
-              type="month"
-              value={month}
-              onChange={(e) =>
-                e.target.value && setMonth(e.target.value)
-              }
-            />
-          </label>
+              <div className="performance-brand">
 
-          <button
-            className="refresh-btn"
-            onClick={() => loadAll(false)}
-            disabled={refreshing}
-            title="Refresh performance"
-          >
-            <RefreshCw
-              size={17}
-              className={refreshing ? "spin" : ""}
-            />
-            <span>Refresh</span>
-          </button>
-        </div>
-      </section>
-
-      {error && (
-        <div className="error-box">
-          <div>
-            <AlertCircle size={18} />
-            <span>{error}</span>
-          </div>
-
-          <button onClick={() => setError("")}>×</button>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="loading">
-          <RefreshCw size={30} className="spin" />
-          <strong>Loading performance...</strong>
-          <span>Getting selected-month financial details.</span>
-        </div>
-      ) : (
-        <>
-          <section className="summary-grid">
-            <SummaryCard
-              icon={<WalletCards />}
-              label="Total Income"
-              value={money(totals.income)}
-              tone="income"
-            />
-
-            <SummaryCard
-              icon={<TrendingDown />}
-              label="Expenses"
-              value={money(totals.expense)}
-              tone="expense"
-            />
-
-            <SummaryCard
-              icon={<Landmark />}
-              label="Loans"
-              value={money(totals.loan)}
-              tone="loan"
-            />
-
-            <SummaryCard
-              icon={<HandCoins />}
-              label="Borrow"
-              value={money(totals.borrow)}
-              tone="borrow"
-            />
-
-            <SummaryCard
-              icon={<CheckCircle2 />}
-              label="Received"
-              value={money(totals.received)}
-              tone="received"
-            />
-
-            <SummaryCard
-              icon={<Clock3 />}
-              label="Pending"
-              value={money(totals.pending)}
-              tone="pending"
-            />
-          </section>
-
-          <section className="main-grid">
-            <article className="panel pie-panel">
-              <PanelHeader
-                title="Monthly Performance"
-                subtitle={`Combined weekly activity for ${monthLabel}.`}
-              />
-
-              <div className="pie-layout">
-                <div
-                  className="pie"
-                  style={{
-                    background: pieSegments.gradient,
-                  }}
-                >
-                  <div className="pie-hole">
-                    <strong>
-                      {money(pieSegments.total)}
-                    </strong>
-                    <span>Total Activity</span>
-                  </div>
+                <div className="performance-brand-icon">
+                  <PieChart size={23} />
                 </div>
 
-                <div className="legend">
-                  {pieSegments.segments.map((item) => (
-                    <div className="legend-item" key={item.label}>
-                      <span
-                        className="dot"
-                        style={{ background: item.color }}
-                      />
+                <div>
+                  <h1>Performance</h1>
 
-                      <div className="legend-name">
-                        <strong>{item.label}</strong>
-                        <span>
-                          {item.percentage.toFixed(1)}%
-                        </span>
-                      </div>
-
-                      <b>{money(item.value)}</b>
-                    </div>
-                  ))}
+                  <p>
+                    Complete financial
+                    performance dashboard
+                  </p>
                 </div>
               </div>
-            </article>
 
-            <article className="panel result-panel">
-              <PanelHeader
-                title="Selected Month Result"
-                subtitle="Income minus tracked outflows."
-              />
+              <div className="performance-actions">
 
-              <div className="result-main">
-                <div
-                  className={`result-icon ${
-                    totals.net >= 0 ? "positive" : "negative"
-                  }`}
-                >
-                  {totals.net >= 0 ? (
-                    <TrendingUp size={23} />
-                  ) : (
-                    <TrendingDown size={23} />
-                  )}
-                </div>
-
-                <span>Net Result</span>
-
-                <strong
-                  className={
-                    totals.net >= 0 ? "positive-text" : "negative-text"
+                <button
+                  className="performance-head-btn"
+                  onClick={
+                    currentMonth
                   }
                 >
-                  {money(totals.net)}
+                  <CalendarDays size={15} />
+                  <span>Current</span>
+                </button>
+
+                <button
+                  className="performance-head-btn"
+                  onClick={refresh}
+                  disabled={refreshing}
+                >
+                  <RefreshCw
+                    size={15}
+                    className={
+                      refreshing
+                        ? "performance-spin"
+                        : ""
+                    }
+                  />
+
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="performance-month-row">
+
+              <div>
+                <span className="performance-period-label">
+                  SELECTED MONTH
+                </span>
+
+                <strong className="performance-period-value">
+                  {formatMonthLabel(
+                    selectedMonth
+                  )}
+                </strong>
+              </div>
+
+              <div className="performance-month-control">
+
+                <button
+                  onClick={
+                    previousMonth
+                  }
+                >
+                  <ChevronLeft size={17} />
+                </button>
+
+                <div>
+                  <CalendarDays size={14} />
+                  <span>
+                    {formatMonthQuery(
+                      selectedMonth
+                    )}
+                  </span>
+                </div>
+
+                <button
+                  onClick={nextMonth}
+                >
+                  <ChevronRight
+                    size={17}
+                  />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* ERROR */}
+          {error && (
+            <div className="performance-error">
+
+              <AlertCircle size={18} />
+
+              <div>
+                <strong>
+                  Performance API Error
                 </strong>
 
-                {renderStatus(totals.status)}
+                <span>
+                  {error}
+                </span>
               </div>
 
-              <div className="result-list">
-                <ResultRow
-                  label="Income"
-                  value={money(totals.income)}
-                />
-                <ResultRow
-                  label="Outflow"
-                  value={money(totals.outflow)}
-                />
-                <ResultRow
-                  label="Expenses"
-                  value={money(totals.expense)}
-                />
-                <ResultRow
-                  label="Loans"
-                  value={money(totals.loan)}
-                />
-                <ResultRow
-                  label="Borrow"
-                  value={money(totals.borrow)}
-                />
-                <ResultRow
-                  label="Pending"
-                  value={money(totals.pending)}
-                />
-              </div>
-            </article>
-          </section>
-
-          {hasWeeklyActivity && (
-          <section className="section-block">
-            <div className="section-heading">
-              <div>
-                <div className="section-kicker">
-                  WEEKLY BREAKDOWN
-                </div>
-                <h2>Weekly Financial Activity</h2>
-                <p>
-                  Complete selected-month activity grouped into
-                  weeks 1–7, 8–14, 15–21, 22–28 and 29–month end.
-                </p>
-              </div>
-
-              <div className="section-badge">
-                {weeklyData.length} weeks
-              </div>
+              <button
+                onClick={() =>
+                  setError("")
+                }
+              >
+                <X size={15} />
+              </button>
             </div>
-
-            <div className="week-grid">
-              {weeklyData.map((week) => (
-                <article className="week-card" key={week.week}>
-                  <div className="week-top">
-                    <div>
-                      <span className="week-number">
-                        WEEK {week.week}
-                      </span>
-                      <h3>
-                        {formatDate(week.start)} –{" "}
-                        {formatDate(week.end)}
-                      </h3>
-                    </div>
-
-                    <div
-                      className={`net-pill ${
-                        week.net >= 0 ? "up" : "down"
-                      }`}
-                    >
-                      {week.net >= 0 ? (
-                        <TrendingUp size={14} />
-                      ) : (
-                        <TrendingDown size={14} />
-                      )}
-                      {money(week.net)}
-                    </div>
-                  </div>
-
-                  <div className="week-stats">
-                    <MiniMetric
-                      label="Expenses"
-                      value={money(week.expenseTotal)}
-                    />
-                    <MiniMetric
-                      label="Loans"
-                      value={money(week.loanTotal)}
-                    />
-                    <MiniMetric
-                      label="Borrow"
-                      value={money(week.borrowTotal)}
-                    />
-                    <MiniMetric
-                      label="Received"
-                      value={money(week.receivedTotal)}
-                    />
-                    <MiniMetric
-                      label="Pending"
-                      value={money(week.pendingTotal)}
-                    />
-                    <MiniMetric
-                      label="Outflow"
-                      value={money(week.outflow)}
-                    />
-                  </div>
-
-                  <div className="week-footer">
-                    {week.pendingTotal > 0 ? (
-                      <span className="tag pending-tag">
-                        <Clock3 size={13} />
-                        Pending
-                      </span>
-                    ) : (
-                      <span className="tag received-tag">
-                        <CheckCircle2 size={13} />
-                        No Pending
-                      </span>
-                    )}
-
-                    {week.loanTotal > 0 && (
-                      <span className="tag loan-tag">
-                        <Landmark size={13} />
-                        Loan Activity
-                      </span>
-                    )}
-
-                    {week.borrowTotal > 0 && (
-                      <span className="tag borrow-tag">
-                        <HandCoins size={13} />
-                        Borrow Activity
-                      </span>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
           )}
 
-          {hasYearlyActivity && (
-          <section className="section-block">
-            <div className="section-heading">
-              <div>
-                <div className="section-kicker">
-                  {month.slice(0, 4)} OVERVIEW
-                </div>
-                <h2>Yearly Monthly Performance</h2>
-                <p>
-                  Monthly financial activity for the selected year.
-                </p>
+          {/* LOADING */}
+          {loading && !dashboardData ? (
+            <section className="performance-loading">
+              <div className="performance-loading-icon">
+                <RefreshCw
+                  size={27}
+                  className="performance-spin"
+                />
               </div>
-            </div>
 
-            <div className="year-summary">
-              <YearMetric
-                label="Income"
-                value={money(yearlyTotal.income)}
-                tone="income"
-              />
-              <YearMetric
-                label="Expenses"
-                value={money(yearlyTotal.expenses)}
-                tone="expense"
-              />
-              <YearMetric
-                label="Loans"
-                value={money(yearlyTotal.loans)}
-                tone="loan"
-              />
-              <YearMetric
-                label="Borrow"
-                value={money(yearlyTotal.borrow)}
-                tone="borrow"
-              />
-              <YearMetric
-                label="Net"
-                value={money(yearlyTotal.net)}
-                tone={
-                  yearlyTotal.net >= 0
-                    ? "received"
-                    : "expense"
-                }
-              />
-            </div>
+              <strong>
+                Loading Performance
+              </strong>
 
-            <div className="monthly-table-wrap">
-              <div className="monthly-table">
-                <div className="table-row table-head">
-                  <span>Month</span>
-                  <span>Income</span>
-                  <span>Expenses</span>
-                  <span>Loans</span>
-                  <span>Borrow</span>
-                  <span>Net</span>
-                  <span>Status</span>
+              <span>
+                Preparing your monthly
+                financial dashboard...
+              </span>
+            </section>
+          ) : null}
+
+          {dashboardData ? (
+            <>
+              {/* SUMMARY */}
+              <section className="performance-summary-grid">
+
+                <SummaryCard
+                  icon={<Wallet />}
+                  title="Total Income"
+                  value={currency(
+                    summary.total_income
+                  )}
+                  subtitle={`Work ${currency(
+                    summary.total_work
+                  )}`}
+                  tone="income"
+                />
+
+                <SummaryCard
+                  icon={<TrendingDown />}
+                  title="Total Expenses"
+                  value={currency(
+                    summary.total_expenses
+                  )}
+                  subtitle={`${number(
+                    summary.expense_count
+                  )} transactions`}
+                  tone="expense"
+                />
+
+                <SummaryCard
+                  icon={<DollarSign />}
+                  title="Total Borrow"
+                  value={currency(
+                    summary.total_borrow
+                  )}
+                  subtitle={`${number(
+                    summary.borrow_count
+                  )} records`}
+                  tone="borrow"
+                />
+
+                <SummaryCard
+                  icon={<CreditCard />}
+                  title="EMI Paid"
+                  value={currency(
+                    summary.total_emi_paid
+                  )}
+                  subtitle={`${number(
+                    summary.emi_count
+                  )} payments`}
+                  tone="emi"
+                />
+
+                <SummaryCard
+                  icon={<PiggyBank />}
+                  title="Total Savings"
+                  value={currency(
+                    summary.total_savings
+                  )}
+                  subtitle={
+                    summary.savings_status_message ||
+                    "Break Even"
+                  }
+                  tone={
+                    savingsStatus === "profit"
+                      ? "profit"
+                      : savingsStatus === "loss"
+                      ? "loss"
+                      : "break"
+                  }
+                  rate={
+                    summary.savings_rate
+                  }
+                />
+              </section>
+
+              {/* SAVINGS */}
+              <section
+                className={`performance-savings ${savingsStatus}`}
+              >
+
+                <div className="performance-savings-main">
+
+                  <div className="performance-savings-icon">
+                    {savingsStatus ===
+                    "profit" ? (
+                      <Trophy size={23} />
+                    ) : savingsStatus ===
+                      "loss" ? (
+                      <AlertCircle
+                        size={23}
+                      />
+                    ) : (
+                      <PiggyBank
+                        size={23}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <span>
+                      MONTHLY SAVINGS STATUS
+                    </span>
+
+                    <h2>
+                      {summary.savings_status_message ||
+                        "⚖️ Break Even"}
+                    </h2>
+
+                    <p>
+                      Total Savings =
+                      Income − Expenses −
+                      EMI Paid
+                    </p>
+                  </div>
                 </div>
 
-                {yearlyMonths.map((row, index) => {
-                  const loans =
-                    numberValue(row.loans) ||
-                    numberValue(row.loan_emi) +
-                      numberValue(row.loan_repayment);
+                <div className="performance-savings-rate">
+                  <div>
+                    <span>
+                      SAVINGS RATE
+                    </span>
 
-                  const net = numberValue(row.net);
+                    <strong>
+                      {Number(
+                        summary.savings_rate ||
+                          0
+                      ).toFixed(1)}
+                      %
+                    </strong>
+                  </div>
 
-                  return (
-                    <div
-                      className="table-row"
-                      key={`${row.month_name}-${index}`}
+                  <div className="performance-ring">
+
+                    <svg
+                      viewBox="0 0 42 42"
                     >
-                      <span className="month-name">
-                        {row.month_name}
-                      </span>
-                      <span>{money(row.income)}</span>
-                      <span>{money(row.expenses)}</span>
-                      <span>{money(loans)}</span>
-                      <span>
-                        {money(row.borrow_repayment)}
-                      </span>
-                      <span
-                        className={
-                          net >= 0
-                            ? "positive-text"
-                            : "negative-text"
+                      <circle
+                        cx="21"
+                        cy="21"
+                        r="16"
+                        fill="none"
+                        stroke="rgba(255,255,255,.18)"
+                        strokeWidth="4"
+                      />
+
+                      <circle
+                        cx="21"
+                        cy="21"
+                        r="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray={`${Math.min(
+                          Math.abs(
+                            Number(
+                              summary.savings_rate ||
+                                0
+                            )
+                          ),
+                          100
+                        )} 100`}
+                        transform="rotate(-90 21 21)"
+                      />
+                    </svg>
+
+                    <strong>
+                      {Math.abs(
+                        Number(
+                          summary.savings_rate ||
+                            0
+                        )
+                      ).toFixed(0)}
+                      %
+                    </strong>
+                  </div>
+                </div>
+              </section>
+
+              {/* INCOME + EXPENSE */}
+              <section className="performance-pie-grid">
+                <PieChartCard
+                  title="Income Distribution"
+                  subtitle="Work vs Business"
+                  parts={[
+                    { label: "Work", value: Number(income.work_payment) || 0, color: "#10b981" },
+                    { label: "Business", value: Number(income.business_payment) || 0, color: "#6366f1" },
+                  ]}
+                />
+
+                <PieChartCard
+                  title="Expense Distribution"
+                  subtitle="Category distribution"
+                  parts={categories.slice(0, 6).map((category, index) => ({
+                    label: category.category_name,
+                    value: Number(category.total_amount) || 0,
+                    color:
+                      category.color ||
+                      ["#ef4444", "#f97316", "#eab308", "#06b6d4", "#8b5cf6", "#ec4899"][index % 6],
+                  }))}
+                />
+
+                <PieChartCard
+                  title="Payment Status"
+                  subtitle="Received / Pending / Overdue / Lost"
+                  parts={[
+                    { label: "Received", value: Number(paymentTotals.received) || 0, color: "#10b981" },
+                    { label: "Pending", value: Number(paymentTotals.pending) || 0, color: "#f59e0b" },
+                    { label: "Overdue", value: Number(paymentTotals.overdue) || 0, color: "#ef4444" },
+                    { label: "Lost", value: Number(paymentTotals.lost) || 0, color: "#475569" },
+                  ]}
+                />
+              </section>
+
+              <section className="performance-two-column">
+
+                <Panel
+                  title="Income Breakdown"
+                  subtitle="Work and Business"
+                  icon={
+                    <ArrowUpRight />
+                  }
+                  tone="green"
+                >
+                  <ProgressRow
+                    name="Work Payment"
+                    icon="💼"
+                    total={
+                      income.work_payment
+                    }
+                    percentage={
+                      income.work_percentage
+                    }
+                    color="#10b981"
+                  />
+
+                  <ProgressRow
+                    name="Business Payment"
+                    icon="🏢"
+                    total={
+                      income.business_payment
+                    }
+                    percentage={
+                      income.business_percentage
+                    }
+                    color="#6366f1"
+                  />
+
+                  <Divider />
+
+                  <InfoRow
+                    label="Total Income"
+                    value={currency(
+                      summary.total_income
+                    )}
+                    tone="green"
+                  />
+
+                  <InfoRow
+                    label="Total Work Count"
+                    value={number(
+                      income.total_work_count
+                    )}
+                  />
+
+                  <InfoRow
+                    label="Total Business Count"
+                    value={number(
+                      income.total_business_count
+                    )}
+                  />
+                </Panel>
+
+                <Panel
+                  title="Expense Breakdown"
+                  subtitle="Category-wise spending"
+                  icon={
+                    <ArrowDownRight />
+                  }
+                  tone="red"
+                >
+                  <div className="performance-scroll">
+
+                    {categories.length > 0 ? (
+                      categories.map(
+                        (category) => (
+                          <ProgressRow
+                            key={
+                              category.category_id
+                            }
+                            name={
+                              category.category_name
+                            }
+                            icon={
+                              category.icon ||
+                              "📊"
+                            }
+                            total={
+                              category.total_amount
+                            }
+                            percentage={
+                              category.percentage
+                            }
+                            color={
+                              category.color ||
+                              "#ef4444"
+                            }
+                          />
+                        )
+                      )
+                    ) : (
+                      <EmptyState
+                        text="No expenses this month"
+                      />
+                    )}
+                  </div>
+
+                  <Divider />
+
+                  <InfoRow
+                    label="Total Expenses"
+                    value={currency(
+                      summary.total_expenses
+                    )}
+                    tone="red"
+                  />
+                </Panel>
+              </section>
+
+              {/* WEEKLY */}
+              <Panel
+                title="Weekly Expenses"
+                subtitle="1–7, 8–14, 15–21, 22–end"
+                icon={<BarChart3 />}
+                tone="blue"
+                className="performance-section"
+              >
+                <div className="performance-week-grid">
+
+                  {weekly.map(
+                    (week) => (
+                      <div
+                        className="performance-week"
+                        key={
+                          week.week_number
                         }
                       >
-                        {money(net)}
-                      </span>
-                      <span>
-                        {renderStatus(row.status)}
-                      </span>
+                        <div>
+                          <span>
+                            {week.week_label}
+                          </span>
+
+                          <BarChart3
+                            size={14}
+                          />
+                        </div>
+
+                        <strong>
+                          {currency(
+                            week.total_amount
+                          )}
+                        </strong>
+
+                        <small>
+                          {number(
+                            week.expense_count
+                          )}{" "}
+                          items
+                        </small>
+
+                        <div className="performance-week-track">
+                          <div
+                            style={{
+                              width: `${Math.min(
+                                Number(
+                                  week.percentage ||
+                                    0
+                                ),
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <em>
+                          {Number(
+                            week.percentage ||
+                              0
+                          ).toFixed(1)}
+                          %
+                        </em>
+                      </div>
+                    )
+                  )}
+                </div>
+              </Panel>
+
+              {/* LOANS + BORROWS */}
+              <section className="performance-two-column performance-section">
+
+                <Panel
+                  title="Active Loans"
+                  subtitle={`${number(
+                    activeLoans.length
+                  )} active records`}
+                  icon={<Building2 />}
+                  tone="purple"
+                >
+                  {activeLoans.length > 0 ? (
+                    <div className="performance-stack">
+                      {activeLoans.map(
+                        (loan) => (
+                          <DebtRow
+                            key={
+                              loan.id
+                            }
+                            type="loan"
+                            title={
+                              loan.bank_name ||
+                              "Loan"
+                            }
+                            amount={
+                              loan.total_loan_amount
+                            }
+                            secondary={`Paid ${currency(
+                              loan.total_paid
+                            )}`}
+                            meta={`${number(
+                              loan.remaining_emis
+                            )} EMIs left • ${currency(
+                              loan.emi_amount
+                            )}/mo`}
+                            timing={
+                              Number(
+                                loan.days_until_next_emi
+                              ) > 0
+                                ? `${number(
+                                    loan.days_until_next_emi
+                                  )} days`
+                                : "Due today"
+                            }
+                          />
+                        )
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  ) : (
+                    <EmptyState
+                      text="No active loans"
+                    />
+                  )}
+
+                  {Number(
+                    debt.total_remaining_loan_amount
+                  ) > 0 && (
+                    <>
+                      <Divider />
+
+                      <InfoRow
+                        label="Total Remaining Loan"
+                        value={currency(
+                          debt.total_remaining_loan_amount
+                        )}
+                        tone="purple"
+                      />
+                    </>
+                  )}
+                </Panel>
+
+                <Panel
+                  title="Active Borrows"
+                  subtitle={`${number(
+                    activeBorrows.length
+                  )} active records`}
+                  icon={<Users />}
+                  tone="orange"
+                >
+                  {activeBorrows.length >
+                  0 ? (
+                    <div className="performance-stack">
+                      {activeBorrows.map(
+                        (borrow) => (
+                          <DebtRow
+                            key={
+                              borrow.id
+                            }
+                            type="borrow"
+                            title={
+                              borrow.person_name ||
+                              "Borrow"
+                            }
+                            amount={
+                              borrow.remaining_amount
+                            }
+                            secondary={`of ${currency(
+                              borrow.borrow_amount
+                            )}`}
+                            meta={`Due ${formatDate(
+                              borrow.return_date
+                            )}`}
+                            timing={
+                              Number(
+                                borrow.days_remaining
+                              ) > 0
+                                ? `${number(
+                                    borrow.days_remaining
+                                  )} days left`
+                                : "Overdue"
+                            }
+                          />
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      text="No active borrows"
+                    />
+                  )}
+
+                  {Number(
+                    debt.total_remaining_borrow_amount
+                  ) > 0 && (
+                    <>
+                      <Divider />
+
+                      <InfoRow
+                        label="Total Remaining Borrow"
+                        value={currency(
+                          debt.total_remaining_borrow_amount
+                        )}
+                        tone="orange"
+                      />
+                    </>
+                  )}
+                </Panel>
+              </section>
+
+              {/* PAYMENT SUMMARY */}
+              <Panel
+                title="Payment Summary"
+                subtitle="Received, pending, overdue and lost"
+                icon={<Wallet />}
+                tone="cyan"
+                className="performance-section"
+              >
+                <div className="performance-payment-grid">
+
+                  <PaymentCard
+                    title="Received"
+                    value={
+                      paymentTotals.received
+                    }
+                    count={
+                      paymentBreakdown
+                        .received
+                        ?.count
+                    }
+                    tone="received"
+                  />
+
+                  <PaymentCard
+                    title="Pending"
+                    value={
+                      paymentTotals.pending
+                    }
+                    count={
+                      paymentBreakdown
+                        .pending
+                        ?.count
+                    }
+                    tone="pending"
+                  />
+
+                  <PaymentCard
+                    title="Overdue"
+                    value={
+                      paymentTotals.overdue
+                    }
+                    count={
+                      paymentBreakdown
+                        .overdue
+                        ?.count
+                    }
+                    tone="overdue"
+                  />
+
+                  <PaymentCard
+                    title="Lost"
+                    value={
+                      paymentTotals.lost
+                    }
+                    count={
+                      paymentBreakdown
+                        .lost
+                        ?.count
+                    }
+                    tone="lost"
+                  />
+                </div>
+              </Panel>
+
+              {/* WIDGET DATA */}
+              <section className="performance-two-column performance-section">
+
+                <Panel
+                  title="Top Expenses"
+                  subtitle="Top 5 categories"
+                  icon={<TrendingDown />}
+                  tone="red"
+                >
+                  {safeArray(
+                    widgets.top_expenses
+                  ).length > 0 ? (
+                    <div className="performance-stack">
+                      {widgets.top_expenses.map(
+                        (item, index) => (
+                          <div
+                            className="performance-mini-row"
+                            key={`${item.category_name}-${index}`}
+                          >
+                            <span>
+                              {item.icon ||
+                                "📊"}
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  item.category_name
+                                }
+                              </strong>
+                            </div>
+
+                            <b>
+                              {currency(
+                                item.total_amount
+                              )}
+                            </b>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      text="No top expense data"
+                    />
+                  )}
+                </Panel>
+
+                <Panel
+                  title="Upcoming EMIs"
+                  subtitle="Next 5 installments"
+                  icon={<Clock3 />}
+                  tone="purple"
+                >
+                  {safeArray(
+                    widgets.upcoming_emis
+                  ).length > 0 ? (
+                    <div className="performance-stack">
+                      {widgets.upcoming_emis.map(
+                        (emi) => (
+                          <div
+                            className="performance-mini-row"
+                            key={emi.id}
+                          >
+                            <span className="performance-mini-icon purple">
+                              <CreditCard
+                                size={13}
+                              />
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  emi.bank_name
+                                }
+                              </strong>
+
+                              <small>
+                                {formatDate(
+                                  emi.next_emi_date
+                                )}
+                              </small>
+                            </div>
+
+                            <b>
+                              {currency(
+                                emi.emi_amount
+                              )}
+                            </b>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      text="No upcoming EMIs"
+                    />
+                  )}
+                </Panel>
+
+                <Panel
+                  title="Overdue Payments"
+                  subtitle="Payments requiring attention"
+                  icon={<AlertCircle />}
+                  tone="red"
+                >
+                  {safeArray(
+                    widgets.overdue_payments
+                  ).length > 0 ? (
+                    <div className="performance-stack">
+                      {widgets.overdue_payments.map(
+                        (payment) => (
+                          <div
+                            className="performance-mini-row"
+                            key={payment.id}
+                          >
+                            <span className="performance-mini-icon red">
+                              <AlertCircle
+                                size={13}
+                              />
+                            </span>
+
+                            <div>
+                              <strong>
+                                {
+                                  payment.person_name
+                                }
+                              </strong>
+
+                              <small>
+                                {number(
+                                  payment.days_overdue
+                                )}{" "}
+                                days overdue
+                              </small>
+                            </div>
+
+                            <b>
+                              {currency(
+                                payment.amount
+                              )}
+                            </b>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      text="No overdue payments"
+                    />
+                  )}
+                </Panel>
+              </section>
+
+              {/* RECENT TRANSACTIONS */}
+              <Panel
+                title="Recent Transactions"
+                subtitle="Latest 10 transactions"
+                icon={<Clock3 />}
+                tone="blue"
+                className="performance-section"
+              >
+                {recent.length > 0 ? (
+                  <div className="performance-transactions">
+                    {recent.map(
+                      (transaction) => (
+                        <Transaction
+                          key={`${transaction.type}-${transaction.id}`}
+                          transaction={
+                            transaction
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <EmptyState
+                    text="No transactions this month"
+                  />
+                )}
+              </Panel>
+            </>
+          ) : null}
+        </div>
+      </main>
+
+      {toast && (
+        <div className="performance-toast-wrap">
+          <div
+            className={`performance-toast ${toast.type}`}
+          >
+            {toast.type ===
+            "success" ? (
+              <CheckCircle2
+                size={18}
+              />
+            ) : (
+              <AlertCircle
+                size={18}
+              />
+            )}
+
+            <div>
+              <strong>
+                {toast.type ===
+                "success"
+                  ? "Success"
+                  : "Error"}
+              </strong>
+
+              <span>
+                {toast.message}
+              </span>
             </div>
-          </section>
-          )}
 
-          <section className="bottom-summary">
-            <div className="bottom-icon">
-              <IndianRupee size={20} />
-            </div>
-
-            <div className="bottom-main">
-              <span>Selected Month</span>
-              <strong>{monthLabel}</strong>
-            </div>
-
-            <BottomMetric
-              label="Total Income"
-              value={money(totals.income)}
-            />
-
-            <BottomMetric
-              label="Total Outflow"
-              value={money(totals.outflow)}
-            />
-
-            <BottomMetric
-              label="Net Result"
-              value={money(totals.net)}
-              positive={totals.net >= 0}
-            />
-          </section>
-        </>
+            <button
+              onClick={() =>
+                setToast(null)
+              }
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
       )}
-    </main>
+    </>
   );
-};
+}
 
-const SummaryCard = ({ icon, label, value, tone }) => (
-  <article className={`summary-card ${tone}`}>
-    <div className="summary-icon">{icon}</div>
-    <span>{label}</span>
-    <strong>{value}</strong>
-  </article>
-);
+function SummaryCard({
+  icon,
+  title,
+  value,
+  subtitle,
+  tone,
+  rate,
+}) {
+  return (
+    <div
+      className={`performance-summary-card ${tone}`}
+    >
+      <div className="performance-summary-top">
+        <div>
+          <span>{title}</span>
+          <strong>{value}</strong>
+          <small>{subtitle}</small>
+        </div>
 
-const PanelHeader = ({ title, subtitle }) => (
-  <div className="panel-header">
-    <div>
-      <h2>{title}</h2>
-      <p>{subtitle}</p>
+        <div className="performance-summary-icon">
+          {icon}
+        </div>
+      </div>
+
+      {rate !== undefined && (
+        <div className="performance-summary-rate">
+          <TrendingUp size={11} />
+          {Number(rate || 0).toFixed(1)}%
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+}
 
-const ResultRow = ({ label, value }) => (
-  <div className="result-row">
-    <span>{label}</span>
-    <strong>{value}</strong>
-  </div>
-);
+function PieChartCard({ title, subtitle, parts }) {
+  const total = parts.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  let cursor = 0;
 
-const MiniMetric = ({ label, value }) => (
-  <div className="mini-metric">
-    <span>{label}</span>
-    <strong>{value}</strong>
-  </div>
-);
+  const segments = parts
+    .filter((item) => (Number(item.value) || 0) > 0)
+    .map((item) => {
+      const start = cursor;
+      const percent = total > 0 ? (Number(item.value) / total) * 100 : 0;
+      cursor += percent;
+      return `${item.color} ${start}% ${cursor}%`;
+    });
 
-const YearMetric = ({ label, value, tone }) => (
-  <div className={`year-metric ${tone}`}>
-    <span>{label}</span>
-    <strong>{value}</strong>
-  </div>
-);
+  const background =
+    segments.length > 0
+      ? `conic-gradient(${segments.join(", ")})`
+      : "#e2e8f0";
 
-const BottomMetric = ({ label, value, positive }) => (
-  <div className="bottom-metric">
-    <span>{label}</span>
-    <strong className={positive === false ? "negative-text" : ""}>
-      {value}
-    </strong>
-  </div>
-);
+  return (
+    <section className="performance-pie-card">
+      <div className="performance-pie-header">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+        <div className="performance-pie-icon">
+          <PieChart size={16} />
+        </div>
+      </div>
+
+      <div className="performance-pie-content">
+        <div className="performance-pie" style={{ background }}>
+          <div className="performance-pie-center">
+            <strong>{currency(total)}</strong>
+            <span>Total</span>
+          </div>
+        </div>
+
+        <div className="performance-pie-legend">
+          {parts.length === 0 ? (
+            <EmptyState text="No data available" />
+          ) : (
+            parts.map((item) => {
+              const value = Number(item.value) || 0;
+              const percent = total > 0 ? (value / total) * 100 : 0;
+
+              return (
+                <div className="performance-legend-row" key={item.label}>
+                  <span
+                    className="performance-legend-dot"
+                    style={{ background: item.color }}
+                  />
+                  <div>
+                    <strong>{item.label}</strong>
+                    <small>{percent.toFixed(1)}%</small>
+                  </div>
+                  <b>{currency(value)}</b>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Panel({
+  title,
+  subtitle,
+  icon,
+  tone,
+  children,
+  className = "",
+}) {
+  return (
+    <section
+      className={`performance-panel ${className}`}
+    >
+      <div className="performance-panel-heading">
+        <div
+          className={`performance-panel-icon ${tone}`}
+        >
+          {icon}
+        </div>
+
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+
+      <div className="performance-panel-content">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function ProgressRow({
+  name,
+  icon,
+  total,
+  percentage,
+  color,
+}) {
+  const width = Math.min(
+    Math.max(
+      Number(percentage) || 0,
+      0
+    ),
+    100
+  );
+
+  return (
+    <div className="performance-progress">
+      <div className="performance-progress-icon">
+        {icon || "📊"}
+      </div>
+
+      <div className="performance-progress-main">
+        <div className="performance-progress-top">
+          <span>{name}</span>
+          <strong>
+            {currency(total)}
+          </strong>
+        </div>
+
+        <div className="performance-progress-track">
+          <div
+            style={{
+              width: `${width}%`,
+              background: color,
+            }}
+          />
+        </div>
+
+        <small>
+          {width.toFixed(1)}%
+        </small>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  tone = "",
+}) {
+  return (
+    <div className="performance-info-row">
+      <span>{label}</span>
+      <strong
+        className={
+          tone
+            ? `performance-${tone}`
+            : ""
+        }
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="performance-divider" />
+  );
+}
+
+function DebtRow({
+  type,
+  title,
+  amount,
+  secondary,
+  meta,
+  timing,
+}) {
+  return (
+    <div
+      className={`performance-debt ${type}`}
+    >
+      <div className="performance-debt-icon">
+        {type === "loan" ? (
+          <CreditCard size={16} />
+        ) : (
+          <Users size={16} />
+        )}
+      </div>
+
+      <div className="performance-debt-main">
+        <strong>{title}</strong>
+
+        <span>
+          {meta}
+        </span>
+
+        <small
+          className={
+            timing === "Due today" ||
+            timing === "Overdue"
+              ? "danger"
+              : "success"
+          }
+        >
+          {timing}
+        </small>
+      </div>
+
+      <div className="performance-debt-amount">
+        <strong>
+          {currency(amount)}
+        </strong>
+
+        <small>
+          {secondary}
+        </small>
+      </div>
+    </div>
+  );
+}
+
+function PaymentCard({
+  title,
+  value,
+  count,
+  tone,
+}) {
+  return (
+    <div
+      className={`performance-payment-card ${tone}`}
+    >
+      <span>{title}</span>
+
+      <strong>
+        {currency(value)}
+      </strong>
+
+      <small>
+        {number(count)}{" "}
+        {Number(count) === 1
+          ? "payment"
+          : "payments"}
+      </small>
+    </div>
+  );
+}
+
+function Transaction({
+  transaction,
+}) {
+  const expense =
+    transaction.type ===
+    "expense";
+
+  return (
+    <div className="performance-transaction">
+      <div
+        className={`performance-transaction-icon ${
+          expense ? "expense" : "income"
+        }`}
+      >
+        {expense ? (
+          <ArrowDownRight size={15} />
+        ) : (
+          <ArrowUpRight size={15} />
+        )}
+      </div>
+
+      <div className="performance-transaction-main">
+        <strong>
+          {transaction.name ||
+            transaction.description ||
+            "Unknown"}
+        </strong>
+
+        <span>
+          {transaction.display_date ||
+            formatDate(
+              transaction.transaction_date
+            )}
+
+          <i>•</i>
+
+          {transaction.type}
+        </span>
+      </div>
+
+      <strong
+        className={
+          expense
+            ? "performance-expense"
+            : "performance-income"
+        }
+      >
+        {expense ? "-" : "+"}
+        {currency(
+          transaction.amount
+        )}
+      </strong>
+    </div>
+  );
+}
+
+function EmptyState({ text }) {
+  return (
+    <div className="performance-empty">
+      <ActivityIcon />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <div className="performance-empty-icon">
+      <Zap size={16} />
+    </div>
+  );
+}
 
 const styles = `
-* {
-  box-sizing: border-box;
-}
-
-.performance-page {
-  width: 100%;
-  min-height: 100%;
-  padding: 20px;
-  color: #f8fafc;
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fb}
+.performance-page{
+  min-height:100vh;
+  padding:14px;
+  color:#172033;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   background:
-    radial-gradient(circle at 15% 0%, rgba(124,58,237,.13), transparent 30%),
-    radial-gradient(circle at 90% 10%, rgba(6,182,212,.09), transparent 28%),
-    #070b16;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.hero {
-  max-width: 1500px;
-  margin: 0 auto 18px;
-  padding: 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 20px;
-  background: rgba(15,23,42,.82);
-  box-shadow: 0 18px 55px rgba(0,0,0,.2);
-  backdrop-filter: blur(18px);
-}
-
-.hero-copy {
-  min-width: 0;
-}
-
-.eyebrow,
-.section-kicker {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #a78bfa;
-  font-size: .62rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 7px;
-}
-
-.title-icon {
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 46px;
-  color: #c4b5fd;
-  border: 1px solid rgba(139,92,246,.25);
-  border-radius: 14px;
-  background: linear-gradient(145deg, rgba(139,92,246,.22), rgba(6,182,212,.09));
-}
-
-h1,
-h2,
-h3,
-p {
-  margin: 0;
-}
-
-.title-row h1 {
-  font-size: clamp(1.25rem, 2vw, 1.65rem);
-  font-weight: 850;
-  letter-spacing: -.03em;
-}
-
-.title-row p {
-  margin-top: 4px;
-  color: rgba(226,232,240,.58);
-  font-size: .76rem;
-  line-height: 1.5;
-}
-
-.title-row p strong {
-  color: #ddd6fe;
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.month-control,
-.refresh-btn {
-  height: 42px;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 12px;
-  color: #f8fafc;
-  background: rgba(255,255,255,.055);
-}
-
-.month-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 11px;
-}
-
-.month-control input {
-  width: 125px;
-  color: #fff;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  font: inherit;
-  font-size: .75rem;
-  font-weight: 700;
-}
-
-.month-control input::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: .75;
-}
-
-.refresh-btn {
-  padding: 0 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  cursor: pointer;
-  font-size: .72rem;
-  font-weight: 750;
-  transition: .2s ease;
-}
-
-.refresh-btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(167,139,250,.45);
-  background: rgba(139,92,246,.12);
-}
-
-.refresh-btn:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
-
-.error-box {
-  max-width: 1500px;
-  margin: 0 auto 14px;
-  padding: 11px 13px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: #fecaca;
-  border: 1px solid rgba(239,68,68,.25);
-  border-radius: 12px;
-  background: rgba(239,68,68,.08);
-  font-size: .72rem;
-}
-
-.error-box > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.error-box button {
-  border: 0;
-  color: inherit;
-  background: transparent;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.loading {
-  min-height: 360px;
-  max-width: 1500px;
-  margin: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 8px;
-  color: rgba(226,232,240,.5);
-}
-
-.loading strong {
-  color: #e2e8f0;
-  font-size: .82rem;
-}
-
-.loading span {
-  font-size: .67rem;
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-.summary-grid,
-.main-grid,
-.section-block,
-.bottom-summary {
-  max-width: 1500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.summary-card {
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 16px;
-  background: rgba(15,23,42,.76);
-  box-shadow: 0 12px 32px rgba(0,0,0,.13);
-  transition: .22s ease;
-}
-
-.summary-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(167,139,250,.3);
-  box-shadow: 0 16px 36px rgba(0,0,0,.2);
-}
-
-.summary-icon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-}
-
-.summary-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.summary-card > span {
-  display: block;
-  margin-top: 10px;
-  color: rgba(226,232,240,.48);
-  font-size: .63rem;
-  font-weight: 650;
-}
-
-.summary-card > strong {
-  display: block;
-  margin-top: 4px;
-  font-size: .94rem;
-  overflow-wrap: anywhere;
-}
-
-.summary-card.income .summary-icon {
-  color: #67e8f9;
-  background: rgba(6,182,212,.11);
-}
-
-.summary-card.expense .summary-icon {
-  color: #fca5a5;
-  background: rgba(239,68,68,.11);
-}
-
-.summary-card.loan .summary-icon {
-  color: #c4b5fd;
-  background: rgba(139,92,246,.13);
-}
-
-.summary-card.borrow .summary-icon {
-  color: #fbbf24;
-  background: rgba(245,158,11,.11);
-}
-
-.summary-card.received .summary-icon {
-  color: #6ee7b7;
-  background: rgba(16,185,129,.11);
-}
-
-.summary-card.pending .summary-icon {
-  color: #fcd34d;
-  background: rgba(245,158,11,.11);
-}
-
-.main-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.panel {
-  min-width: 0;
-  padding: 17px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 18px;
-  background: rgba(15,23,42,.76);
-  box-shadow: 0 16px 40px rgba(0,0,0,.14);
-}
-
-.panel-header h2,
-.section-heading h2 {
-  font-size: .92rem;
-  font-weight: 850;
-  letter-spacing: -.01em;
-}
-
-.panel-header p,
-.section-heading p {
-  margin-top: 4px;
-  color: rgba(226,232,240,.47);
-  font-size: .68rem;
-  line-height: 1.5;
-}
-
-.pie-layout {
-  min-height: 275px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 42px;
-}
-
-.pie {
-  width: 205px;
-  height: 205px;
-  flex: 0 0 205px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 8px rgba(255,255,255,.025),
-    0 15px 45px rgba(0,0,0,.2);
-}
-
-.pie-hole {
-  width: 118px;
-  height: 118px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  border-radius: 50%;
-  text-align: center;
-  background: #0b1120;
-  border: 1px solid rgba(255,255,255,.06);
-}
-
-.pie-hole strong {
-  max-width: 100px;
-  font-size: .85rem;
-  overflow-wrap: anywhere;
-}
-
-.pie-hole span {
-  margin-top: 4px;
-  color: rgba(226,232,240,.4);
-  font-size: .58rem;
-}
-
-.legend {
-  width: min(100%, 350px);
-  display: grid;
-  gap: 8px;
-}
-
-.legend-item {
-  display: grid;
-  grid-template-columns: 9px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,.055);
-  border-radius: 10px;
-  background: rgba(255,255,255,.025);
-}
-
-.dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.legend-name {
-  min-width: 0;
-}
-
-.legend-name strong {
-  display: block;
-  font-size: .68rem;
-}
-
-.legend-name span {
-  display: block;
-  margin-top: 2px;
-  color: rgba(226,232,240,.38);
-  font-size: .57rem;
-}
-
-.legend-item > b {
-  font-size: .68rem;
-  white-space: nowrap;
-}
-
-.result-main {
-  margin-top: 18px;
-  padding: 14px;
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 14px;
-  background: linear-gradient(
-    145deg,
-    rgba(139,92,246,.09),
-    rgba(6,182,212,.04)
-  );
-}
-
-.result-icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-}
-
-.result-icon.positive {
-  color: #6ee7b7;
-  background: rgba(16,185,129,.12);
-}
-
-.result-icon.negative {
-  color: #fca5a5;
-  background: rgba(239,68,68,.12);
-}
-
-.result-main > span {
-  display: block;
-  margin-top: 13px;
-  color: rgba(226,232,240,.45);
-  font-size: .65rem;
-}
-
-.result-main > strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 1.45rem;
-}
-
-.positive-text {
-  color: #6ee7b7 !important;
-}
-
-.negative-text {
-  color: #fca5a5 !important;
-}
-
-.status {
-  width: fit-content;
-  margin-top: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 8px;
-  border-radius: 8px;
-  font-size: .58rem;
-  font-weight: 800;
-}
-
-.status.profit {
-  color: #6ee7b7;
-  background: rgba(16,185,129,.1);
-}
-
-.status.loss {
-  color: #fca5a5;
-  background: rgba(239,68,68,.1);
-}
-
-.status.neutral {
-  color: #cbd5e1;
-  background: rgba(148,163,184,.09);
-}
-
-.result-list {
-  margin-top: 13px;
-}
-
-.result-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,.055);
-}
-
-.result-row:last-child {
-  border-bottom: 0;
-}
-
-.result-row span {
-  color: rgba(226,232,240,.43);
-  font-size: .63rem;
-}
-
-.result-row strong {
-  font-size: .65rem;
-}
-
-.section-block {
-  margin-bottom: 16px;
-}
-
-.section-heading {
-  margin-bottom: 10px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.section-kicker {
-  margin-bottom: 4px;
-}
-
-.section-badge {
-  padding: 6px 9px;
-  color: #c4b5fd;
-  border: 1px solid rgba(139,92,246,.2);
-  border-radius: 8px;
-  background: rgba(139,92,246,.08);
-  font-size: .6rem;
-  font-weight: 800;
-}
-
-.week-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.week-card {
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 16px;
-  background: rgba(15,23,42,.76);
-  transition: .2s ease;
-}
-
-.week-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(139,92,246,.28);
-}
-
-.week-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid rgba(255,255,255,.055);
-}
-
-.week-number {
-  color: #a78bfa;
-  font-size: .57rem;
-  font-weight: 850;
-  letter-spacing: .1em;
-}
-
-.week-top h3 {
-  margin-top: 4px;
-  font-size: .72rem;
-}
-
-.net-pill {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  font-size: .6rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.net-pill.up {
-  color: #6ee7b7;
-  background: rgba(16,185,129,.09);
-}
-
-.net-pill.down {
-  color: #fca5a5;
-  background: rgba(239,68,68,.09);
-}
-
-.week-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-  padding: 12px 0;
-}
-
-.mini-metric {
-  min-width: 0;
-  padding: 9px;
-  border-radius: 10px;
-  background: rgba(255,255,255,.025);
-}
-
-.mini-metric span {
-  display: block;
-  color: rgba(226,232,240,.38);
-  font-size: .55rem;
-}
-
-.mini-metric strong {
-  display: block;
-  margin-top: 4px;
-  font-size: .64rem;
-  overflow-wrap: anywhere;
-}
-
-.week-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 7px;
-  border-radius: 7px;
-  font-size: .55rem;
-  font-weight: 700;
-}
-
-.pending-tag {
-  color: #fcd34d;
-  background: rgba(245,158,11,.08);
-}
-
-.received-tag {
-  color: #6ee7b7;
-  background: rgba(16,185,129,.08);
-}
-
-.loan-tag {
-  color: #c4b5fd;
-  background: rgba(139,92,246,.08);
-}
-
-.borrow-tag {
-  color: #67e8f9;
-  background: rgba(6,182,212,.08);
-}
-
-.year-summary {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.year-metric {
-  padding: 12px;
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 12px;
-  background: rgba(15,23,42,.7);
-}
-
-.year-metric span {
-  color: rgba(226,232,240,.42);
-  font-size: .58rem;
-}
-
-.year-metric strong {
-  display: block;
-  margin-top: 4px;
-  font-size: .76rem;
-}
-
-.year-metric.income strong {
-  color: #67e8f9;
-}
-
-.year-metric.expense strong {
-  color: #fca5a5;
-}
-
-.year-metric.loan strong {
-  color: #c4b5fd;
-}
-
-.year-metric.borrow strong {
-  color: #fbbf24;
-}
-
-.year-metric.received strong {
-  color: #6ee7b7;
-}
-
-.monthly-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 14px;
-  background: rgba(15,23,42,.7);
-}
-
-.monthly-table {
-  min-width: 900px;
-}
-
-.table-row {
-  min-height: 48px;
-  display: grid;
-  grid-template-columns: 1.35fr repeat(6, minmax(100px, 1fr));
-  align-items: center;
-  gap: 10px;
-  padding: 0 13px;
-  border-bottom: 1px solid rgba(255,255,255,.055);
-}
-
-.table-row:last-child {
-  border-bottom: 0;
-}
-
-.table-row > span {
-  color: rgba(226,232,240,.68);
-  font-size: .63rem;
-}
-
-.table-row > span:not(:first-child) {
-  text-align: right;
-}
-
-.table-row.table-head {
-  min-height: 40px;
-  background: rgba(255,255,255,.025);
-}
-
-.table-head > span {
-  color: rgba(226,232,240,.4);
-  font-size: .56rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-}
-
-.table-row .month-name {
-  color: #e2e8f0;
-  font-weight: 750;
-}
-
-.table-row .status {
-  margin: 0 0 0 auto;
-}
-
-.bottom-summary {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid rgba(139,92,246,.18);
-  border-radius: 16px;
+    radial-gradient(circle at 3% 0%,rgba(79,70,229,.10),transparent 28%),
+    radial-gradient(circle at 97% 6%,rgba(14,165,233,.08),transparent 24%),
+    linear-gradient(135deg,#f8fafc,#eef2ff 52%,#f8fafc);
+}
+.performance-shell{width:min(1240px,100%);margin:auto}
+
+/* HEADER */
+.performance-header{
+  position:sticky;top:8px;z-index:30;
+  padding:16px;border-radius:21px;margin-bottom:10px;
+  color:#fff;overflow:hidden;
   background:
-    linear-gradient(100deg, rgba(139,92,246,.11), rgba(6,182,212,.045)),
-    rgba(15,23,42,.8);
+    radial-gradient(circle at 100% 0%,rgba(255,255,255,.14),transparent 30%),
+    linear-gradient(135deg,#1e1b4b,#4338ca 52%,#7c3aed);
+  box-shadow:0 20px 50px rgba(49,46,129,.22);
+}
+.performance-header:after{
+  content:"";position:absolute;right:-120px;top:-180px;width:310px;height:310px;
+  border-radius:999px;background:rgba(255,255,255,.07)
+}
+.performance-header-top{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;gap:12px
+}
+.performance-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.performance-brand-icon{
+  width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:13px;
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18)
+}
+.performance-brand h1{margin:0;font-size:24px;font-weight:950;letter-spacing:-.045em}
+.performance-brand p{margin:3px 0 0;color:#d9ddf7;font-size:9px}
+.performance-actions{display:flex;gap:6px}
+.performance-head-btn{
+  height:37px;padding:0 11px;border-radius:10px;
+  display:flex;align-items:center;gap:5px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.09);color:#fff;
+  font-size:9px;font-weight:900;cursor:pointer
+}
+.performance-head-btn:hover{background:rgba(255,255,255,.16);transform:translateY(-1px)}
+.performance-head-btn:disabled{opacity:.6}
+.performance-month-row{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.13)
+}
+.performance-period-label{display:block;color:#aeb8db;font-size:7px;letter-spacing:.12em;font-weight:900}
+.performance-period-value{display:block;margin-top:3px;font-size:13px;font-weight:900}
+.performance-month-control{display:flex;align-items:center;gap:5px}
+.performance-month-control>button{
+  width:35px;height:35px;border:0;border-radius:9px;
+  display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.10);cursor:pointer
+}
+.performance-month-control>button:hover{background:rgba(255,255,255,.18)}
+.performance-month-control>div{
+  min-width:160px;height:35px;padding:0 9px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  background:rgba(255,255,255,.10);font-size:9px;font-weight:900
 }
 
-.bottom-icon {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  display: grid;
-  place-items: center;
-  color: #c4b5fd;
-  border-radius: 11px;
-  background: rgba(139,92,246,.12);
+/* ERROR */
+.performance-error{
+  display:flex;align-items:flex-start;gap:8px;padding:11px 12px;margin-bottom:10px;
+  border:1px solid #fecdd3;border-radius:12px;background:#fff1f2;color:#9f1239
+}
+.performance-error>div{flex:1;min-width:0}.performance-error strong{display:block;font-size:10px}.performance-error span{display:block;margin-top:2px;font-size:9px;overflow-wrap:anywhere}
+.performance-error button{width:27px;height:27px;border:0;border-radius:7px;background:#ffe4e6;color:#be123c;display:grid;place-items:center;cursor:pointer}
+
+/* SUMMARY */
+.performance-summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:9px}
+.performance-summary-card{
+  position:relative;min-width:0;padding:13px;border-radius:15px;background:#fff;border:1px solid #e2e8f0;
+  box-shadow:0 8px 24px rgba(15,23,42,.055);overflow:hidden;transition:.2s
+}
+.performance-summary-card:hover{transform:translateY(-3px);box-shadow:0 15px 34px rgba(15,23,42,.09)}
+.performance-summary-card:after{content:"";position:absolute;width:85px;height:85px;right:-42px;top:-42px;border-radius:50%;opacity:.16;background:currentColor}
+.performance-summary-top{position:relative;z-index:1;display:flex;justify-content:space-between;gap:7px}
+.performance-summary-card>div>span{display:block;color:#64748b;font-size:7px;text-transform:uppercase;letter-spacing:.06em;font-weight:900}
+.performance-summary-card>div>strong{display:block;margin-top:5px;color:#111827;font-size:17px;font-weight:950;letter-spacing:-.035em;overflow-wrap:anywhere}
+.performance-summary-card>div>small{display:block;margin-top:3px;color:#94a3b8;font-size:7px;overflow-wrap:anywhere}
+.performance-summary-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center}
+.performance-summary-card.income{color:#10b981}.performance-summary-card.income .performance-summary-icon{background:#d1fae5;color:#047857}
+.performance-summary-card.expense{color:#ef4444}.performance-summary-card.expense .performance-summary-icon{background:#fee2e2;color:#dc2626}
+.performance-summary-card.borrow{color:#f97316}.performance-summary-card.borrow .performance-summary-icon{background:#ffedd5;color:#c2410c}
+.performance-summary-card.emi{color:#8b5cf6}.performance-summary-card.emi .performance-summary-icon{background:#ede9fe;color:#6d28d9}
+.performance-summary-card.profit{color:#10b981}.performance-summary-card.profit .performance-summary-icon{background:#d1fae5;color:#047857}
+.performance-summary-card.loss{color:#ef4444}.performance-summary-card.loss .performance-summary-icon{background:#fee2e2;color:#dc2626}
+.performance-summary-card.break{color:#f59e0b}.performance-summary-card.break .performance-summary-icon{background:#fef3c7;color:#b45309}
+.performance-summary-rate{position:relative;z-index:1;display:flex;align-items:center;gap:3px;margin-top:5px;color:#059669;font-size:8px;font-weight:900}
+
+/* PIE CHARTS */
+.performance-pie-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:9px}
+.performance-pie-card{padding:13px;border-radius:16px;background:#fff;border:1px solid #e2e8f0;box-shadow:0 8px 25px rgba(15,23,42,.055);transition:.2s}
+.performance-pie-card:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(15,23,42,.08)}
+.performance-pie-header{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:10px}
+.performance-pie-header h3{margin:0;font-size:12px;font-weight:950}
+.performance-pie-header p{margin:2px 0 0;color:#94a3b8;font-size:7px}
+.performance-pie-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:#eef2ff;color:#4f46e5}
+.performance-pie-content{display:grid;grid-template-columns:95px minmax(0,1fr);align-items:center;gap:10px}
+.performance-pie{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(15,23,42,.05)}
+.performance-pie-center{width:58px;height:58px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:0 5px 16px rgba(15,23,42,.08)}
+.performance-pie-center strong{color:#172033;font-size:8px;font-weight:950;max-width:52px;overflow-wrap:anywhere}
+.performance-pie-center span{color:#94a3b8;font-size:6px;margin-top:2px}
+.performance-pie-legend{min-width:0;display:grid;gap:5px}
+.performance-legend-row{display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:5px}
+.performance-legend-dot{width:7px;height:7px;border-radius:50%}
+.performance-legend-row div{min-width:0}
+.performance-legend-row strong{display:block;color:#334155;font-size:7px;font-weight:850;overflow-wrap:anywhere}
+.performance-legend-row small{color:#94a3b8;font-size:6px}
+.performance-legend-row b{color:#172033;font-size:7px;white-space:nowrap}
+
+/* SAVINGS */
+.performance-savings{
+  display:flex;align-items:center;justify-content:space-between;gap:15px;
+  padding:15px 16px;border-radius:16px;margin-bottom:9px;color:#fff;
+  box-shadow:0 13px 35px rgba(15,23,42,.14)
+}
+.performance-savings.profit{background:linear-gradient(135deg,#065f46,#059669)}
+.performance-savings.loss{background:linear-gradient(135deg,#991b1b,#dc2626)}
+.performance-savings.break_even{background:linear-gradient(135deg,#92400e,#d97706)}
+.performance-savings-main{display:flex;align-items:center;gap:10px;min-width:0}
+.performance-savings-icon{
+  width:40px;height:40px;flex:0 0 40px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.13)
+}
+.performance-savings-main>div>span,.performance-savings-rate span{display:block;color:rgba(255,255,255,.65);font-size:7px;letter-spacing:.11em;font-weight:900}
+.performance-savings-main h2{margin:3px 0 0;font-size:16px;font-weight:950;overflow-wrap:anywhere}
+.performance-savings-main p{margin:3px 0 0;color:rgba(255,255,255,.70);font-size:8px}
+.performance-savings-rate{display:flex;align-items:center;gap:9px}.performance-savings-rate strong{display:block;margin-top:3px;font-size:20px;font-weight:950}
+.performance-ring{position:relative;width:52px;height:52px;display:grid;place-items:center}.performance-ring svg{position:absolute;inset:0;width:100%;height:100%}.performance-ring strong{position:relative;font-size:9px}
+
+/* PANELS */
+.performance-two-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:9px}
+.performance-section{margin-bottom:9px}
+.performance-panel{padding:13px;border-radius:16px;background:rgba(255,255,255,.97);border:1px solid #e2e8f0;box-shadow:0 8px 25px rgba(15,23,42,.055)}
+.performance-panel-heading{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.performance-panel-icon{
+  width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:10px
+}
+.performance-panel-icon.green{background:#d1fae5;color:#047857}.performance-panel-icon.red{background:#fee2e2;color:#dc2626}
+.performance-panel-icon.blue{background:#dbeafe;color:#2563eb}.performance-panel-icon.purple{background:#ede9fe;color:#6d28d9}
+.performance-panel-icon.orange{background:#ffedd5;color:#c2410c}.performance-panel-icon.cyan{background:#cffafe;color:#0e7490}
+.performance-panel-heading h3{margin:0;font-size:12px;font-weight:950}.performance-panel-heading p{margin:2px 0 0;color:#94a3b8;font-size:7px;overflow-wrap:anywhere}
+.performance-progress{display:flex;gap:8px;padding:7px 0}.performance-progress-icon{width:28px;height:28px;flex:0 0 28px;display:grid;place-items:center;border-radius:8px;background:#f8fafc;font-size:13px}
+.performance-progress-main{flex:1;min-width:0}.performance-progress-top{display:flex;justify-content:space-between;gap:7px}.performance-progress-top span{color:#475569;font-size:8px;font-weight:800;overflow-wrap:anywhere}.performance-progress-top strong{color:#172033;font-size:9px;white-space:nowrap}.performance-progress-track{height:6px;margin-top:4px;border-radius:99px;background:#edf1f6;overflow:hidden}.performance-progress-track>div{height:100%;border-radius:inherit;transition:width .6s ease}.performance-progress-main small{display:block;margin-top:3px;color:#94a3b8;font-size:7px}
+.performance-scroll{max-height:230px;overflow:auto;padding-right:2px}.performance-divider{height:1px;background:#e8edf3;margin:5px 0}
+.performance-info-row{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:5px 0}.performance-info-row span{color:#64748b;font-size:8px;font-weight:700}.performance-info-row strong{color:#172033;font-size:9px;font-weight:900;overflow-wrap:anywhere}.performance-green{color:#059669!important}.performance-red{color:#dc2626!important}.performance-purple{color:#7c3aed!important}.performance-orange{color:#ea580c!important}
+
+/* WEEK */
+.performance-week-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.performance-week{padding:10px;border-radius:12px;background:linear-gradient(145deg,#f8fbff,#eef2ff);border:1px solid #dce4f3;transition:.2s}.performance-week:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(37,99,235,.08)}.performance-week>div:first-child{display:flex;justify-content:space-between;align-items:center;color:#2563eb;font-size:7px;font-weight:900}.performance-week>strong{display:block;margin-top:5px;color:#dc2626;font-size:14px;font-weight:950}.performance-week>small{display:block;margin-top:2px;color:#94a3b8;font-size:7px}.performance-week-track{height:5px;margin-top:7px;border-radius:99px;background:#dbe4f2;overflow:hidden}.performance-week-track>div{height:100%;border-radius:99px;background:linear-gradient(90deg,#2563eb,#6366f1);transition:width .6s ease}.performance-week em{display:block;margin-top:3px;color:#64748b;font-size:6px;font-style:normal}
+
+/* DEBT */
+.performance-stack{display:grid;gap:6px}.performance-debt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px;border-radius:11px}.performance-debt.loan{background:#faf7ff;border:1px solid #e9d5ff}.performance-debt.borrow{background:#fffaf5;border:1px solid #fed7aa}.performance-debt-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:8px}.performance-debt.loan .performance-debt-icon{background:#ede9fe;color:#7c3aed}.performance-debt.borrow .performance-debt-icon{background:#ffedd5;color:#ea580c}.performance-debt-main{min-width:0}.performance-debt-main strong{display:block;font-size:9px;font-weight:900;overflow-wrap:anywhere}.performance-debt-main span{display:block;margin-top:2px;color:#64748b;font-size:7px;overflow-wrap:anywhere}.performance-debt-main small{display:block;margin-top:2px;font-size:7px;font-weight:850}.performance-debt-main small.success{color:#059669}.performance-debt-main small.danger{color:#dc2626}.performance-debt-amount{text-align:right}.performance-debt-amount strong{display:block;font-size:9px;font-weight:950}.performance-debt.loan .performance-debt-amount strong{color:#7c3aed}.performance-debt.borrow .performance-debt-amount strong{color:#ea580c}.performance-debt-amount small{display:block;margin-top:2px;color:#94a3b8;font-size:6px}
+
+/* PAYMENT */
+.performance-payment-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.performance-payment-card{padding:11px;border-radius:12px}.performance-payment-card>span{display:block;font-size:8px;font-weight:900}.performance-payment-card>strong{display:block;margin-top:5px;font-size:14px;font-weight:950}.performance-payment-card>small{display:block;margin-top:2px;color:#64748b;font-size:7px}.performance-payment-card.received{background:linear-gradient(145deg,#ecfdf5,#d1fae5);border:1px solid #86efac;color:#047857}.performance-payment-card.pending{background:linear-gradient(145deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#b45309}.performance-payment-card.overdue{background:linear-gradient(145deg,#fff1f2,#ffe4e6);border:1px solid #fda4af;color:#b91c1c}.performance-payment-card.lost{background:linear-gradient(145deg,#f8fafc,#e2e8f0);border:1px solid #cbd5e1;color:#475569}
+
+/* WIDGETS */
+.performance-mini-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px;border-radius:10px;background:#f8fafc;border:1px solid #e5e7eb}.performance-mini-row>span:first-child{width:28px;height:28px;border-radius:8px;background:#eef2ff;display:grid;place-items:center}.performance-mini-row>div{min-width:0}.performance-mini-row strong{display:block;font-size:8px;font-weight:900;overflow-wrap:anywhere}.performance-mini-row small{display:block;margin-top:2px;color:#94a3b8;font-size:6px}.performance-mini-row>b{font-size:9px;white-space:nowrap}.performance-mini-icon{width:28px!important;height:28px!important;display:grid;place-items:center;border-radius:8px}.performance-mini-icon.purple{color:#7c3aed;background:#ede9fe}.performance-mini-icon.red{color:#dc2626;background:#fee2e2}
+
+/* TRANSACTIONS */
+.performance-transactions{display:grid;gap:5px}.performance-transaction{display:flex;align-items:center;gap:8px;padding:8px;border-radius:11px;background:#f8fafc;border:1px solid #e5e7eb;transition:.2s}.performance-transaction:hover{background:#fff;border-color:#c7d2fe;transform:translateY(-1px)}.performance-transaction-icon{width:29px;height:29px;flex:0 0 29px;display:grid;place-items:center;border-radius:8px}.performance-transaction-icon.expense{color:#dc2626;background:#fee2e2}.performance-transaction-icon.income{color:#059669;background:#d1fae5}.performance-transaction-main{flex:1;min-width:0}.performance-transaction-main strong{display:block;font-size:8px;font-weight:850;overflow-wrap:anywhere}.performance-transaction-main span{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;color:#94a3b8;font-size:6px}.performance-transaction-main i{font-style:normal;color:#cbd5e1}.performance-income{color:#059669;font-size:9px}.performance-expense{color:#dc2626;font-size:9px}
+
+/* EMPTY */
+.performance-empty{min-height:65px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed #d5dce7;border-radius:10px;background:#f8fafc;color:#94a3b8;font-size:8px}.performance-empty-icon{width:25px;height:25px;border-radius:7px;background:#eef2ff;color:#6366f1;display:grid;place-items:center}
+
+/* LOADING */
+.performance-loading{min-height:60vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 10px 30px rgba(15,23,42,.05)}.performance-loading-icon{width:55px;height:55px;border-radius:15px;background:#eef2ff;color:#4f46e5;display:grid;place-items:center}.performance-loading strong{font-size:14px}.performance-loading span{font-size:8px;color:#94a3b8}
+
+/* TOAST */
+.performance-toast-wrap{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;pointer-events:none;padding:14px}.performance-toast{width:min(360px,calc(100vw - 28px));display:flex;align-items:flex-start;gap:8px;padding:12px;border-radius:13px;background:#fff;border:1px solid #e2e8f0;box-shadow:0 20px 60px rgba(15,23,42,.18);pointer-events:auto;animation:performanceToastIn .18s ease}.performance-toast.success{border-left:4px solid #10b981;color:#059669}.performance-toast.error{border-left:4px solid #ef4444;color:#dc2626}.performance-toast>div{flex:1;min-width:0}.performance-toast strong{display:block;color:#172033;font-size:10px}.performance-toast span{display:block;margin-top:3px;color:#64748b;font-size:8px;line-height:1.4;overflow-wrap:anywhere}.performance-toast>button{width:26px;height:26px;border:0;border-radius:7px;background:#f1f5f9;color:#64748b;display:grid;place-items:center;cursor:pointer}
+
+.performance-spin{animation:performanceSpin .8s linear infinite}
+@keyframes performanceSpin{to{transform:rotate(360deg)}}
+@keyframes performanceToastIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+
+/* TABLET */
+@media(max-width:1050px){
+  .performance-summary-grid{grid-template-columns:repeat(3,1fr)}
+  .performance-week-grid{grid-template-columns:repeat(2,1fr)}
 }
 
-.bottom-main {
-  flex: 1;
-  min-width: 150px;
+/* MOBILE */
+@media(max-width:700px){
+  .performance-pie-grid{grid-template-columns:1fr;gap:7px}
+  .performance-pie-content{grid-template-columns:105px minmax(0,1fr)}
+}
+@media(max-width:700px){
+  .performance-page{padding:7px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .performance-header{top:4px;padding:12px;border-radius:17px}
+  .performance-brand-icon{width:39px;height:39px;flex-basis:39px}
+  .performance-brand h1{font-size:19px}
+  .performance-brand p{display:none}
+  .performance-head-btn{width:37px;padding:0;justify-content:center}
+  .performance-head-btn span{display:none}
+  .performance-month-row{flex-direction:column;align-items:stretch}
+  .performance-month-control{width:100%}
+  .performance-month-center{flex:1;min-width:0}
+  .performance-summary-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  .performance-summary-card{padding:10px;border-radius:13px}
+  .performance-summary-card>div>strong{font-size:15px}
+  .performance-summary-icon{width:30px;height:30px;flex-basis:30px}
+  .performance-two-column{grid-template-columns:1fr;gap:7px}
+  .performance-panel{padding:11px;border-radius:13px}
+  .performance-savings{align-items:flex-start;flex-direction:column;padding:13px;border-radius:14px}
+  .performance-savings-rate{width:100%;justify-content:space-between}
+  .performance-week-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  .performance-payment-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  .performance-debt{grid-template-columns:auto minmax(0,1fr);align-items:start}
+  .performance-debt-amount{grid-column:2;text-align:left}
 }
 
-.bottom-main span,
-.bottom-metric span {
-  display: block;
-  color: rgba(226,232,240,.42);
-  font-size: .58rem;
-}
-
-.bottom-main strong,
-.bottom-metric strong {
-  display: block;
-  margin-top: 3px;
-  font-size: .74rem;
-}
-
-.bottom-metric {
-  min-width: 130px;
-  padding-left: 14px;
-  border-left: 1px solid rgba(255,255,255,.08);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 1200px) {
-  .summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .main-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 850px) {
-  .performance-page {
-    padding: 11px;
-  }
-
-  .hero {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 14px;
-  }
-
-  .controls {
-    width: 100%;
-  }
-
-  .month-control {
-    flex: 1;
-  }
-
-  .month-control input {
-    width: 100%;
-  }
-
-  .refresh-btn {
-    min-width: 90px;
-  }
-
-  .pie-layout {
-    flex-direction: column;
-    gap: 20px;
-    padding: 18px 0;
-  }
-
-  .legend {
-    width: 100%;
-    max-width: 480px;
-  }
-
-  .year-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .bottom-summary {
-    flex-wrap: wrap;
-  }
-
-  .bottom-main {
-    min-width: calc(100% - 55px);
-  }
-
-  .bottom-metric {
-    flex: 1;
-  }
-}
-
-@media (max-width: 600px) {
-  .performance-page {
-    padding: 8px;
-  }
-
-  .title-icon {
-    width: 40px;
-    height: 40px;
-    flex-basis: 40px;
-  }
-
-  .title-row h1 {
-    font-size: 1.18rem;
-  }
-
-  .title-row p {
-    font-size: .68rem;
-  }
-
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary-card {
-    padding: 11px;
-  }
-
-  .summary-card > strong {
-    font-size: .82rem;
-  }
-
-  .week-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .week-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pie {
-    width: 175px;
-    height: 175px;
-    flex-basis: 175px;
-  }
-
-  .pie-hole {
-    width: 104px;
-    height: 104px;
-  }
-
-  .section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .year-summary {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .bottom-summary {
-    display: grid;
-    grid-template-columns: auto 1fr;
-  }
-
-  .bottom-main {
-    min-width: 0;
-  }
-
-  .bottom-metric {
-    min-width: 0;
-    padding: 0;
-    border-left: 0;
-  }
-
-  .bottom-metric strong {
-    font-size: .67rem;
-  }
-}
-
-@media (max-width: 390px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .controls {
-    flex-direction: column;
-  }
-
-  .month-control,
-  .refresh-btn {
-    width: 100%;
-  }
-
-  .refresh-btn {
-    height: 40px;
-  }
-
-  .week-top {
-    flex-direction: column;
-  }
-
-  .net-pill {
-    align-self: flex-start;
-  }
-
-  .year-summary {
-    grid-template-columns: 1fr;
-  }
+@media(max-width:380px){
+  .performance-week{padding:8px}
+  .performance-payment-card{padding:9px}
+  .performance-payment-card>strong{font-size:13px}
 }
 `;
 
-export default Performance;

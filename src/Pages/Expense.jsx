@@ -1,2399 +1,2987 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import {
-  Plus,
-  RefreshCw,
-  Trash2,
-  Pencil,
-  X,
   CalendarDays,
-  ReceiptText,
-  IndianRupee,
-  Tag,
-  FileText,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
+  X,
   Search,
-  Layers3,
-  WalletCards,
-  Sparkles,
-  CheckCircle2,
+  Receipt,
+  Tag,
+  Wallet,
   AlertCircle,
-  CalendarRange,
+  CheckCircle2,
 } from "lucide-react";
 
-const API_BASE_URL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1"
-    ? "http://localhost:5000"
-    : "https://express-project-learning-new.onrender.com";
-
-const DEFAULT_CATEGORIES = [
-  "Petrol",
-  "Daily Kharch Saman",
-  "Shopping",
-  "Food",
-  "Travel",
-  "Bike",
-  "Business",
-];
-
-const PAGE_SIZE = 10;
-
-const currentMonthValue = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
-
-const todayValue = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-};
-
-const money = (value) => {
-  const n = Number(value || 0);
-  const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
-
-  return `₹${new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: Number.isInteger(rounded) ? 0 : 2,
-  }).format(rounded)}`;
-};
-
-const formatDate = (value) => {
-  if (!value) return "—";
-
-  const raw = String(value).slice(0, 10);
-  const [y, m, d] = raw.split("-").map(Number);
-
-  if (!y || !m || !d) return String(value);
-
-  return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const monthLabel = (month) => {
-  if (!month) return "";
-
-  const [year, m] = month.split("-").map(Number);
-
-  return new Date(year, m - 1, 1).toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
-};
+const API_BASE_URL = "http://localhost:5000/api";
 
 const getToken = () =>
   localStorage.getItem("token") ||
   localStorage.getItem("accessToken") ||
-  sessionStorage.getItem("token") ||
+  localStorage.getItem("authToken") ||
   "";
 
-const headers = () => ({
-  "Content-Type": "application/json",
-  ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-});
-
-const getWeekLabel = (week) => {
-  if (week === "all") return "All Weeks";
-
-  const ranges = {
-    1: "1–7",
-    2: "8–14",
-    3: "15–21",
-    4: "22–28",
-    5: "29–End",
-  };
-
-  return `Week ${week} (${ranges[week] || ""})`;
+const toNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 };
 
-const getWeekFromDate = (date) => {
-  const day = Number(String(date).slice(8, 10));
+const formatMoney = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
 
-  if (!day) return 1;
-  if (day <= 7) return 1;
-  if (day <= 14) return 2;
-  if (day <= 21) return 3;
-  if (day <= 28) return 4;
-  return 5;
+const monthStart = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-01`;
+
+const monthInputValue = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
+
+const todayInput = () => {
+  const d = new Date();
+
+  return `${d.getFullYear()}-${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const getWeekRange = (month, week) => {
-  if (!month || week === "all") return null;
+export default function Expense() {
+  const [selectedMonth, setSelectedMonth] = useState(
+    new Date()
+  );
 
-  const [year, monthNumber] = month.split("-").map(Number);
-  const daysInMonth = new Date(year, monthNumber, 0).getDate();
-
-  const startDay = (Number(week) - 1) * 7 + 1;
-  if (startDay > daysInMonth) return null;
-
-  const endDay = Math.min(startDay + 6, daysInMonth);
-
-  return {
-    start: `${month}-${String(startDay).padStart(2, "0")}`,
-    end: `${month}-${String(endDay).padStart(2, "0")}`,
-  };
-};
-
-const normalizeRows = (result) =>
-  Array.isArray(result?.expenses)
-    ? result.expenses
-    : Array.isArray(result?.data)
-    ? result.data
-    : Array.isArray(result?.rows)
-    ? result.rows
-    : [];
-
-const Expense = () => {
-  const [month, setMonth] = useState(currentMonthValue());
-  const [week, setWeek] = useState("all");
   const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [toast, setToast] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [categoryModal, setCategoryModal] = useState(false);
 
   const [editingId, setEditingId] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState("All");
+
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [categoryFilter, setCategoryFilter] =
+    useState("all");
+
+  const [sortBy, setSortBy] =
+    useState("date-desc");
+
+  const [toast, setToast] = useState(null);
 
   const [form, setForm] = useState({
-    category: "",
-    customCategory: "",
+    category_id: "",
     amount: "",
-    expenseDate: todayValue(),
+    expense_date: todayInput(),
     notes: "",
   });
 
-  const [formError, setFormError] = useState("");
+  const [categoryName, setCategoryName] =
+    useState("");
 
-  const showToast = useCallback((type, text) => {
-    setToast({ type, text });
-  }, []);
+  const token = getToken();
 
-  useEffect(() => {
-    if (!toast) return;
+  const axiosConfig = useMemo(
+    () => ({
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }),
+    [token]
+  );
 
-    const timer = window.setTimeout(() => {
-      setToast(null);
-    }, 3000);
-
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
-  const loadCategories = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/expenses/categories`, {
-        method: "GET",
-        headers: headers(),
+  /*
+   * PROFESSIONAL ALERT
+   */
+  const showToast = useCallback(
+    (type, message) => {
+      setToast({
+        type,
+        message,
       });
 
-      const result = await response.json();
-
-      if (!response.ok || result.success === false) {
-        return;
-      }
-
-      const serverCategories = Array.isArray(result.categories)
-        ? result.categories
-        : [];
-
-      const merged = [...DEFAULT_CATEGORIES, ...serverCategories].filter(
-        (item, index, array) =>
-          array.findIndex(
-            (x) => x.toLowerCase() === item.toLowerCase()
-          ) === index
+      clearTimeout(
+        window.__expenseToastTimer
       );
 
-      setCategories(merged);
-    } catch (error) {
-      console.error("Category GET error:", error);
-    }
-  }, []);
+      window.__expenseToastTimer =
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+    },
+    []
+  );
 
-  const loadExpenses = useCallback(async () => {
-    try {
+  /*
+   * LOAD EXPENSES
+   *
+   * Expense API is responsible for:
+   * - selected month
+   * - expense records
+   * - monthly total
+   */
+  const loadExpenses = useCallback(
+    async () => {
       setLoading(true);
 
-      const query = new URLSearchParams({
-        month,
-      });
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL}/expenses`,
+          {
+            ...axiosConfig,
+            params: {
+              month: monthStart(selectedMonth),
+            },
+          }
+        );
 
-      if (week !== "all") {
-        query.set("week", week);
-      }
+        const result =
+          response.data?.data ??
+          response.data ??
+          {};
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/expenses?${query.toString()}`,
-        {
-          method: "GET",
-          headers: headers(),
+        if (Array.isArray(result)) {
+          setExpenses(result);
+        } else {
+          setExpenses(
+            result.expenses ??
+              result.rows ??
+              result.items ??
+              []
+          );
         }
-      );
+      } catch (error) {
+        console.error(
+          "Get expenses error:",
+          error
+        );
 
-      const result = await response.json();
-
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || "Failed to load expenses.");
+        showToast(
+          "error",
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            "Could not load expenses"
+        );
+      } finally {
+        setLoading(false);
       }
+    },
+    [
+      selectedMonth,
+      axiosConfig,
+      showToast,
+    ]
+  );
 
-      setExpenses(normalizeRows(result));
-      setPage(1);
-    } catch (error) {
-      console.error("Expense GET error:", error);
-      setExpenses([]);
-      showToast("error", error.message || "Failed to load expenses.");
-    } finally {
-      setLoading(false);
-    }
-  }, [month, week, showToast]);
+  /*
+   * LOAD CATEGORIES
+   */
+  const loadCategories =
+    useCallback(async () => {
+      try {
+        const response =
+          await axios.get(
+            `${API_BASE_URL}/expenses/categories`,
+            axiosConfig
+          );
+
+        const result =
+          response.data?.data ??
+          response.data ??
+          [];
+
+        if (Array.isArray(result)) {
+          setCategories(result);
+        } else {
+          setCategories(
+            result.categories ??
+              result.rows ??
+              []
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Get categories error:",
+          error
+        );
+
+        showToast(
+          "error",
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            "Could not load categories"
+        );
+      }
+    }, [axiosConfig, showToast]);
 
   useEffect(() => {
     loadExpenses();
-  }, [loadExpenses]);
-
-  useEffect(() => {
     loadCategories();
-  }, [loadCategories]);
+  }, [
+    loadExpenses,
+    loadCategories,
+  ]);
 
-  useEffect(() => {
-    setCategoryFilter("All");
-    setSearch("");
-    setPage(1);
-  }, [month, week]);
+  /*
+   * REFRESH
+   */
+  const refreshPage = async () => {
+    setRefreshing(true);
 
-  const resetForm = () => {
-    setForm({
-      category: "",
-      customCategory: "",
-      amount: "",
-      expenseDate: todayValue(),
-      notes: "",
-    });
-    setEditingId(null);
-    setFormError("");
-    setShowForm(false);
+    await Promise.all([
+      loadExpenses(),
+      loadCategories(),
+    ]);
+
+    setRefreshing(false);
   };
 
-  const openAdd = () => {
-    setEditingId(null);
-    setForm({
-      category: "",
-      customCategory: "",
-      amount: "",
-      expenseDate: todayValue(),
-      notes: "",
-    });
-    setFormError("");
-    setShowForm(true);
-  };
+  /*
+   * MONTH
+   */
+  const changeMonth = (amount) => {
+    setSelectedMonth((old) => {
+      const date = new Date(old);
 
-  const openEdit = (expense) => {
-    setEditingId(expense.id);
-    setForm({
-      category: expense.category || "",
-      customCategory: "",
-      amount: String(expense.amount ?? ""),
-      expenseDate: String(expense.expense_date || todayValue()).slice(0, 10),
-      notes: expense.notes || "",
-    });
-    setFormError("");
-    setShowForm(true);
-  };
-
-  const submitExpense = async (event) => {
-    event.preventDefault();
-    setFormError("");
-
-    const selectedCategory =
-      form.category === "__custom__"
-        ? form.customCategory.trim()
-        : form.category.trim();
-
-    const amount = Number(form.amount);
-
-    if (!selectedCategory) {
-      setFormError("Please select or add an expense category.");
-      return;
-    }
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setFormError("Please enter a valid amount greater than 0.");
-      return;
-    }
-
-    if (!form.expenseDate) {
-      setFormError("Please select the expense date.");
-      return;
-    }
-
-    const isEdit = Boolean(editingId);
-
-    try {
-      setSaving(true);
-
-      const response = await fetch(
-        isEdit
-          ? `${API_BASE_URL}/api/expenses/${editingId}`
-          : `${API_BASE_URL}/api/expenses`,
-        {
-          method: isEdit ? "PUT" : "POST",
-          headers: headers(),
-          body: JSON.stringify({
-            category: selectedCategory,
-            amount,
-            expenseDate: form.expenseDate,
-            notes: form.notes.trim() || null,
-          }),
-        }
+      date.setMonth(
+        date.getMonth() + amount
       );
 
-      const result = await response.json();
+      return date;
+    });
+  };
 
-      if (!response.ok || result.success === false) {
-        throw new Error(
-          result.message ||
-            `Failed to ${isEdit ? "update" : "add"} expense.`
+  const changeMonthInput = (value) => {
+    if (!value) return;
+
+    const [year, month] =
+      value.split("-");
+
+    setSelectedMonth(
+      new Date(
+        Number(year),
+        Number(month) - 1,
+        1
+      )
+    );
+  };
+
+  const selectCurrentMonth = () => {
+    setSelectedMonth(new Date());
+  };
+
+  /*
+   * RESET EXPENSE FORM
+   */
+  const resetForm = () => {
+    setForm({
+      category_id: "",
+      amount: "",
+      expense_date: todayInput(),
+      notes: "",
+    });
+
+    setEditingId(null);
+  };
+
+  /*
+   * ADD EXPENSE
+   */
+  const openAddExpense = () => {
+    resetForm();
+
+    setModal("add");
+  };
+
+  /*
+   * EDIT EXPENSE
+   */
+  const openEditExpense = (
+    expense
+  ) => {
+    setEditingId(expense.id);
+
+    setForm({
+      category_id:
+        expense.category_id
+          ? String(expense.category_id)
+          : "",
+
+      amount:
+        expense.amount !== undefined
+          ? String(expense.amount)
+          : "",
+
+      expense_date:
+        String(
+          expense.expense_date || ""
+        ).slice(0, 10),
+
+      notes:
+        expense.notes || "",
+    });
+
+    setModal("edit");
+  };
+
+  /*
+   * SAVE EXPENSE
+   */
+  const saveExpense = async () => {
+    if (!form.category_id) {
+      showToast(
+        "error",
+        "Please select a category."
+      );
+      return;
+    }
+
+    if (
+      !form.amount ||
+      Number(form.amount) <= 0
+    ) {
+      showToast(
+        "error",
+        "Enter a valid expense amount."
+      );
+      return;
+    }
+
+    if (!form.expense_date) {
+      showToast(
+        "error",
+        "Please select expense date."
+      );
+      return;
+    }
+
+    /*
+     * Prevent saving a date from another month.
+     */
+    const selectedPrefix =
+      monthInputValue(selectedMonth);
+
+    if (
+      form.expense_date.slice(0, 7) !==
+      selectedPrefix
+    ) {
+      showToast(
+        "error",
+        "Expense date must be inside the selected month."
+      );
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const payload = {
+        category_id: Number(
+          form.category_id
+        ),
+
+        amount: Number(
+          form.amount
+        ),
+
+        expense_date:
+          form.expense_date,
+
+        notes:
+          form.notes.trim() || null,
+      };
+
+      if (
+        modal === "edit" &&
+        editingId
+      ) {
+        await axios.put(
+          `${API_BASE_URL}/expenses/${editingId}`,
+          payload,
+          axiosConfig
+        );
+      } else {
+        await axios.post(
+          `${API_BASE_URL}/expenses`,
+          payload,
+          axiosConfig
         );
       }
 
+      setModal(null);
+
       resetForm();
+
+      await loadExpenses();
 
       showToast(
         "success",
-        isEdit
+        modal === "edit"
           ? "Expense updated successfully."
           : "Expense added successfully."
       );
-
-      await loadCategories();
-      await loadExpenses();
     } catch (error) {
-      console.error("Expense save error:", error);
-      setFormError(error.message || "Unable to save expense.");
+      console.error(
+        "Save expense error:",
+        error
+      );
+
+      showToast(
+        "error",
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Could not save expense"
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const askDelete = (expense) => {
-    setDeleteTarget(expense);
-    setShowDelete(true);
-  };
-
-  const deleteExpense = async () => {
-    if (!deleteTarget?.id) return;
+  /*
+   * DELETE EXPENSE
+   */
+  const deleteExpense = async (
+    expenseId
+  ) => {
+    setSaving(true);
 
     try {
-      setDeletingId(deleteTarget.id);
-
-      const response = await fetch(
-        `${API_BASE_URL}/api/expenses/${deleteTarget.id}`,
-        {
-          method: "DELETE",
-          headers: headers(),
-        }
+      await axios.delete(
+        `${API_BASE_URL}/expenses/${expenseId}`,
+        axiosConfig
       );
 
-      const result = await response.json();
-
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || "Failed to delete expense.");
-      }
-
-      setShowDelete(false);
-      setDeleteTarget(null);
-
-      showToast("success", "Expense deleted successfully.");
-
-      await loadCategories();
       await loadExpenses();
+
+      showToast(
+        "success",
+        "Expense deleted successfully."
+      );
     } catch (error) {
-      console.error("Expense delete error:", error);
-      showToast("error", error.message || "Unable to delete expense.");
+      console.error(
+        "Delete expense error:",
+        error
+      );
+
+      showToast(
+        "error",
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Could not delete expense"
+      );
     } finally {
-      setDeletingId(null);
+      setSaving(false);
     }
   };
 
-  const filteredExpenses = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  /*
+   * ADD CATEGORY
+   */
+  const addCategory = async () => {
+    const name =
+      categoryName.trim();
 
-    return expenses.filter((item) => {
-      const matchesCategory =
-        categoryFilter === "All" ||
-        String(item.category || "") === categoryFilter;
+    if (!name) {
+      showToast(
+        "error",
+        "Enter category name."
+      );
+      return;
+    }
 
-      const matchesSearch =
-        !q ||
-        String(item.category || "").toLowerCase().includes(q) ||
-        String(item.notes || "").toLowerCase().includes(q) ||
-        String(item.expense_date || "").includes(q);
+    setSaving(true);
 
-      return matchesCategory && matchesSearch;
-    });
-  }, [expenses, categoryFilter, search]);
+    try {
+      await axios.post(
+        `${API_BASE_URL}/expenses/categories`,
+        {
+          category_name: name,
+        },
+        axiosConfig
+      );
 
-  const categoryTotals = useMemo(() => {
-    const map = {};
+      setCategoryName("");
 
-    expenses.forEach((item) => {
-      const category = item.category || "Other";
+      await loadCategories();
 
-      if (!map[category]) {
-        map[category] = {
-          total: 0,
-          entries: 0,
-        };
+      showToast(
+        "success",
+        "Category added successfully."
+      );
+    } catch (error) {
+      console.error(
+        "Add category error:",
+        error
+      );
+
+      showToast(
+        "error",
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Could not add category"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /*
+   * DELETE CATEGORY
+   *
+   * PostgreSQL uses ON DELETE RESTRICT,
+   * therefore a category already used by
+   * expenses cannot be deleted.
+   */
+  const deleteCategory =
+    async (categoryId) => {
+      setSaving(true);
+
+      try {
+        await axios.delete(
+          `${API_BASE_URL}/expenses/categories/${categoryId}`,
+          axiosConfig
+        );
+
+        await loadCategories();
+
+        showToast(
+          "success",
+          "Category deleted successfully."
+        );
+      } catch (error) {
+        console.error(
+          "Delete category error:",
+          error
+        );
+
+        showToast(
+          "error",
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            "Category is already being used or cannot be deleted."
+        );
+      } finally {
+        setSaving(false);
       }
+    };
 
-      map[category].total += Number(item.amount || 0);
-      map[category].entries += 1;
-    });
+  /*
+   * FILTER + SORT
+   */
+  const filteredExpenses =
+    [...expenses]
+      .filter((expense) => {
+        const query =
+          search
+            .trim()
+            .toLowerCase();
 
-    return Object.entries(map)
-      .map(([category, value]) => ({
-        category,
-        total: value.total,
-        entries: value.entries,
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [expenses]);
+        const categoryName =
+          String(
+            expense.category_name ||
+              ""
+          ).toLowerCase();
 
-  const totalExpense = useMemo(
-    () =>
-      expenses.reduce(
-        (sum, item) => sum + Number(item.amount || 0),
-        0
-      ),
-    [expenses]
-  );
+        const notes =
+          String(
+            expense.notes || ""
+          ).toLowerCase();
 
-  const filteredTotal = useMemo(
-    () =>
-      filteredExpenses.reduce(
-        (sum, item) => sum + Number(item.amount || 0),
-        0
-      ),
-    [filteredExpenses]
-  );
+        const matchesSearch =
+          !query ||
+          categoryName.includes(
+            query
+          ) ||
+          notes.includes(query);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredExpenses.length / PAGE_SIZE)
-  );
+        const matchesCategory =
+          categoryFilter === "all" ||
+          String(
+            expense.category_id
+          ) === String(
+            categoryFilter
+          );
 
-  const visibleExpenses = filteredExpenses.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
+        return (
+          matchesSearch &&
+          matchesCategory
+        );
+      })
+      .sort((a, b) => {
+        if (
+          sortBy === "amount-desc"
+        ) {
+          return (
+            Number(b.amount) -
+            Number(a.amount)
+          );
+        }
 
-  const weekTotal = useMemo(() => {
-    if (week === "all") return totalExpense;
+        if (
+          sortBy === "amount-asc"
+        ) {
+          return (
+            Number(a.amount) -
+            Number(b.amount)
+          );
+        }
 
-    return expenses.reduce(
-      (sum, item) => sum + Number(item.amount || 0),
+        if (
+          sortBy === "date-asc"
+        ) {
+          return (
+            new Date(
+              a.expense_date
+            ) -
+            new Date(
+              b.expense_date
+            )
+          );
+        }
+
+        return (
+          new Date(
+            b.expense_date
+          ) -
+          new Date(
+            a.expense_date
+          )
+        );
+      });
+
+  /*
+   * MONTH TOTAL
+   *
+   * This is automatically calculated
+   * from personal_expenses for the
+   * selected month.
+   */
+  const totalExpenses =
+    expenses.reduce(
+      (total, expense) =>
+        total +
+        Number(
+          expense.amount || 0
+        ),
       0
     );
-  }, [expenses, totalExpense, week]);
 
-  const weekRange = getWeekRange(month, week);
+  /*
+   * WEEK TOTALS
+   */
+  const weekTotals = {
+    week1: 0,
+    week2: 0,
+    week3: 0,
+    week4: 0,
+  };
 
-  const selectedCategoryData = useMemo(() => {
-    if (categoryFilter === "All") return null;
+  expenses.forEach((expense) => {
+    const day =
+      new Date(
+        expense.expense_date
+      ).getDate();
 
-    return categoryTotals.find(
-      (item) => item.category === categoryFilter
-    );
-  }, [categoryTotals, categoryFilter]);
+    if (day <= 7) {
+      weekTotals.week1 +=
+        Number(
+          expense.amount || 0
+        );
+    } else if (day <= 14) {
+      weekTotals.week2 +=
+        Number(
+          expense.amount || 0
+        );
+    } else if (day <= 21) {
+      weekTotals.week3 +=
+        Number(
+          expense.amount || 0
+        );
+    } else {
+      weekTotals.week4 +=
+        Number(
+          expense.amount || 0
+        );
+    }
+  });
 
-  const monthStats = useMemo(() => {
-    const days = expenses.map((item) => getWeekFromDate(item.expense_date));
-    const uniqueWeeks = [...new Set(days)];
+  /*
+   * CATEGORY TOTALS
+   */
+  const categoryTotals = {};
 
-    return {
-      categories: categoryTotals.length,
-      activeWeeks: uniqueWeeks.length,
-    };
-  }, [expenses, categoryTotals]);
+  expenses.forEach(
+    (expense) => {
+      const name =
+        expense.category_name ||
+        "Other";
+
+      categoryTotals[name] =
+        (categoryTotals[name] ||
+          0) +
+        Number(
+          expense.amount || 0
+        );
+    }
+  );
 
   return (
-    <div className="expense-page">
-      <style>{styles}</style>
+    <>
+      <style>{`
+        * {
+          box-sizing: border-box;
+        }
 
-      {toast && (
-        <div className={`expense-toast ${toast.type}`}>
-          <div className="toast-icon">
-            {toast.type === "success" ? (
-              <CheckCircle2 size={17} />
-            ) : (
-              <AlertCircle size={17} />
-            )}
-          </div>
+        body {
+          margin: 0;
+          background: #f4f7fb;
+        }
 
-          <span>{toast.text}</span>
+        .expense-page {
+          min-height: 100vh;
+          padding: 12px;
+          color: #172033;
 
-          <button onClick={() => setToast(null)} aria-label="Close notification">
-            <X size={15} />
-          </button>
-        </div>
-      )}
+          background:
+            radial-gradient(
+              circle at 0% 0%,
+              rgba(26, 105, 170, 0.10),
+              transparent 30%
+            ),
+            radial-gradient(
+              circle at 100% 10%,
+              rgba(96, 72, 190, 0.08),
+              transparent 28%
+            ),
+            #f4f7fb;
+        }
 
-      <header className="expense-header">
-        <div className="page-heading">
-          <div className="heading-icon">
-            <ReceiptText size={22} />
-          </div>
+        .expense-container {
+          width: min(1180px, 100%);
+          margin: auto;
+        }
 
-          <div>
-            <div className="title-row">
-              <h1>Expenses</h1>
-              <span className="live-badge">
-                <span />
-                Live
-              </span>
-            </div>
+        /* HEADER */
 
-            <p>
-              Track and manage your expenses for{" "}
-              <strong>{monthLabel(month)}</strong>
-            </p>
-          </div>
-        </div>
+        .expense-header {
+          position: sticky;
+          top: 0;
+          z-index: 40;
 
-        <div className="header-actions">
-          <label className="month-picker">
-            <CalendarDays size={16} />
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-            />
-          </label>
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
 
-          <button
-            className="refresh-button"
-            onClick={() => {
-              loadExpenses();
-              loadCategories();
-            }}
-            title="Refresh"
-          >
-            <RefreshCw size={17} />
-          </button>
+          gap: 12px;
 
-          <button className="add-button" onClick={openAdd}>
-            <Plus size={17} />
-            Add Expense
-          </button>
-        </div>
-      </header>
+          padding: 12px;
 
-      <section className="filter-bar">
-        <div className="filter-left">
-          <div className="filter-label">
-            <CalendarRange size={15} />
-            Period
-          </div>
+          margin-bottom: 11px;
 
-          <div className="week-tabs">
-            <button
-              className={week === "all" ? "active" : ""}
-              onClick={() => setWeek("all")}
-            >
-              All
-            </button>
+          background: rgba(
+            255,
+            255,
+            255,
+            0.96
+          );
 
-            {[1, 2, 3, 4, 5].map((item) => (
-              <button
-                key={item}
-                className={week === item ? "active" : ""}
-                onClick={() => setWeek(item)}
-              >
-                W{item}
-              </button>
-            ))}
-          </div>
+          border:
+            1px solid #e5eaf1;
 
-          <span className="period-text">
-            {week === "all"
-              ? `Full month • ${monthLabel(month)}`
-              : `${getWeekLabel(week)} • ${weekRange ? `${formatDate(
-                  weekRange.start
-                )} – ${formatDate(weekRange.end)}` : ""}`}
-          </span>
-        </div>
+          border-radius: 18px;
 
-        <div className="search-box">
-          <Search size={15} />
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search expenses..."
-          />
-          {search && (
-            <button onClick={() => setSearch("")}>
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </section>
+          box-shadow:
+            0 8px 30px
+            rgba(20, 35, 60, 0.08);
 
-      <section className="stats-grid">
-        <div className="stat-card stat-purple">
-          <div className="stat-top">
-            <div className="stat-icon">
-              <IndianRupee size={18} />
-            </div>
-            <span className="stat-tag">MONTH</span>
-          </div>
+          backdrop-filter: blur(12px);
+        }
 
-          <span className="stat-label">Total Expense</span>
-          <strong>{money(totalExpense)}</strong>
-          <small>{expenses.length} expense entries</small>
-        </div>
+        .expense-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
 
-        <div className="stat-card stat-cyan">
-          <div className="stat-top">
-            <div className="stat-icon">
-              <CalendarRange size={18} />
-            </div>
-            <span className="stat-tag">WEEK</span>
-          </div>
+          min-width: 0;
+        }
 
-          <span className="stat-label">
-            {week === "all" ? "Current View Total" : `Week ${week} Total`}
-          </span>
-          <strong>{money(weekTotal)}</strong>
-          <small>
-            {week === "all"
-              ? "All weeks in selected month"
-              : getWeekLabel(week)}
-          </small>
-        </div>
+        .expense-brand-icon {
+          width: 44px;
+          height: 44px;
 
-        <div className="stat-card stat-green">
-          <div className="stat-top">
-            <div className="stat-icon">
-              <Layers3 size={18} />
-            </div>
-            <span className="stat-tag">CATEGORIES</span>
-          </div>
+          flex: 0 0 44px;
 
-          <span className="stat-label">
-            {categoryFilter === "All" ? "Active Categories" : categoryFilter}
-          </span>
-          <strong>
-            {categoryFilter === "All"
-              ? monthStats.categories
-              : money(selectedCategoryData?.total || 0)}
-          </strong>
-          <small>
-            {categoryFilter === "All"
-              ? "Categories used this period"
-              : `${selectedCategoryData?.entries || 0} entries`}
-          </small>
-        </div>
+          display: grid;
+          place-items: center;
 
-        <div className="stat-card stat-orange">
-          <div className="stat-top">
-            <div className="stat-icon">
-              <ReceiptText size={18} />
-            </div>
-            <span className="stat-tag">ACTIVITY</span>
-          </div>
+          border-radius: 14px;
 
-          <span className="stat-label">Active Weeks</span>
-          <strong>{monthStats.activeWeeks}</strong>
-          <small>Weeks containing expenses</small>
-        </div>
-      </section>
+          color: white;
 
-      <section className="panel">
-        <div className="panel-heading">
-          <div>
-            <div className="panel-title">
-              <Sparkles size={16} />
-              <h2>Expense Categories</h2>
-            </div>
-            <p>Each category automatically combines all matching expenses.</p>
-          </div>
+          background:
+            linear-gradient(
+              135deg,
+              #1769aa,
+              #6246c7
+            );
 
-          <select
-            className="white-dropdown"
-            value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="All">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </div>
+          box-shadow:
+            0 8px 20px
+            rgba(49, 90, 165, 0.22);
+        }
 
-        <div className="category-grid">
-          {categoryTotals.length === 0 ? (
-            <div className="empty-category">
-              <WalletCards size={27} />
-              <span>No expenses found for this period.</span>
-            </div>
-          ) : (
-            categoryTotals.map((item) => (
-              <button
-                key={item.category}
-                className={`category-card ${
-                  categoryFilter === item.category ? "selected" : ""
-                }`}
-                onClick={() => {
-                  setCategoryFilter(item.category);
-                  setPage(1);
-                }}
-              >
-                <div className="category-card-icon">
-                  <Tag size={15} />
-                </div>
+        .expense-brand h1 {
+          margin: 0;
 
-                <div className="category-card-content">
-                  <span>{item.category}</span>
-                  <strong>{money(item.total)}</strong>
-                  <small>{item.entries} entries</small>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </section>
+          font-size:
+            clamp(18px, 3vw, 25px);
 
-      <section className="panel details-panel">
-        <div className="panel-heading">
-          <div>
-            <div className="panel-title">
-              <ReceiptText size={16} />
-              <h2>Expense Details</h2>
-            </div>
+          font-weight: 900;
 
-            <p>
-              {categoryFilter === "All"
-                ? "All expense records for the selected period."
-                : `${categoryFilter} expense records`}
-            </p>
-          </div>
+          letter-spacing: -0.04em;
+        }
 
-          <div className="result-count">
-            {filteredExpenses.length} record
-            {filteredExpenses.length === 1 ? "" : "s"}
-          </div>
-        </div>
+        .expense-brand p {
+          margin: 2px 0 0;
 
-        {loading ? (
-          <div className="state-box">
-            <RefreshCw className="spin" size={25} />
-            <strong>Loading expenses...</strong>
-            <span>Getting your latest records.</span>
-          </div>
-        ) : visibleExpenses.length === 0 ? (
-          <div className="state-box">
-            <ReceiptText size={31} />
-            <strong>No expenses found</strong>
-            <span>Try another month, week or category.</span>
-            <button onClick={openAdd}>
-              <Plus size={15} />
-              Add First Expense
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="expense-list">
-              {visibleExpenses.map((expense) => (
-                <article className="expense-row" key={expense.id}>
-                  <div className="expense-main">
-                    <div className="expense-avatar">
-                      <Tag size={17} />
-                    </div>
+          color: #7c8799;
 
-                    <div className="expense-info">
-                      <div className="expense-name-row">
-                        <h3>{expense.category || "Other"}</h3>
-                        <span className="date-badge">
-                          {formatDate(expense.expense_date)}
-                        </span>
-                      </div>
+          font-size: 11px;
+        }
 
-                      {expense.notes ? (
-                        <p>
-                          <FileText size={13} />
-                          {expense.notes}
-                        </p>
-                      ) : (
-                        <span className="no-notes">No notes added</span>
-                      )}
-                    </div>
-                  </div>
+        .expense-controls {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
 
-                  <div className="expense-right">
-                    <strong>{money(expense.amount)}</strong>
+        .expense-icon-btn {
+          width: 37px;
+          height: 37px;
 
-                    <div className="row-actions">
-                      <button
-                        className="edit-action"
-                        onClick={() => openEdit(expense)}
-                        title="Edit expense"
-                      >
-                        <Pencil size={15} />
-                      </button>
+          display: grid;
+          place-items: center;
 
-                      <button
-                        className="delete-action"
-                        onClick={() => askDelete(expense)}
-                        disabled={deletingId === expense.id}
-                        title="Delete expense"
-                      >
-                        {deletingId === expense.id ? (
-                          <RefreshCw className="spin" size={15} />
-                        ) : (
-                          <Trash2 size={15} />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+          border: 0;
 
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  disabled={page <= 1}
-                  onClick={() =>
-                    setPage((current) => Math.max(1, current - 1))
-                  }
-                >
-                  <ChevronLeft size={16} />
-                </button>
+          border-radius: 10px;
 
-                <span>
-                  Page <strong>{page}</strong> of <strong>{totalPages}</strong>
-                </span>
+          background: #eff2f7;
 
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() =>
-                    setPage((current) =>
-                      Math.min(totalPages, current + 1)
-                    )
-                  }
-                >
-                  <ChevronRight size={16} />
-                </button>
+          color: #344054;
+
+          cursor: pointer;
+
+          transition: 0.2s ease;
+        }
+
+        .expense-icon-btn:hover {
+          background: #e4e9f1;
+
+          transform:
+            translateY(-1px);
+        }
+
+        .expense-icon-btn:disabled {
+          opacity: 0.55;
+        }
+
+        .expense-month {
+          min-width: 145px;
+
+          height: 37px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          gap: 6px;
+
+          padding: 0 10px;
+
+          border-radius: 10px;
+
+          background: #eff2f7;
+
+          font-size: 12px;
+
+          font-weight: 800;
+
+          white-space: nowrap;
+        }
+
+        .expense-month-input {
+          width: 125px;
+          height: 37px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          padding: 0 7px;
+
+          background: #eff2f7;
+
+          color: #344054;
+
+          font-size: 11px;
+
+          font-weight: 700;
+
+          outline: none;
+        }
+
+        .expense-current {
+          height: 37px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          padding: 0 11px;
+
+          background: #eaf3ff;
+
+          color: #1769aa;
+
+          font-size: 11px;
+
+          font-weight: 800;
+
+          cursor: pointer;
+        }
+
+        .expense-add {
+          height: 37px;
+
+          display: flex;
+          align-items: center;
+          gap: 5px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          padding: 0 13px;
+
+          color: white;
+
+          background:
+            linear-gradient(
+              135deg,
+              #1769aa,
+              #6246c7
+            );
+
+          font-size: 11px;
+
+          font-weight: 850;
+
+          cursor: pointer;
+
+          box-shadow:
+            0 6px 16px
+            rgba(49, 90, 165, 0.20);
+        }
+
+        /* STATS */
+
+        .expense-stats {
+          display: grid;
+
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 9px;
+
+          margin-bottom: 10px;
+        }
+
+        .expense-stat {
+          display: flex;
+          align-items: center;
+
+          gap: 10px;
+
+          padding: 14px;
+
+          background: white;
+
+          border:
+            1px solid #e5eaf1;
+
+          border-radius: 16px;
+
+          box-shadow:
+            0 7px 24px
+            rgba(20, 35, 60, 0.06);
+
+          transition: 0.2s ease;
+        }
+
+        .expense-stat:hover {
+          transform:
+            translateY(-2px);
+
+          box-shadow:
+            0 12px 30px
+            rgba(20, 35, 60, 0.10);
+        }
+
+        .expense-stat-icon {
+          width: 38px;
+          height: 38px;
+
+          flex: 0 0 38px;
+
+          display: grid;
+          place-items: center;
+
+          border-radius: 12px;
+        }
+
+        .expense-stat-icon.red {
+          color: #d04444;
+          background: #fff0f0;
+        }
+
+        .expense-stat-icon.purple {
+          color: #6347c7;
+          background: #f0ecff;
+        }
+
+        .expense-stat-icon.blue {
+          color: #1769aa;
+          background: #eaf3ff;
+        }
+
+        .expense-stat-icon.green {
+          color: #168451;
+          background: #e9f8f0;
+        }
+
+        .expense-stat-text {
+          min-width: 0;
+        }
+
+        .expense-stat-text small {
+          display: block;
+
+          color: #7b8496;
+
+          font-size: 9px;
+
+          font-weight: 850;
+
+          text-transform: uppercase;
+        }
+
+        .expense-stat-text strong {
+          display: block;
+
+          margin-top: 4px;
+
+          font-size:
+            clamp(16px, 2.3vw, 23px);
+
+          font-weight: 900;
+
+          white-space: nowrap;
+
+          overflow: hidden;
+
+          text-overflow: ellipsis;
+        }
+
+        .expense-stat-text span {
+          display: block;
+
+          margin-top: 2px;
+
+          color: #9aa4b5;
+
+          font-size: 9px;
+        }
+
+        /* PANEL */
+
+        .expense-panel {
+          padding: 15px;
+
+          margin-bottom: 10px;
+
+          background: white;
+
+          border:
+            1px solid #e5eaf1;
+
+          border-radius: 16px;
+
+          box-shadow:
+            0 7px 24px
+            rgba(20, 35, 60, 0.06);
+        }
+
+        .expense-panel-header {
+          display: flex;
+
+          align-items: center;
+
+          justify-content: space-between;
+
+          gap: 10px;
+
+          margin-bottom: 12px;
+        }
+
+        .expense-panel-title h2 {
+          margin: 0;
+
+          font-size: 14px;
+
+          font-weight: 900;
+        }
+
+        .expense-panel-title p {
+          margin: 3px 0 0;
+
+          color: #8a94a6;
+
+          font-size: 10px;
+        }
+
+        .expense-category-btn {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+
+          border: 0;
+
+          border-radius: 9px;
+
+          padding: 9px 11px;
+
+          background: #eef4ff;
+
+          color: #1769aa;
+
+          font-size: 10px;
+
+          font-weight: 800;
+
+          cursor: pointer;
+        }
+
+        .expense-filters {
+          display: grid;
+
+          grid-template-columns:
+            1fr 180px 170px;
+
+          gap: 7px;
+        }
+
+        .expense-search {
+          height: 39px;
+
+          display: flex;
+          align-items: center;
+
+          gap: 7px;
+
+          padding: 0 11px;
+
+          border:
+            1px solid #e4e9f0;
+
+          border-radius: 10px;
+
+          background: #f7f9fc;
+
+          color: #8a94a6;
+        }
+
+        .expense-search input {
+          width: 100%;
+
+          border: 0;
+
+          outline: 0;
+
+          background: transparent;
+
+          font-size: 11px;
+        }
+
+        .expense-filter {
+          height: 39px;
+
+          border:
+            1px solid #e4e9f0;
+
+          border-radius: 10px;
+
+          padding: 0 9px;
+
+          background: #f7f9fc;
+
+          color: #344054;
+
+          font-size: 11px;
+
+          outline: none;
+        }
+
+        /* WEEK CARDS */
+
+        .expense-week-grid {
+          display: grid;
+
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 8px;
+
+          margin-bottom: 10px;
+        }
+
+        .expense-week {
+          padding: 11px;
+
+          border-radius: 12px;
+
+          background:
+            linear-gradient(
+              145deg,
+              #f8fafc,
+              #f1f5fa
+            );
+
+          border:
+            1px solid #e5eaf1;
+        }
+
+        .expense-week span {
+          color: #7b8496;
+
+          font-size: 9px;
+
+          font-weight: 800;
+        }
+
+        .expense-week strong {
+          display: block;
+
+          margin-top: 5px;
+
+          font-size: 15px;
+
+          font-weight: 900;
+        }
+
+        /* CATEGORY SUMMARY */
+
+        .expense-category-summary {
+          display: flex;
+
+          gap: 7px;
+
+          overflow-x: auto;
+
+          padding-bottom: 3px;
+
+          margin-bottom: 10px;
+        }
+
+        .expense-category-summary-card {
+          min-width: 125px;
+
+          padding: 10px;
+
+          border-radius: 11px;
+
+          background: #f8fafc;
+
+          border:
+            1px solid #e6ebf1;
+        }
+
+        .expense-category-summary-card span {
+          display: block;
+
+          color: #7b8496;
+
+          font-size: 9px;
+
+          font-weight: 750;
+
+          white-space: nowrap;
+
+          overflow: hidden;
+
+          text-overflow: ellipsis;
+        }
+
+        .expense-category-summary-card strong {
+          display: block;
+
+          margin-top: 4px;
+
+          font-size: 13px;
+        }
+
+        /* LIST */
+
+        .expense-list {
+          display: flex;
+
+          flex-direction: column;
+
+          gap: 7px;
+        }
+
+        .expense-row {
+          display: flex;
+
+          align-items: center;
+
+          gap: 10px;
+
+          padding: 12px;
+
+          background: white;
+
+          border:
+            1px solid #e5eaf1;
+
+          border-radius: 14px;
+
+          box-shadow:
+            0 5px 18px
+            rgba(20, 35, 60, 0.05);
+
+          transition: 0.2s ease;
+        }
+
+        .expense-row:hover {
+          transform:
+            translateY(-1px);
+
+          box-shadow:
+            0 9px 25px
+            rgba(20, 35, 60, 0.09);
+        }
+
+        .expense-row-icon {
+          width: 38px;
+          height: 38px;
+
+          flex: 0 0 38px;
+
+          display: grid;
+          place-items: center;
+
+          border-radius: 11px;
+
+          color: #d04444;
+
+          background: #fff0f0;
+        }
+
+        .expense-row-main {
+          flex: 1;
+
+          min-width: 0;
+        }
+
+        .expense-row-main strong {
+          display: block;
+
+          font-size: 13px;
+
+          font-weight: 850;
+        }
+
+        .expense-row-main span {
+          display: block;
+
+          margin-top: 3px;
+
+          color: #7b8496;
+
+          font-size: 9px;
+        }
+
+        .expense-row-main small {
+          display: block;
+
+          margin-top: 3px;
+
+          color: #9aa4b5;
+
+          font-size: 9px;
+
+          white-space: nowrap;
+
+          overflow: hidden;
+
+          text-overflow: ellipsis;
+        }
+
+        .expense-row-amount {
+          color: #d04444;
+
+          font-size: 14px;
+
+          font-weight: 900;
+
+          white-space: nowrap;
+        }
+
+        .expense-row-actions {
+          display: flex;
+
+          gap: 3px;
+        }
+
+        .expense-row-action {
+          width: 32px;
+          height: 32px;
+
+          display: grid;
+          place-items: center;
+
+          border: 0;
+
+          border-radius: 9px;
+
+          background: #f1f4f8;
+
+          color: #667085;
+
+          cursor: pointer;
+        }
+
+        .expense-row-action.edit:hover {
+          color: #1769aa;
+
+          background: #eaf3ff;
+        }
+
+        .expense-row-action.delete:hover {
+          color: #d04444;
+
+          background: #fff0f0;
+        }
+
+        /* EMPTY */
+
+        .expense-empty {
+          min-height: 260px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          flex-direction: column;
+
+          gap: 8px;
+
+          background: white;
+
+          border:
+            1px solid #e5eaf1;
+
+          border-radius: 16px;
+
+          color: #7b8496;
+        }
+
+        .expense-empty strong {
+          font-size: 13px;
+        }
+
+        .expense-empty span {
+          font-size: 10px;
+        }
+
+        /* MODAL */
+
+        .expense-modal-backdrop {
+          position: fixed;
+
+          inset: 0;
+
+          z-index: 1000;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          padding: 14px;
+
+          background:
+            rgba(7, 19, 38, 0.62);
+
+          backdrop-filter: blur(5px);
+        }
+
+        .expense-modal {
+          width:
+            min(470px, 100%);
+
+          max-height: 90vh;
+
+          overflow: auto;
+
+          background: white;
+
+          border-radius: 18px;
+
+          box-shadow:
+            0 25px 80px
+            rgba(7, 19, 38, 0.30);
+
+          animation:
+            expenseModalIn 0.18s ease;
+        }
+
+        .expense-modal-header {
+          position: sticky;
+
+          top: 0;
+
+          z-index: 2;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: space-between;
+
+          padding: 14px;
+
+          border-bottom:
+            1px solid #e8edf3;
+
+          background: white;
+        }
+
+        .expense-modal-header h2 {
+          margin: 0;
+
+          font-size: 16px;
+
+          font-weight: 900;
+        }
+
+        .expense-modal-close {
+          width: 32px;
+          height: 32px;
+
+          display: grid;
+          place-items: center;
+
+          border: 0;
+
+          border-radius: 9px;
+
+          background: #f1f4f8;
+
+          color: #667085;
+
+          cursor: pointer;
+        }
+
+        .expense-modal-body {
+          padding: 15px;
+        }
+
+        .expense-form {
+          display: grid;
+
+          gap: 11px;
+        }
+
+        .expense-form label {
+          display: grid;
+
+          gap: 5px;
+
+          color: #596579;
+
+          font-size: 10px;
+
+          font-weight: 800;
+        }
+
+        .expense-form input,
+        .expense-form select,
+        .expense-form textarea {
+          width: 100%;
+
+          border:
+            1px solid #dfe5ed;
+
+          border-radius: 10px;
+
+          padding: 10px;
+
+          background: #f8fafc;
+
+          color: #172033;
+
+          outline: none;
+
+          font-size: 12px;
+        }
+
+        .expense-form input,
+        .expense-form select {
+          height: 40px;
+        }
+
+        .expense-form textarea {
+          min-height: 85px;
+
+          resize: vertical;
+        }
+
+        .expense-form input:focus,
+        .expense-form select:focus,
+        .expense-form textarea:focus {
+          border-color: #5b8def;
+
+          box-shadow:
+            0 0 0 3px
+            rgba(91, 141, 239, 0.12);
+        }
+
+        .expense-submit {
+          width: 100%;
+
+          height: 41px;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: center;
+
+          gap: 6px;
+
+          margin-top: 12px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          color: white;
+
+          background:
+            linear-gradient(
+              135deg,
+              #1769aa,
+              #6246c7
+            );
+
+          font-size: 11px;
+
+          font-weight: 850;
+
+          cursor: pointer;
+        }
+
+        .expense-category-add {
+          display: flex;
+
+          gap: 7px;
+        }
+
+        .expense-category-add input {
+          flex: 1;
+
+          height: 40px;
+
+          border:
+            1px solid #dfe5ed;
+
+          border-radius: 10px;
+
+          padding: 0 10px;
+
+          outline: none;
+        }
+
+        .expense-category-add button {
+          height: 40px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          padding: 0 13px;
+
+          color: white;
+
+          background:
+            linear-gradient(
+              135deg,
+              #1769aa,
+              #6246c7
+            );
+
+          font-size: 11px;
+
+          font-weight: 800;
+
+          cursor: pointer;
+        }
+
+        .expense-category-list {
+          display: grid;
+
+          gap: 6px;
+
+          margin-top: 12px;
+        }
+
+        .expense-category-item {
+          display: flex;
+
+          align-items: center;
+
+          justify-content: space-between;
+
+          padding: 10px 11px;
+
+          border:
+            1px solid #e6ebf1;
+
+          border-radius: 10px;
+
+          background: #f8fafc;
+
+          font-size: 11px;
+
+          font-weight: 750;
+        }
+
+        .expense-category-delete {
+          width: 30px;
+          height: 30px;
+
+          display: grid;
+          place-items: center;
+
+          border: 0;
+
+          border-radius: 8px;
+
+          background: #fff0f0;
+
+          color: #d04444;
+
+          cursor: pointer;
+        }
+
+        /* TOAST */
+
+        .expense-toast-container {
+          position: fixed;
+
+          z-index: 5000;
+
+          left: 50%;
+          top: 50%;
+
+          transform:
+            translate(-50%, -50%);
+
+          width:
+            min(350px, calc(100vw - 26px));
+        }
+
+        .expense-toast {
+          display: flex;
+
+          align-items: flex-start;
+
+          gap: 9px;
+
+          padding: 13px;
+
+          background: white;
+
+          border:
+            1px solid #e3e8ef;
+
+          border-left:
+            4px solid #168451;
+
+          border-radius: 13px;
+
+          box-shadow:
+            0 20px 65px
+            rgba(7, 19, 38, 0.24);
+
+          animation:
+            expenseToastIn 0.18s ease;
+        }
+
+        .expense-toast.error {
+          border-left-color: #d04444;
+        }
+
+        .expense-toast-content {
+          flex: 1;
+
+          min-width: 0;
+        }
+
+        .expense-toast-title {
+          font-size: 12px;
+
+          font-weight: 850;
+        }
+
+        .expense-toast-message {
+          margin-top: 3px;
+
+          color: #697386;
+
+          font-size: 10px;
+
+          line-height: 1.45;
+
+          overflow-wrap: anywhere;
+        }
+
+        .expense-toast-close {
+          width: 27px;
+          height: 27px;
+
+          display: grid;
+          place-items: center;
+
+          border: 0;
+
+          border-radius: 8px;
+
+          background: #f0f3f7;
+
+          cursor: pointer;
+        }
+
+        .expense-spin {
+          animation:
+            expenseSpin 0.9s linear infinite;
+        }
+
+        @keyframes expenseSpin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes expenseModalIn {
+          from {
+            opacity: 0;
+            transform: scale(0.96);
+          }
+
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes expenseToastIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        /* TABLET */
+
+        @media (max-width: 900px) {
+          .expense-stats {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+
+          .expense-filters {
+            grid-template-columns:
+              1fr 1fr;
+          }
+
+          .expense-search {
+            grid-column: 1 / -1;
+          }
+
+          .expense-week-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        /* MOBILE */
+
+        @media (max-width: 600px) {
+          .expense-page {
+            padding: 7px;
+
+            padding-bottom:
+              env(
+                safe-area-inset-bottom,
+                10px
+              );
+          }
+
+          .expense-header {
+            flex-direction: column;
+
+            align-items: stretch;
+
+            border-radius: 15px;
+          }
+
+          .expense-controls {
+            justify-content: center;
+
+            flex-wrap: nowrap;
+          }
+
+          .expense-month {
+            flex: 1;
+
+            min-width: 0;
+          }
+
+          .expense-month-input {
+            width: 108px;
+          }
+
+          .expense-current {
+            display: none;
+          }
+
+          .expense-add {
+            padding: 0 10px;
+          }
+
+          .expense-stats {
+            gap: 6px;
+          }
+
+          .expense-stat {
+            padding: 11px;
+
+            gap: 7px;
+
+            border-radius: 13px;
+          }
+
+          .expense-stat-icon {
+            width: 32px;
+            height: 32px;
+
+            flex-basis: 32px;
+          }
+
+          .expense-stat-text strong {
+            font-size: 16px;
+          }
+
+          .expense-stat-text small {
+            font-size: 8px;
+          }
+
+          .expense-panel {
+            padding: 12px;
+
+            border-radius: 14px;
+          }
+
+          .expense-panel-header {
+            align-items: flex-start;
+          }
+
+          .expense-filters {
+            grid-template-columns: 1fr;
+          }
+
+          .expense-search {
+            grid-column: auto;
+          }
+
+          .expense-week-grid {
+            gap: 6px;
+          }
+
+          .expense-week {
+            padding: 9px;
+          }
+
+          .expense-week strong {
+            font-size: 13px;
+          }
+
+          .expense-row {
+            padding: 10px;
+
+            gap: 8px;
+
+            border-radius: 13px;
+          }
+
+          .expense-row-icon {
+            width: 34px;
+            height: 34px;
+
+            flex-basis: 34px;
+          }
+
+          .expense-row-amount {
+            font-size: 12px;
+          }
+
+          .expense-row-actions {
+            flex-direction: column;
+          }
+
+          .expense-modal-backdrop {
+            align-items: flex-end;
+
+            padding: 7px;
+          }
+
+          .expense-modal {
+            max-height: 92vh;
+
+            border-radius:
+              18px 18px 12px 12px;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .expense-brand p {
+            display: none;
+          }
+
+          .expense-controls {
+            gap: 3px;
+          }
+
+          .expense-month-input {
+            width: 100px;
+          }
+
+          .expense-stats {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+
+          .expense-week-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+        }
+      `}</style>
+
+      <main className="expense-page">
+        <div className="expense-container">
+
+          {/* HEADER */}
+          <header className="expense-header">
+
+            <div className="expense-brand">
+
+              <div className="expense-brand-icon">
+                <Wallet size={21} />
               </div>
-            )}
-          </>
-        )}
-      </section>
 
-      {showForm && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving) {
-              resetForm();
-            }
-          }}
-        >
-          <form className="expense-modal" onSubmit={submitExpense}>
-            <div className="modal-header">
               <div>
-                <div className="modal-title-icon">
-                  {editingId ? <Pencil size={17} /> : <Plus size={17} />}
-                </div>
+                <h1>Expenses</h1>
 
-                <div>
-                  <h2>{editingId ? "Update Expense" : "Add Expense"}</h2>
-                  <p>
-                    {editingId
-                      ? "Update the expense details below."
-                      : "Add a new expense to your selected date."}
-                  </p>
-                </div>
+                <p>
+                  Monthly expense management
+                </p>
+              </div>
+            </div>
+
+            <div className="expense-controls">
+
+              <button
+                type="button"
+                className="expense-icon-btn"
+                onClick={() =>
+                  changeMonth(-1)
+                }
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <div className="expense-month">
+                <CalendarDays size={15} />
+
+                {selectedMonth.toLocaleDateString(
+                  "en-IN",
+                  {
+                    month: "long",
+                    year: "numeric",
+                  }
+                )}
               </div>
 
               <button
                 type="button"
-                className="modal-close"
-                onClick={resetForm}
-                disabled={saving}
+                className="expense-icon-btn"
+                onClick={() =>
+                  changeMonth(1)
+                }
+              >
+                <ChevronRight size={18} />
+              </button>
+
+              <input
+                type="month"
+                className="expense-month-input"
+                value={monthInputValue(
+                  selectedMonth
+                )}
+                onChange={(e) =>
+                  changeMonthInput(
+                    e.target.value
+                  )
+                }
+              />
+
+              <button
+                type="button"
+                className="expense-current"
+                onClick={
+                  selectCurrentMonth
+                }
+              >
+                Current
+              </button>
+
+              <button
+                type="button"
+                className="expense-icon-btn"
+                onClick={refreshPage}
+                disabled={refreshing}
+              >
+                <RefreshCw
+                  size={16}
+                  className={
+                    refreshing
+                      ? "expense-spin"
+                      : ""
+                  }
+                />
+              </button>
+
+              <button
+                type="button"
+                className="expense-add"
+                onClick={
+                  openAddExpense
+                }
+              >
+                <Plus size={15} />
+                Add
+              </button>
+            </div>
+          </header>
+
+          {/* STATS */}
+          <section className="expense-stats">
+
+            <div className="expense-stat">
+              <div className="expense-stat-icon red">
+                <Receipt size={18} />
+              </div>
+
+              <div className="expense-stat-text">
+                <small>
+                  Total Expenses
+                </small>
+
+                <strong>
+                  {formatMoney(
+                    totalExpenses
+                  )}
+                </strong>
+
+                <span>
+                  Selected month
+                </span>
+              </div>
+            </div>
+
+            <div className="expense-stat">
+              <div className="expense-stat-icon purple">
+                <Tag size={18} />
+              </div>
+
+              <div className="expense-stat-text">
+                <small>
+                  Categories
+                </small>
+
+                <strong>
+                  {categories.length}
+                </strong>
+
+                <span>
+                  Available categories
+                </span>
+              </div>
+            </div>
+
+            <div className="expense-stat">
+              <div className="expense-stat-icon blue">
+                <Wallet size={18} />
+              </div>
+
+              <div className="expense-stat-text">
+                <small>
+                  Transactions
+                </small>
+
+                <strong>
+                  {expenses.length}
+                </strong>
+
+                <span>
+                  This month
+                </span>
+              </div>
+            </div>
+
+            <div className="expense-stat">
+              <div className="expense-stat-icon green">
+                <CalendarDays size={18} />
+              </div>
+
+              <div className="expense-stat-text">
+                <small>
+                  Month
+                </small>
+
+                <strong>
+                  {selectedMonth.toLocaleDateString(
+                    "en-IN",
+                    {
+                      month: "short",
+                    }
+                  )}
+                </strong>
+
+                <span>
+                  {selectedMonth.getFullYear()}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* FILTER SECTION */}
+          <section className="expense-panel">
+
+            <div className="expense-panel-header">
+
+              <div className="expense-panel-title">
+                <h2>
+                  Expense Overview
+                </h2>
+
+                <p>
+                  All expenses for selected month
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="expense-category-btn"
+                onClick={() =>
+                  setCategoryModal(true)
+                }
+              >
+                <Tag size={14} />
+                Categories
+              </button>
+            </div>
+
+            <div className="expense-filters">
+
+              <div className="expense-search">
+                <Search size={16} />
+
+                <input
+                  type="text"
+                  placeholder="Search category or notes..."
+                  value={search}
+                  onChange={(e) =>
+                    setSearch(
+                      e.target.value
+                    )
+                  }
+                />
+              </div>
+
+              <select
+                className="expense-filter"
+                value={
+                  categoryFilter
+                }
+                onChange={(e) =>
+                  setCategoryFilter(
+                    e.target.value
+                  )
+                }
+              >
+                <option value="all">
+                  All Categories
+                </option>
+
+                {categories.map(
+                  (category) => (
+                    <option
+                      key={
+                        category.id
+                      }
+                      value={
+                        category.id
+                      }
+                    >
+                      {
+                        category.category_name
+                      }
+                    </option>
+                  )
+                )}
+              </select>
+
+              <select
+                className="expense-filter"
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value
+                  )
+                }
+              >
+                <option value="date-desc">
+                  Newest First
+                </option>
+
+                <option value="date-asc">
+                  Oldest First
+                </option>
+
+                <option value="amount-desc">
+                  Highest Amount
+                </option>
+
+                <option value="amount-asc">
+                  Lowest Amount
+                </option>
+              </select>
+            </div>
+          </section>
+
+          {/* WEEK TOTALS */}
+          <section className="expense-panel">
+
+            <div className="expense-panel-header">
+              <div className="expense-panel-title">
+                <h2>
+                  Weekly Expenses
+                </h2>
+
+                <p>
+                  Selected month's weekly totals
+                </p>
+              </div>
+            </div>
+
+            <div className="expense-week-grid">
+
+              <div className="expense-week">
+                <span>
+                  WEEK 1 · 1–7
+                </span>
+
+                <strong>
+                  {formatMoney(
+                    weekTotals.week1
+                  )}
+                </strong>
+              </div>
+
+              <div className="expense-week">
+                <span>
+                  WEEK 2 · 8–14
+                </span>
+
+                <strong>
+                  {formatMoney(
+                    weekTotals.week2
+                  )}
+                </strong>
+              </div>
+
+              <div className="expense-week">
+                <span>
+                  WEEK 3 · 15–21
+                </span>
+
+                <strong>
+                  {formatMoney(
+                    weekTotals.week3
+                  )}
+                </strong>
+              </div>
+
+              <div className="expense-week">
+                <span>
+                  WEEK 4 · 22–END
+                </span>
+
+                <strong>
+                  {formatMoney(
+                    weekTotals.week4
+                  )}
+                </strong>
+              </div>
+            </div>
+
+            {Object.keys(
+              categoryTotals
+            ).length > 0 && (
+              <>
+                <div
+                  className="expense-panel-header"
+                  style={{
+                    marginTop: "12px",
+                  }}
+                >
+                  <div className="expense-panel-title">
+                    <h2>
+                      Category Totals
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="expense-category-summary">
+                  {Object.entries(
+                    categoryTotals
+                  ).map(
+                    ([name, amount]) => (
+                      <div
+                        className="expense-category-summary-card"
+                        key={name}
+                      >
+                        <span>
+                          {name}
+                        </span>
+
+                        <strong>
+                          {formatMoney(
+                            amount
+                          )}
+                        </strong>
+                      </div>
+                    )
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* EXPENSE LIST */}
+          <section className="expense-list">
+
+            {loading &&
+            expenses.length === 0 ? (
+              <div className="expense-empty">
+                <RefreshCw
+                  size={28}
+                  className="expense-spin"
+                />
+
+                <strong>
+                  Loading expenses...
+                </strong>
+              </div>
+            ) : filteredExpenses.length ===
+              0 ? (
+              <div className="expense-empty">
+                <Receipt size={38} />
+
+                <strong>
+                  No expenses found
+                </strong>
+
+                <span>
+                  Add an expense or change
+                  your filters.
+                </span>
+              </div>
+            ) : (
+              filteredExpenses.map(
+                (expense) => (
+                  <article
+                    className="expense-row"
+                    key={expense.id}
+                  >
+                    <div className="expense-row-icon">
+                      <Receipt size={17} />
+                    </div>
+
+                    <div className="expense-row-main">
+                      <strong>
+                        {
+                          expense.category_name ||
+                          "Expense"
+                        }
+                      </strong>
+
+                      <span>
+                        {new Date(
+                          expense.expense_date
+                        ).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )}
+                      </span>
+
+                      {expense.notes ? (
+                        <small>
+                          {expense.notes}
+                        </small>
+                      ) : null}
+                    </div>
+
+                    <div className="expense-row-amount">
+                      {formatMoney(
+                        expense.amount
+                      )}
+                    </div>
+
+                    <div className="expense-row-actions">
+
+                      <button
+                        type="button"
+                        className="expense-row-action edit"
+                        onClick={() =>
+                          openEditExpense(
+                            expense
+                          )
+                        }
+                        title="Edit"
+                      >
+                        <Edit2
+                          size={15}
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="expense-row-action delete"
+                        onClick={() =>
+                          deleteExpense(
+                            expense.id
+                          )
+                        }
+                        title="Delete"
+                        disabled={saving}
+                      >
+                        <Trash2
+                          size={15}
+                        />
+                      </button>
+                    </div>
+                  </article>
+                )
+              )
+            )}
+          </section>
+        </div>
+      </main>
+
+      {/* ADD / EDIT EXPENSE MODAL */}
+      {modal ? (
+        <div
+          className="expense-modal-backdrop"
+          onMouseDown={(e) => {
+            if (
+              e.target ===
+              e.currentTarget
+            ) {
+              setModal(null);
+              resetForm();
+            }
+          }}
+        >
+          <div className="expense-modal">
+
+            <div className="expense-modal-header">
+              <h2>
+                {modal === "edit"
+                  ? "Edit Expense"
+                  : "Add Expense"}
+              </h2>
+
+              <button
+                type="button"
+                className="expense-modal-close"
+                onClick={() => {
+                  setModal(null);
+                  resetForm();
+                }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            {formError && (
-              <div className="form-error">
-                <AlertCircle size={15} />
-                <span>{formError}</span>
-              </div>
-            )}
+            <div className="expense-modal-body">
 
-            <label className="form-label">
-              Category
-              <select
-                className="form-control white-dropdown"
-                value={form.category}
-                onChange={(e) =>
-                  setForm((current) => ({
-                    ...current,
-                    category: e.target.value,
-                    customCategory: "",
-                  }))
-                }
-              >
-                <option value="">Select category</option>
+              <div className="expense-form">
 
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
+                <label>
+                  Category
 
-                <option value="__custom__">+ Add New Category</option>
-              </select>
-            </label>
+                  <select
+                    value={
+                      form.category_id
+                    }
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        category_id:
+                          e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">
+                      Select category
+                    </option>
 
-            {form.category === "__custom__" && (
-              <label className="form-label">
-                New Category
-                <input
-                  className="form-control"
-                  value={form.customCategory}
-                  onChange={(e) =>
-                    setForm((current) => ({
-                      ...current,
-                      customCategory: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter new category"
-                  maxLength={100}
-                  autoFocus
-                />
-              </label>
-            )}
+                    {categories.map(
+                      (category) => (
+                        <option
+                          key={
+                            category.id
+                          }
+                          value={
+                            category.id
+                          }
+                        >
+                          {
+                            category.category_name
+                          }
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
 
-            <div className="form-two">
-              <label className="form-label">
-                Amount
-                <div className="amount-control">
-                  <IndianRupee size={16} />
+                <label>
+                  Amount
+
                   <input
                     type="number"
                     min="0.01"
                     step="0.01"
-                    value={form.amount}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        amount: e.target.value,
-                      }))
+                    inputMode="decimal"
+                    value={
+                      form.amount
                     }
-                    placeholder="0"
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        amount:
+                          e.target.value,
+                      })
+                    }
+                    placeholder="Enter amount"
                   />
-                </div>
-              </label>
+                </label>
 
-              <label className="form-label">
-                Expense Date
-                <div className="date-control">
-                  <CalendarDays size={16} />
+                <label>
+                  Expense Date
+
                   <input
                     type="date"
-                    value={form.expenseDate}
+                    value={
+                      form.expense_date
+                    }
                     onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        expenseDate: e.target.value,
-                      }))
+                      setForm({
+                        ...form,
+                        expense_date:
+                          e.target.value,
+                      })
                     }
                   />
-                </div>
-              </label>
-            </div>
+                </label>
 
-            <div className="date-help">
-              <CalendarRange size={14} />
-              Week {getWeekFromDate(form.expenseDate)} of{" "}
-              {monthLabel(String(form.expenseDate).slice(0, 7))}
-            </div>
+                <label>
+                  Notes
 
-            <label className="form-label">
-              Notes <span className="optional">(Optional)</span>
-              <textarea
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((current) => ({
-                    ...current,
-                    notes: e.target.value,
-                  }))
-                }
-                placeholder="Add optional notes..."
-                rows={4}
-                maxLength={500}
-              />
-            </label>
+                  <textarea
+                    value={
+                      form.notes
+                    }
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        notes:
+                          e.target.value,
+                      })
+                    }
+                    placeholder="Optional notes"
+                  />
+                </label>
+              </div>
 
-            <div className="modal-footer">
               <button
                 type="button"
-                className="secondary-button"
-                onClick={resetForm}
+                className="expense-submit"
+                onClick={
+                  saveExpense
+                }
                 disabled={saving}
               >
-                Cancel
-              </button>
+                <Save size={15} />
 
-              <button
-                type="submit"
-                className="primary-button"
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <RefreshCw className="spin" size={15} />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    {editingId ? <Pencil size={15} /> : <Plus size={15} />}
-                    {editingId ? "Update Expense" : "Add Expense"}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {showDelete && deleteTarget && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !deletingId) {
-              setShowDelete(false);
-              setDeleteTarget(null);
-            }
-          }}
-        >
-          <div className="delete-modal">
-            <div className="delete-icon">
-              <Trash2 size={20} />
-            </div>
-
-            <h2>Delete Expense?</h2>
-
-            <p>
-              Delete <strong>{deleteTarget.category}</strong> expense of{" "}
-              <strong>{money(deleteTarget.amount)}</strong>?
-              <br />
-              This action cannot be undone.
-            </p>
-
-            <div className="modal-footer">
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  setShowDelete(false);
-                  setDeleteTarget(null);
-                }}
-                disabled={Boolean(deletingId)}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="danger-button"
-                onClick={deleteExpense}
-                disabled={Boolean(deletingId)}
-              >
-                {deletingId ? (
-                  <>
-                    <RefreshCw className="spin" size={15} />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 size={15} />
-                    Delete
-                  </>
-                )}
+                {saving
+                  ? "Saving..."
+                  : modal === "edit"
+                  ? "Update Expense"
+                  : "Add Expense"}
               </button>
             </div>
           </div>
         </div>
-      )}
-    </div>
+      ) : null}
+
+      {/* CATEGORY MODAL */}
+      {categoryModal ? (
+        <div
+          className="expense-modal-backdrop"
+          onMouseDown={(e) => {
+            if (
+              e.target ===
+              e.currentTarget
+            ) {
+              setCategoryModal(
+                false
+              );
+            }
+          }}
+        >
+          <div className="expense-modal">
+
+            <div className="expense-modal-header">
+              <h2>
+                Expense Categories
+              </h2>
+
+              <button
+                type="button"
+                className="expense-modal-close"
+                onClick={() =>
+                  setCategoryModal(
+                    false
+                  )
+                }
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="expense-modal-body">
+
+              <div className="expense-category-add">
+
+                <input
+                  type="text"
+                  value={
+                    categoryName
+                  }
+                  onChange={(e) =>
+                    setCategoryName(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Category name"
+                />
+
+                <button
+                  type="button"
+                  onClick={
+                    addCategory
+                  }
+                  disabled={saving}
+                >
+                  <Plus size={14} />
+                  Add
+                </button>
+              </div>
+
+              <div className="expense-category-list">
+
+                {categories.length ===
+                0 ? (
+                  <div
+                    style={{
+                      textAlign:
+                        "center",
+                      padding:
+                        "20px",
+                      color:
+                        "#7b8496",
+                      fontSize:
+                        "11px",
+                    }}
+                  >
+                    No categories found.
+                  </div>
+                ) : (
+                  categories.map(
+                    (category) => (
+                      <div
+                        className="expense-category-item"
+                        key={
+                          category.id
+                        }
+                      >
+                        <span>
+                          {
+                            category.category_name
+                          }
+                        </span>
+
+                        {!category.is_default ? (
+                          <button
+                            type="button"
+                            className="expense-category-delete"
+                            onClick={() =>
+                              deleteCategory(
+                                category.id
+                              )
+                            }
+                            disabled={
+                              saving
+                            }
+                            title="Delete category"
+                          >
+                            <Trash2
+                              size={14}
+                            />
+                          </button>
+                        ) : (
+                          <span
+                            style={{
+                              color:
+                                "#8a94a6",
+                              fontSize:
+                                "9px",
+                            }}
+                          >
+                            Default
+                          </span>
+                        )}
+                      </div>
+                    )
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* PROFESSIONAL CENTER ALERT */}
+      {toast ? (
+        <div className="expense-toast-container">
+
+          <div
+            className={`expense-toast ${toast.type}`}
+          >
+            {toast.type ===
+            "success" ? (
+              <CheckCircle2
+                size={19}
+                color="#168451"
+              />
+            ) : (
+              <AlertCircle
+                size={19}
+                color="#d04444"
+              />
+            )}
+
+            <div className="expense-toast-content">
+
+              <div className="expense-toast-title">
+                {toast.type ===
+                "success"
+                  ? "Success"
+                  : "Error"}
+              </div>
+
+              <div className="expense-toast-message">
+                {toast.message}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="expense-toast-close"
+              onClick={() =>
+                setToast(null)
+              }
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
-};
-
-const styles = `
-  .expense-page {
-    width: 100%;
-    min-height: 100%;
-    box-sizing: border-box;
-    padding: clamp(12px, 2vw, 26px);
-    color: #f8fafc;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background:
-      radial-gradient(circle at 8% 0%, rgba(124,58,237,.17), transparent 30%),
-      radial-gradient(circle at 92% 8%, rgba(6,182,212,.10), transparent 27%);
-  }
-
-  .expense-header,
-  .filter-bar,
-  .page-heading,
-  .header-actions,
-  .title-row,
-  .panel-heading,
-  .panel-title,
-  .stat-top,
-  .expense-main,
-  .expense-name-row,
-  .expense-right,
-  .row-actions,
-  .modal-header,
-  .modal-header > div,
-  .date-control,
-  .amount-control,
-  .date-help,
-  .modal-footer {
-    display: flex;
-    align-items: center;
-  }
-
-  .expense-header {
-    justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 16px;
-  }
-
-  .page-heading {
-    gap: 11px;
-    min-width: 0;
-  }
-
-  .heading-icon {
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
-    display: grid;
-    place-items: center;
-    color: #c4b5fd;
-    background: linear-gradient(135deg, rgba(124,58,237,.22), rgba(6,182,212,.11));
-    border: 1px solid rgba(167,139,250,.2);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(124,58,237,.12);
-  }
-
-  .title-row {
-    gap: 9px;
-  }
-
-  .title-row h1 {
-    margin: 0;
-    font-size: clamp(1.25rem, 2vw, 1.55rem);
-    font-weight: 850;
-    letter-spacing: -.025em;
-  }
-
-  .page-heading p {
-    margin: 5px 0 0;
-    color: rgba(226,232,240,.54);
-    font-size: .73rem;
-  }
-
-  .page-heading p strong {
-    color: rgba(226,232,240,.8);
-  }
-
-  .live-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 7px;
-    border-radius: 999px;
-    color: #6ee7b7;
-    background: rgba(16,185,129,.08);
-    border: 1px solid rgba(52,211,153,.14);
-    font-size: .56rem;
-    font-weight: 800;
-  }
-
-  .live-badge span {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #34d399;
-    box-shadow: 0 0 8px rgba(52,211,153,.8);
-  }
-
-  .header-actions {
-    gap: 8px;
-  }
-
-  .month-picker,
-  .refresh-button,
-  .add-button {
-    height: 40px;
-    box-sizing: border-box;
-    border-radius: 11px;
-  }
-
-  .month-picker {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 0 10px;
-    color: #a78bfa;
-    background: rgba(15,23,42,.72);
-    border: 1px solid rgba(148,163,184,.16);
-  }
-
-  .month-picker input {
-    width: 128px;
-    color: #fff;
-    background: transparent;
-    border: 0;
-    outline: 0;
-    font-size: .73rem;
-    font-weight: 700;
-  }
-
-  .refresh-button,
-  .add-button,
-  .week-tabs button,
-  .category-card,
-  .row-actions button,
-  .pagination button,
-  .state-box button,
-  .modal-close,
-  .primary-button,
-  .secondary-button,
-  .danger-button,
-  .filter-bar button {
-    cursor: pointer;
-  }
-
-  .refresh-button {
-    width: 40px;
-    display: grid;
-    place-items: center;
-    color: #cbd5e1;
-    background: rgba(15,23,42,.72);
-    border: 1px solid rgba(148,163,184,.16);
-    transition: .2s ease;
-  }
-
-  .refresh-button:hover {
-    color: #fff;
-    border-color: rgba(167,139,250,.45);
-    background: rgba(124,58,237,.14);
-    transform: translateY(-1px);
-  }
-
-  .add-button,
-  .primary-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 0 14px;
-    color: #fff;
-    background: linear-gradient(135deg, #2563eb, #7c3aed);
-    border: 1px solid rgba(167,139,250,.35);
-    font-weight: 800;
-    box-shadow: 0 8px 22px rgba(79,70,229,.18);
-    transition: .2s ease;
-  }
-
-  .add-button:hover,
-  .primary-button:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.08);
-    box-shadow: 0 12px 28px rgba(124,58,237,.28);
-  }
-
-  .filter-bar {
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px;
-    margin-bottom: 13px;
-    border: 1px solid rgba(148,163,184,.11);
-    border-radius: 13px;
-    background: rgba(15,23,42,.58);
-    box-shadow: inset 0 1px rgba(255,255,255,.025);
-  }
-
-  .filter-left {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    flex-wrap: wrap;
-  }
-
-  .filter-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    color: rgba(226,232,240,.54);
-    font-size: .66rem;
-    font-weight: 750;
-  }
-
-  .filter-label svg {
-    color: #a78bfa;
-  }
-
-  .week-tabs {
-    display: flex;
-    gap: 4px;
-    padding: 3px;
-    border-radius: 9px;
-    background: rgba(255,255,255,.035);
-  }
-
-  .week-tabs button {
-    height: 29px;
-    min-width: 37px;
-    padding: 0 8px;
-    color: rgba(226,232,240,.54);
-    background: transparent;
-    border: 0;
-    border-radius: 7px;
-    font-size: .62rem;
-    font-weight: 750;
-    transition: .18s ease;
-  }
-
-  .week-tabs button:hover {
-    color: #fff;
-    background: rgba(124,58,237,.1);
-  }
-
-  .week-tabs button.active {
-    color: #fff;
-    background: linear-gradient(135deg, #7c3aed, #6366f1);
-    box-shadow: 0 4px 13px rgba(124,58,237,.2);
-  }
-
-  .period-text {
-    color: rgba(203,213,225,.45);
-    font-size: .62rem;
-  }
-
-  .search-box {
-    width: min(230px, 100%);
-    height: 35px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 0 9px;
-    color: rgba(203,213,225,.42);
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(148,163,184,.1);
-    border-radius: 9px;
-  }
-
-  .search-box:focus-within {
-    color: #a78bfa;
-    border-color: rgba(139,92,246,.4);
-    box-shadow: 0 0 0 3px rgba(139,92,246,.08);
-  }
-
-  .search-box input {
-    width: 100%;
-    min-width: 0;
-    color: #fff;
-    background: transparent;
-    border: 0;
-    outline: 0;
-    font-size: .68rem;
-  }
-
-  .search-box input::placeholder {
-    color: rgba(203,213,225,.35);
-  }
-
-  .search-box button {
-    display: grid;
-    place-items: center;
-    padding: 0;
-    color: rgba(203,213,225,.45);
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 13px;
-  }
-
-  .stat-card {
-    --tone: #8b5cf6;
-    position: relative;
-    overflow: hidden;
-    padding: 15px;
-    border-radius: 16px;
-    border: 1px solid rgba(148,163,184,.12);
-    background: linear-gradient(145deg, rgba(15,23,42,.92), rgba(17,24,39,.75));
-    box-shadow: 0 14px 32px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.03);
-    transition: .22s ease;
-  }
-
-  .stat-card::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 2px;
-    background: var(--tone);
-  }
-
-  .stat-card::after {
-    content: "";
-    position: absolute;
-    width: 100px;
-    height: 100px;
-    right: -50px;
-    top: -50px;
-    border-radius: 50%;
-    background: var(--tone);
-    opacity: .06;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in srgb, var(--tone) 35%, transparent);
-    box-shadow: 0 20px 40px rgba(0,0,0,.22);
-  }
-
-  .stat-purple { --tone: #a78bfa; }
-  .stat-cyan { --tone: #22d3ee; }
-  .stat-green { --tone: #34d399; }
-  .stat-orange { --tone: #fb923c; }
-
-  .stat-top {
-    justify-content: space-between;
-  }
-
-  .stat-icon {
-    width: 36px;
-    height: 36px;
-    display: grid;
-    place-items: center;
-    color: var(--tone);
-    background: color-mix(in srgb, var(--tone) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--tone) 17%, transparent);
-    border-radius: 10px;
-  }
-
-  .stat-tag {
-    color: color-mix(in srgb, var(--tone) 75%, white);
-    font-size: .52rem;
-    font-weight: 850;
-    letter-spacing: .06em;
-  }
-
-  .stat-label {
-    display: block;
-    margin-top: 12px;
-    color: rgba(226,232,240,.52);
-    font-size: .67rem;
-    font-weight: 650;
-  }
-
-  .stat-card strong {
-    display: block;
-    margin-top: 4px;
-    color: #f8fafc;
-    font-size: clamp(1.05rem, 1.7vw, 1.3rem);
-    font-weight: 850;
-    letter-spacing: -.025em;
-    word-break: break-word;
-  }
-
-  .stat-card small {
-    display: block;
-    margin-top: 4px;
-    color: rgba(148,163,184,.45);
-    font-size: .59rem;
-  }
-
-  .panel {
-    padding: 16px;
-    margin-bottom: 13px;
-    border: 1px solid rgba(148,163,184,.11);
-    border-radius: 17px;
-    background: linear-gradient(145deg, rgba(15,23,42,.8), rgba(17,24,39,.62));
-    box-shadow: 0 14px 34px rgba(0,0,0,.13), inset 0 1px rgba(255,255,255,.025);
-  }
-
-  .panel-heading {
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .panel-title {
-    gap: 7px;
-  }
-
-  .panel-title svg {
-    color: #a78bfa;
-  }
-
-  .panel-title h2 {
-    margin: 0;
-    color: #f1f5f9;
-    font-size: .86rem;
-    font-weight: 820;
-  }
-
-  .panel-heading p {
-    margin: 5px 0 0;
-    color: rgba(203,213,225,.43);
-    font-size: .62rem;
-  }
-
-  .white-dropdown {
-    min-width: 165px;
-    height: 37px;
-    padding: 0 10px;
-    color: #111827 !important;
-    background: #fff !important;
-    border: 1px solid #d1d5db;
-    border-radius: 9px;
-    outline: none;
-    font-size: .68rem;
-    font-weight: 700;
-    color-scheme: light;
-  }
-
-  .white-dropdown option {
-    color: #111827 !important;
-    background: #fff !important;
-  }
-
-  .white-dropdown:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139,92,246,.1);
-  }
-
-  .category-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 9px;
-  }
-
-  .category-card {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 11px;
-    text-align: left;
-    color: #fff;
-    background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(124,58,237,.035));
-    border: 1px solid rgba(139,92,246,.12);
-    border-radius: 11px;
-    transition: .2s ease;
-  }
-
-  .category-card:hover,
-  .category-card.selected {
-    transform: translateY(-2px);
-    border-color: rgba(167,139,250,.35);
-    background: linear-gradient(145deg, rgba(124,58,237,.11), rgba(34,211,238,.05));
-    box-shadow: 0 9px 22px rgba(0,0,0,.15);
-  }
-
-  .category-card-icon {
-    width: 31px;
-    height: 31px;
-    flex: 0 0 31px;
-    display: grid;
-    place-items: center;
-    color: #67e8f9;
-    background: rgba(34,211,238,.08);
-    border: 1px solid rgba(103,232,249,.1);
-    border-radius: 8px;
-  }
-
-  .category-card-content {
-    min-width: 0;
-  }
-
-  .category-card-content span,
-  .category-card-content strong,
-  .category-card-content small {
-    display: block;
-  }
-
-  .category-card-content span {
-    color: rgba(226,232,240,.55);
-    font-size: .62rem;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .category-card-content strong {
-    margin-top: 3px;
-    color: #f8fafc;
-    font-size: .76rem;
-  }
-
-  .category-card-content small {
-    margin-top: 2px;
-    color: rgba(148,163,184,.42);
-    font-size: .54rem;
-  }
-
-  .empty-category {
-    grid-column: 1 / -1;
-    min-height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 7px;
-    color: rgba(203,213,225,.42);
-    font-size: .68rem;
-  }
-
-  .result-count {
-    padding: 5px 8px;
-    color: rgba(203,213,225,.52);
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(148,163,184,.09);
-    border-radius: 7px;
-    font-size: .58rem;
-    white-space: nowrap;
-  }
-
-  .expense-list {
-    display: grid;
-    gap: 8px;
-  }
-
-  .expense-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 12px;
-    border: 1px solid rgba(148,163,184,.09);
-    border-radius: 12px;
-    background: rgba(255,255,255,.025);
-    transition: .2s ease;
-  }
-
-  .expense-row:hover {
-    border-color: rgba(103,232,249,.22);
-    background: rgba(124,58,237,.04);
-    transform: translateY(-1px);
-  }
-
-  .expense-main {
-    min-width: 0;
-    gap: 10px;
-  }
-
-  .expense-avatar {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    display: grid;
-    place-items: center;
-    color: #a78bfa;
-    background: linear-gradient(135deg, rgba(124,58,237,.14), rgba(34,211,238,.07));
-    border: 1px solid rgba(167,139,250,.12);
-    border-radius: 10px;
-  }
-
-  .expense-info {
-    min-width: 0;
-  }
-
-  .expense-name-row {
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .expense-info h3 {
-    margin: 0;
-    color: #f1f5f9;
-    font-size: .76rem;
-    font-weight: 780;
-    overflow-wrap: anywhere;
-  }
-
-  .date-badge {
-    padding: 3px 6px;
-    color: rgba(203,213,225,.52);
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(148,163,184,.08);
-    border-radius: 6px;
-    font-size: .54rem;
-    white-space: nowrap;
-  }
-
-  .expense-info p {
-    display: flex;
-    align-items: flex-start;
-    gap: 5px;
-    margin: 5px 0 0;
-    color: rgba(203,213,225,.47);
-    font-size: .62rem;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-  }
-
-  .expense-info p svg {
-    flex: 0 0 auto;
-    margin-top: 1px;
-  }
-
-  .no-notes {
-    display: block;
-    margin-top: 5px;
-    color: rgba(148,163,184,.32);
-    font-size: .58rem;
-  }
-
-  .expense-right {
-    flex: 0 0 auto;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 7px;
-  }
-
-  .expense-right > strong {
-    color: #f8fafc;
-    font-size: .82rem;
-    white-space: nowrap;
-  }
-
-  .row-actions {
-    gap: 5px;
-  }
-
-  .row-actions button {
-    width: 29px;
-    height: 29px;
-    display: grid;
-    place-items: center;
-    border-radius: 8px;
-    color: rgba(226,232,240,.6);
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(148,163,184,.1);
-    transition: .18s ease;
-  }
-
-  .row-actions .edit-action:hover {
-    color: #a78bfa;
-    border-color: rgba(167,139,250,.3);
-    background: rgba(124,58,237,.1);
-  }
-
-  .row-actions .delete-action:hover {
-    color: #fda4af;
-    border-color: rgba(251,113,133,.28);
-    background: rgba(244,63,94,.08);
-  }
-
-  .row-actions button:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-  }
-
-  .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 9px;
-    margin-top: 13px;
-  }
-
-  .pagination button {
-    width: 31px;
-    height: 31px;
-    display: grid;
-    place-items: center;
-    color: #fff;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(148,163,184,.1);
-    border-radius: 8px;
-  }
-
-  .pagination button:not(:disabled):hover {
-    background: rgba(124,58,237,.12);
-    border-color: rgba(167,139,250,.3);
-  }
-
-  .pagination button:disabled {
-    opacity: .3;
-    cursor: not-allowed;
-  }
-
-  .pagination span {
-    color: rgba(203,213,225,.45);
-    font-size: .62rem;
-  }
-
-  .pagination strong {
-    color: #e2e8f0;
-  }
-
-  .state-box {
-    min-height: 180px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 7px;
-    color: rgba(203,213,225,.38);
-  }
-
-  .state-box strong {
-    color: rgba(226,232,240,.65);
-    font-size: .73rem;
-  }
-
-  .state-box span {
-    font-size: .62rem;
-  }
-
-  .state-box button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 6px;
-    padding: 8px 11px;
-    color: #fff;
-    background: linear-gradient(135deg, #7c3aed, #6366f1);
-    border: 0;
-    border-radius: 8px;
-    font-size: .62rem;
-    font-weight: 750;
-  }
-
-  .expense-toast {
-    position: fixed;
-    top: 18px;
-    right: 18px;
-    z-index: 10020;
-    min-width: 260px;
-    max-width: min(390px, calc(100vw - 30px));
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 10px 11px;
-    border-radius: 11px;
-    color: #f8fafc;
-    background: rgba(15,23,42,.95);
-    border: 1px solid rgba(148,163,184,.15);
-    box-shadow: 0 18px 45px rgba(0,0,0,.38);
-    backdrop-filter: blur(12px);
-    animation: toast-in .22s ease;
-    font-size: .68rem;
-  }
-
-  .expense-toast.success {
-    border-color: rgba(52,211,153,.25);
-  }
-
-  .expense-toast.error {
-    border-color: rgba(251,113,133,.25);
-  }
-
-  .toast-icon {
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    display: grid;
-    place-items: center;
-    border-radius: 8px;
-  }
-
-  .expense-toast.success .toast-icon {
-    color: #6ee7b7;
-    background: rgba(16,185,129,.1);
-  }
-
-  .expense-toast.error .toast-icon {
-    color: #fda4af;
-    background: rgba(244,63,94,.1);
-  }
-
-  .expense-toast span {
-    flex: 1;
-    line-height: 1.4;
-  }
-
-  .expense-toast > button {
-    display: grid;
-    place-items: center;
-    color: rgba(203,213,225,.45);
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-  }
-
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 14px;
-    background: rgba(2,6,23,.74);
-    backdrop-filter: blur(8px);
-  }
-
-  .expense-modal,
-  .delete-modal {
-    width: min(500px, calc(100vw - 28px));
-    max-height: calc(100vh - 28px);
-    overflow-y: auto;
-    box-sizing: border-box;
-    padding: 19px;
-    border: 1px solid rgba(167,139,250,.2);
-    border-radius: 17px;
-    background: linear-gradient(145deg, #111827, #0f172a);
-    box-shadow: 0 30px 90px rgba(0,0,0,.58), 0 0 45px rgba(124,58,237,.09);
-    animation: modal-in .2s ease;
-  }
-
-  .delete-modal {
-    width: min(400px, calc(100vw - 28px));
-    text-align: center;
-  }
-
-  .modal-header {
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 15px;
-  }
-
-  .modal-header > div:first-child {
-    align-items: flex-start;
-    gap: 9px;
-  }
-
-  .modal-title-icon {
-    width: 34px;
-    height: 34px;
-    flex: 0 0 34px;
-    display: grid;
-    place-items: center;
-    color: #c4b5fd;
-    background: rgba(124,58,237,.12);
-    border: 1px solid rgba(167,139,250,.14);
-    border-radius: 9px;
-  }
-
-  .modal-header h2,
-  .delete-modal h2 {
-    margin: 0;
-    color: #f8fafc;
-    font-size: .94rem;
-    font-weight: 850;
-  }
-
-  .modal-header p {
-    margin: 4px 0 0;
-    color: rgba(203,213,225,.45);
-    font-size: .62rem;
-  }
-
-  .modal-close {
-    width: 31px;
-    height: 31px;
-    display: grid;
-    place-items: center;
-    color: rgba(226,232,240,.65);
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(148,163,184,.1);
-    border-radius: 8px;
-  }
-
-  .modal-close:hover {
-    color: #fda4af;
-    background: rgba(244,63,94,.08);
-  }
-
-  .form-error {
-    display: flex;
-    align-items: flex-start;
-    gap: 7px;
-    margin-bottom: 12px;
-    padding: 9px 10px;
-    color: #fecaca;
-    background: rgba(239,68,68,.08);
-    border: 1px solid rgba(248,113,113,.2);
-    border-radius: 9px;
-    font-size: .65rem;
-    line-height: 1.4;
-  }
-
-  .form-label {
-    display: block;
-    margin-bottom: 12px;
-    color: rgba(226,232,240,.7);
-    font-size: .66rem;
-    font-weight: 700;
-  }
-
-  .optional {
-    color: rgba(203,213,225,.32);
-    font-weight: 450;
-  }
-
-  .form-control,
-  .expense-modal textarea {
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 6px;
-    border-radius: 9px;
-    outline: 0;
-    font: inherit;
-  }
-
-  .form-control {
-    height: 40px;
-    padding: 0 10px;
-  }
-
-  .expense-modal input:not(.white-dropdown),
-  .expense-modal textarea {
-    color: #fff;
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(148,163,184,.13);
-  }
-
-  .expense-modal textarea {
-    min-height: 85px;
-    padding: 9px 10px;
-    resize: vertical;
-    line-height: 1.45;
-  }
-
-  .expense-modal input:focus,
-  .expense-modal textarea:focus {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139,92,246,.09);
-  }
-
-  .form-two {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .amount-control,
-  .date-control {
-    height: 40px;
-    box-sizing: border-box;
-    gap: 7px;
-    margin-top: 6px;
-    padding: 0 9px;
-    border-radius: 9px;
-    color: #a78bfa;
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(148,163,184,.13);
-  }
-
-  .amount-control:focus-within,
-  .date-control:focus-within {
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 3px rgba(139,92,246,.09);
-  }
-
-  .amount-control input,
-  .date-control input {
-    width: 100%;
-    min-width: 0;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    border: 0 !important;
-    outline: 0;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: #fff;
-    font-size: .7rem;
-  }
-
-  .date-control input {
-    color-scheme: dark;
-  }
-
-  .date-help {
-    gap: 5px;
-    margin: -2px 0 12px;
-    color: rgba(203,213,225,.4);
-    font-size: .59rem;
-  }
-
-  .date-help svg {
-    color: #67e8f9;
-  }
-
-  .modal-footer {
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 15px;
-  }
-
-  .secondary-button,
-  .primary-button,
-  .danger-button {
-    min-height: 37px;
-    padding: 0 14px;
-    border-radius: 9px;
-    font-size: .66rem;
-    font-weight: 800;
-  }
-
-  .secondary-button {
-    color: rgba(226,232,240,.72);
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(148,163,184,.12);
-  }
-
-  .secondary-button:hover {
-    background: rgba(255,255,255,.075);
-  }
-
-  .danger-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    color: #fff;
-    background: linear-gradient(135deg, #e11d48, #be123c);
-    border: 0;
-  }
-
-  .danger-button:hover {
-    filter: brightness(1.08);
-  }
-
-  .delete-icon {
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    margin: 0 auto 12px;
-    color: #fda4af;
-    background: rgba(244,63,94,.1);
-    border: 1px solid rgba(251,113,133,.17);
-    border-radius: 12px;
-  }
-
-  .delete-modal p {
-    margin: 8px 0 0;
-    color: rgba(203,213,225,.53);
-    font-size: .67rem;
-    line-height: 1.6;
-  }
-
-  .delete-modal p strong {
-    color: #f8fafc;
-  }
-
-  .delete-modal .modal-footer {
-    justify-content: center;
-  }
-
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes toast-in {
-    from { opacity: 0; transform: translateY(-8px) scale(.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  @keyframes modal-in {
-    from { opacity: 0; transform: translateY(8px) scale(.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  @media (max-width: 1050px) {
-    .stats-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .category-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 760px) {
-    .expense-page {
-      padding: 10px;
-    }
-
-    .expense-header {
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .header-actions {
-      width: 100%;
-    }
-
-    .month-picker {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .month-picker input {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .filter-bar {
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .search-box {
-      width: 100%;
-    }
-
-    .category-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 520px) {
-    .expense-page {
-      padding: 8px;
-    }
-
-    .stats-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .category-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .panel {
-      padding: 13px;
-      border-radius: 14px;
-    }
-
-    .panel-heading {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-
-    .white-dropdown {
-      width: 100%;
-    }
-
-    .expense-row {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-
-    .expense-right {
-      width: 100%;
-      align-items: flex-start;
-      flex-direction: row;
-      justify-content: space-between;
-    }
-
-    .form-two {
-      grid-template-columns: 1fr;
-      gap: 0;
-    }
-
-    .week-tabs {
-      width: 100%;
-      justify-content: space-between;
-    }
-
-    .week-tabs button {
-      flex: 1;
-    }
-
-    .period-text {
-      width: 100%;
-    }
-
-    .expense-toast {
-      top: 10px;
-      right: 10px;
-      left: 10px;
-      max-width: none;
-      min-width: 0;
-    }
-
-    .modal-footer {
-      width: 100%;
-    }
-
-    .secondary-button,
-    .primary-button,
-    .danger-button {
-      flex: 1;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .stat-card,
-    .category-card,
-    .expense-row,
-    .add-button,
-    .primary-button,
-    .refresh-button {
-      transition: none;
-    }
-
-    .spin {
-      animation: none;
-    }
-  }
-`;
-
-export default Expense;
+}

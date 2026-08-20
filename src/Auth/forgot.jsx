@@ -10,7 +10,7 @@ export default function Forgot() {
   const navigate = useNavigate();
 
   const API_BASE =
-    import.meta?.env?.VITE_API_BASE || "http://localhost:5000" || "https://express-project-learning-new.onrender.com";
+    import.meta?.env?.VITE_API_BASE || "https://express-project-learning-new.onrender.com";
 
   const [step, setStep] = useState("email"); // email -> otp -> reset
   const [emailLocked, setEmailLocked] = useState(false);
@@ -183,12 +183,6 @@ export default function Forgot() {
       {/* Forgot Password Card */}
       <div className="forgot-wrapper">
         <div className="forgot-card glass-card">
-
-          {/* Back Button */}
-          <Link to="/login" className="back-link">
-            <ArrowLeft size={18} />
-            Back to Login
-          </Link>
 
           {/* Brand */}
           <div className="brand-section">
@@ -371,10 +365,11 @@ export default function Forgot() {
             </>
           )}
 
-          {/* Footer Links - Only Back to Login */}
+          {/* Login Link - Only one */}
           <div className="auth-links">
             <Link className="auth-link" to="/login">
-              ← Back to Login
+              <ArrowLeft size={15} />
+              Back to Login
             </Link>
           </div>
 
@@ -1151,6 +1146,93 @@ const css = `
 
     .dev-line {
       padding: 5px 12px;
+    }
+  }
+
+  /* Purple premium outer card glow — outside only */
+  .forgot-card {
+    position: relative;
+    isolation: isolate;
+    border-color: rgba(167, 139, 250, 0.18);
+    box-shadow:
+      0 40px 100px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 0 42px rgba(124, 58, 237, 0.16),
+      0 0 85px rgba(124, 58, 237, 0.08);
+  }
+
+  .forgot-card::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -2px;
+    border-radius: 30px;
+    padding: 1px;
+    background: linear-gradient(
+      125deg,
+      rgba(124, 58, 237, 0.65),
+      rgba(167, 139, 250, 0.12) 38%,
+      rgba(236, 72, 153, 0.38) 70%,
+      rgba(124, 58, 237, 0.62)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: .72;
+    filter: drop-shadow(0 0 12px rgba(124,58,237,.26));
+    pointer-events: none;
+    animation: purpleCardGlow 4s ease-in-out infinite;
+  }
+
+  .auth-links {
+    position: relative;
+    z-index: 2;
+    text-align: center !important;
+  }
+
+  .auth-link {
+    justify-content: center;
+    color: #a78bfa;
+    text-shadow: 0 0 18px rgba(124,58,237,.16);
+  }
+
+  .auth-link:hover {
+    color: #d8c9ff;
+    text-shadow:
+      0 0 10px rgba(124,58,237,.45),
+      0 0 24px rgba(236,72,153,.18);
+  }
+
+  @keyframes purpleCardGlow {
+    0%, 100% {
+      opacity: .58;
+      filter: drop-shadow(0 0 9px rgba(124,58,237,.18));
+    }
+    50% {
+      opacity: .9;
+      filter:
+        drop-shadow(0 0 16px rgba(124,58,237,.38))
+        drop-shadow(0 0 28px rgba(236,72,153,.12));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .forgot-card::after {
+      border-radius: 26px;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .forgot-card::after {
+      border-radius: 22px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .forgot-card::after {
+      animation: none !important;
     }
   }
 `;
