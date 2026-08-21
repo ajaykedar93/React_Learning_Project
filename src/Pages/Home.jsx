@@ -22,6 +22,7 @@ const TABS = [
   { id: "performance", label: "Performance", icon: "📈", component: Performance },
   { id: "export", label: "Export", icon: "📤", component: ExportDetails },
   { id: "trading", label: "Trading", icon: "📊", component: Trading },
+  
 ];
 
 const NAVBAR_HEIGHT_DESKTOP = 88;
