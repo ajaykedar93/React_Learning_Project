@@ -15,6 +15,7 @@ import {
   FileText,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   Send,
   Trash2,
@@ -24,7 +25,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-const API_BASE_URL = (import.meta.env?.VITE_API_URL ||"https://express-project-learning-new.onrender.com/api" || "http://localhost:5000/api").replace(/\/$/, "");
+const API_BASE_URL = (import.meta.env?.VITE_API_URL || "https://express-project-learning-new.onrender.com/api").replace(/\/$/, "");
 
 const money = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -56,6 +57,44 @@ const editableNumber = (value) => {
   if (value === "") return "";
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? value : "";
+};
+
+const startOfDay = (value = new Date()) => {
+  const d = new Date(value);
+  return new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate()
+  );
+};
+
+const daysBetween = (fromDate, toDate) => {
+  if (!fromDate || !toDate) return null;
+
+  const from = startOfDay(fromDate);
+  const to = startOfDay(toDate);
+
+  return Math.round(
+    (to.getTime() - from.getTime()) /
+      86400000
+  );
+};
+
+const dayText = (days) => {
+  if (days === null || days === undefined) {
+    return "—";
+  }
+
+  if (days > 0) {
+    return `${days} day${days === 1 ? "" : "s"} remaining`;
+  }
+
+  if (days === 0) {
+    return "Due today";
+  }
+
+  const overdue = Math.abs(days);
+  return `${overdue} day${overdue === 1 ? "" : "s"} overdue`;
 };
 
 export default function LoanBorrow() {
@@ -159,6 +198,13 @@ export default function LoanBorrow() {
   }, [selectedMonth, config, notify]);
 
   useEffect(() => {
+    window.__loanBusyAction = busyAction || "";
+    return () => {
+      window.__loanBusyAction = "";
+    };
+  }, [busyAction]);
+
+  useEffect(() => {
     fetchData();
   }, [fetchData]);
 
@@ -258,6 +304,65 @@ export default function LoanBorrow() {
   const openDetails = (item, type) => {
     setDetailItem({ ...item, recordType: type });
     setModal("details");
+  };
+
+  const markBorrowReturned = async (item) => {
+    if (!item?.id) {
+      notify("error", "Borrow record not found.");
+      return;
+    }
+
+    setBusyAction(`return-borrow-${item.id}`);
+
+    try {
+      const today = dateInput(new Date());
+
+      const response = await axios.put(
+        `${API_BASE_URL}/loan-borrow/borrow/${item.id}`,
+        {
+          person_name:
+            item.person_name?.trim() || "",
+          borrow_amount:
+            safeNumber(item.borrow_amount),
+          take_date: item.take_date
+            ? dateInput(item.take_date)
+            : today,
+          return_date: today,
+          notes: item.notes || "",
+        },
+        config
+      );
+
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.error ||
+            "Failed to mark borrow as returned"
+        );
+      }
+
+      await fetchData();
+      notify(
+        "success",
+        `Borrow returned today (${new Date().toLocaleDateString(
+          "en-IN"
+        )}).`
+      );
+    } catch (error) {
+      console.error(
+        "Mark borrow returned error:",
+        error
+      );
+
+      notify(
+        "error",
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to mark borrow as returned."
+      );
+    } finally {
+      setBusyAction("");
+    }
   };
 
   const addBorrow = async () => {
@@ -793,147 +898,537 @@ export default function LoanBorrow() {
         .lb-btn:disabled,.lb-action:disabled,.lb-submit:disabled{opacity:.55;cursor:wait;transform:none}
         .lb-action.is-busy{color:#4f46e5;background:#eef2ff}
 
-                @media(max-width:900px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}}
+        
+        .lb-schedule,
+        .lb-loan-metrics{
+          display:flex;
+          flex-wrap:wrap;
+          gap:6px 10px;
+          margin-top:5px;
+          color:#64748b;
+          font-size:8px;
+          line-height:1.3;
+        }
+
+        .lb-schedule strong,
+        .lb-loan-metrics strong{
+          color:#2563eb;
+          font-weight:900;
+        }
+
+        .lb-schedule .returned{
+          color:#059669;
+        }
+
+        .lb-schedule .overdue,
+        .lb-loan-metrics .overdue{
+          color:#dc2626;
+        }
+
+        .lb-loan-metrics span b{
+          color:#0f172a;
+        }
+
+        .lb-money small{
+          display:block;
+          margin-top:3px;
+          color:#94a3b8;
+          font-size:8px;
+        }
+
+        .lb-action.return{
+          background:#ecfdf5;
+          color:#059669;
+        }
+
+        .lb-action.return:hover{
+          background:#d1fae5;
+          color:#047857;
+        }
+
+        @media(max-width:900px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}}
         @media(max-width:620px){
           .lb-page{
             width:100%;
-            padding:7px 7px calc(28px + env(safe-area-inset-bottom));
+            padding:8px 8px calc(42px + env(safe-area-inset-bottom));
             overflow-x:hidden;
           }
+
           .lb-header{
             position:relative;
             top:auto;
-            padding:11px;
-            border-radius:15px;
-            margin-bottom:8px;
+            padding:12px;
+            border-radius:16px;
+            margin-bottom:9px;
           }
-          .lb-header-row{align-items:center;gap:8px}
-          .lb-brand{gap:8px}
-          .lb-brand h1{font-size:17px}
-          .lb-brand p{font-size:8px;line-height:1.3}
-          .lb-brand-icon{width:36px;height:36px;flex-basis:36px;border-radius:10px}
-          .lb-brand-icon svg{width:18px;height:18px}
-          .lb-header-actions{gap:4px}
+
+          .lb-header-row{
+            align-items:center;
+            gap:9px;
+          }
+
+          .lb-brand{gap:9px}
+
+          .lb-brand h1{
+            font-size:19px;
+            line-height:1.15;
+          }
+
+          .lb-brand p{
+            font-size:9px;
+            line-height:1.35;
+          }
+
+          .lb-brand-icon{
+            width:38px;
+            height:38px;
+            flex-basis:38px;
+            border-radius:11px;
+          }
+
+          .lb-brand-icon svg{
+            width:19px;
+            height:19px;
+          }
+
+          .lb-header-actions{gap:5px}
           .lb-header-actions .label{display:none}
-          .lb-btn{width:34px;height:34px;padding:0;border-radius:8px}
-          .lb-btn svg{width:14px;height:14px}
-          .lb-monthbar{
-            margin-top:8px;
-            padding-top:8px;
-            justify-content:stretch;
-            gap:4px;
+
+          .lb-btn{
+            width:36px;
+            height:36px;
+            padding:0;
+            border-radius:9px;
           }
+
+          .lb-btn svg{
+            width:15px;
+            height:15px;
+          }
+
+          .lb-monthbar{
+            margin-top:9px;
+            padding-top:9px;
+            justify-content:stretch;
+            gap:5px;
+          }
+
           .lb-month{
             flex:1;
             min-width:0;
-            height:31px;
-            padding:0 7px;
-            border-radius:8px;
-            font-size:9px;
+            height:34px;
+            padding:0 8px;
+            border-radius:9px;
+            font-size:10px;
             overflow:hidden;
             white-space:nowrap;
             text-overflow:ellipsis;
           }
-          .lb-nav{width:31px;height:31px;border-radius:8px}
-          .lb-today{height:31px;padding:0 8px;border-radius:8px;font-size:9px}
-          .lb-stats{gap:5px;margin-bottom:7px}
-          .lb-stat{padding:9px;border-radius:11px}
-          .lb-stat-label{font-size:6.5px}
-          .lb-stat-value{font-size:13px;margin-top:4px}
-          .lb-stat-sub{font-size:6.5px}
-          .lb-stat-icon{width:27px;height:27px;border-radius:8px}
-          .lb-stat-icon svg{width:13px;height:13px}
-          .lb-tabs-card,.lb-filter-card,.lb-list-card{border-radius:12px}
-          .lb-tabs-card{padding:4px;margin-bottom:7px}
-          .lb-tab{height:39px;border-radius:9px;font-size:10px;gap:5px}
-          .lb-tab svg{width:15px;height:15px}
-          .lb-filter-card{padding:7px;margin-bottom:7px}
-          .lb-filters{grid-template-columns:1fr;gap:5px}
-          .lb-search,.lb-select{height:34px;border-radius:8px;font-size:9px}
-          .lb-search{padding:0 8px}
-          .lb-search input{font-size:9px}
-          .lb-select{padding:0 7px}
-          .lb-list-card{padding:7px}
-          .lb-list-head{margin-bottom:6px}
-          .lb-list-head h2{font-size:10px}
-          .lb-list-head span{font-size:7px}
-          .lb-list{gap:5px}
-          .lb-item{
-            grid-template-columns:30px minmax(0,1fr) auto;
+
+          .lb-nav{
+            width:34px;
+            height:34px;
+            border-radius:9px;
+          }
+
+          .lb-today{
+            height:34px;
+            padding:0 9px;
+            border-radius:9px;
+            font-size:10px;
+          }
+
+          .lb-stats{
             gap:6px;
-            padding:8px;
+            margin-bottom:8px;
+          }
+
+          .lb-stat{
+            padding:10px;
+            border-radius:12px;
+          }
+
+          .lb-stat-label{
+            font-size:7.5px;
+            line-height:1.25;
+          }
+
+          .lb-stat-value{
+            font-size:15px;
+            margin-top:5px;
+            line-height:1.15;
+          }
+
+          .lb-stat-sub{
+            font-size:7.5px;
+            line-height:1.25;
+          }
+
+          .lb-stat-icon{
+            width:29px;
+            height:29px;
+            border-radius:8px;
+          }
+
+          .lb-stat-icon svg{
+            width:14px;
+            height:14px;
+          }
+
+          .lb-tabs-card,
+          .lb-filter-card,
+          .lb-list-card{
+            border-radius:13px;
+          }
+
+          .lb-tabs-card{
+            padding:4px;
+            margin-bottom:8px;
+          }
+
+          .lb-tab{
+            height:42px;
             border-radius:10px;
+            font-size:11px;
+            gap:6px;
+          }
+
+          .lb-tab svg{
+            width:16px;
+            height:16px;
+          }
+
+          .lb-filter-card{
+            padding:8px;
+            margin-bottom:8px;
+          }
+
+          .lb-filters{
+            grid-template-columns:1fr;
+            gap:6px;
+          }
+
+          .lb-search,
+          .lb-select{
+            height:38px;
+            border-radius:9px;
+            font-size:10px;
+          }
+
+          .lb-search{
+            padding:0 9px;
+          }
+
+          .lb-search input{
+            font-size:10px;
+          }
+
+          .lb-select{
+            padding:0 8px;
+          }
+
+          .lb-list-card{
+            padding:8px;
+          }
+
+          .lb-list-head{
+            margin-bottom:7px;
+          }
+
+          .lb-list-head h2{
+            font-size:12px;
+          }
+
+          .lb-list-head span{
+            font-size:8px;
+          }
+
+          .lb-list{
+            gap:6px;
+          }
+
+          .lb-item{
+            grid-template-columns:34px minmax(0,1fr) auto;
+            gap:8px;
+            padding:9px;
+            border-radius:11px;
             align-items:start;
           }
-          .lb-avatar{width:30px;height:30px;border-radius:8px}
-          .lb-avatar svg{width:14px;height:14px}
-          .lb-name{font-size:9px;line-height:1.25}
-          .lb-meta{gap:4px;margin-top:3px;font-size:6.5px}
-          .lb-status{padding:3px 5px;font-size:5.8px;gap:3px}
-          .lb-note{
-            margin-top:3px;
-            font-size:6.5px;
-            white-space:normal;
-            overflow:visible;
+
+          .lb-avatar{
+            width:34px;
+            height:34px;
+            border-radius:9px;
+          }
+
+          .lb-avatar svg{
+            width:15px;
+            height:15px;
+          }
+
+          .lb-name{
+            font-size:10.5px;
             line-height:1.3;
           }
+
+          .lb-meta{
+            gap:5px;
+            margin-top:4px;
+            font-size:7.5px;
+            line-height:1.25;
+          }
+
+          .lb-status{
+            padding:3px 6px;
+            font-size:6.5px;
+            gap:3px;
+          }
+
+          .lb-note{
+            margin-top:4px;
+            font-size:7.5px;
+            white-space:normal;
+            overflow:visible;
+            line-height:1.4;
+          }
+
           .lb-money{
             grid-column:2;
             grid-row:2;
             min-width:0;
             text-align:left;
-            margin-top:2px;
+            margin-top:3px;
           }
-          .lb-money strong{font-size:9px}
-          .lb-money span{font-size:6px;line-height:1.2}
+
+          .lb-money strong{
+            font-size:11.5px;
+            line-height:1.15;
+          }
+
+          .lb-money span{
+            font-size:7px;
+            line-height:1.25;
+          }
+
+          .lb-money small{
+            font-size:6.5px;
+            line-height:1.25;
+          }
+
+          .lb-schedule,
+          .lb-loan-metrics{
+            gap:4px 7px;
+            margin-top:4px;
+            font-size:7px;
+            line-height:1.35;
+          }
+
+          .lb-action.return{
+            background:#ecfdf5;
+          }
+
           .lb-actions{
             grid-column:3;
             grid-row:1 / span 2;
             flex-direction:column;
-            gap:3px;
+            gap:4px;
           }
-          .lb-action{width:27px;height:27px;border-radius:7px}
-          .lb-action svg{width:12px;height:12px}
-          .lb-empty{padding:35px 12px;border-radius:11px}
-          .lb-empty-icon{width:40px;height:40px;border-radius:11px}
-          .lb-empty strong{font-size:10px}
-          .lb-empty span{font-size:7px}
-          .lb-form-grid{grid-template-columns:1fr}
-          .lb-field.full{grid-column:auto}
+
+          .lb-action{
+            width:30px;
+            height:30px;
+            border-radius:8px;
+          }
+
+          .lb-action svg{
+            width:13px;
+            height:13px;
+          }
+
+          .lb-empty{
+            padding:38px 14px;
+            border-radius:12px;
+          }
+
+          .lb-empty-icon{
+            width:43px;
+            height:43px;
+            border-radius:12px;
+          }
+
+          .lb-empty strong{
+            font-size:12px;
+          }
+
+          .lb-empty span{
+            font-size:8px;
+            line-height:1.4;
+          }
+
+          .lb-form-grid{
+            grid-template-columns:1fr;
+          }
+
+          .lb-field.full{
+            grid-column:auto;
+          }
+
           .lb-modal{
-            width:calc(100vw - 18px);
-            max-height:calc(100dvh - 22px);
+            width:calc(100vw - 16px);
+            max-height:calc(100dvh - 18px);
+            border-radius:17px;
+          }
+
+          .lb-modal-head{
+            padding:12px 13px;
+          }
+
+          .lb-modal-head h3{
+            font-size:14px;
+          }
+
+          .lb-close{
+            width:30px;
+            height:30px;
+            border-radius:8px;
+          }
+
+          .lb-modal-body{
+            padding:13px;
+          }
+
+          .lb-form{
+            gap:9px;
+          }
+
+          .lb-field{
+            gap:5px;
+          }
+
+          .lb-field label{
+            font-size:8px;
+          }
+
+          .lb-field input,
+          .lb-field textarea,
+          .lb-field select{
+            font-size:11px;
+            border-radius:9px;
+          }
+
+          .lb-field input,
+          .lb-field select{
+            height:39px;
+          }
+
+          .lb-field textarea{
+            min-height:78px;
+          }
+
+          .lb-submit{
+            height:40px;
+            border-radius:9px;
+            font-size:10px;
+          }
+
+          /* Professional details card: readable and no clipped text */
+          .lb-detail-grid{
+            grid-template-columns:1fr 1fr;
+            gap:7px;
+          }
+
+          .lb-detail{
+            min-width:0;
+            padding:10px;
+            border-radius:10px;
+            background:linear-gradient(180deg,#f8fafc,#f1f5f9);
+          }
+
+          .lb-detail small{
+            font-size:7px;
+            line-height:1.25;
+            letter-spacing:.03em;
+          }
+
+          .lb-detail strong{
+            font-size:11px;
+            line-height:1.35;
+            overflow-wrap:anywhere;
+            word-break:break-word;
+          }
+
+          .lb-detail:last-child{
+            grid-column:1/-1;
+          }
+
+          .lb-toast-wrap{
+            padding:10px;
+          }
+
+          .lb-toast{
+            width:min(360px,calc(100vw - 20px));
+            padding:12px;
+            border-radius:12px;
+          }
+
+          .lb-toast-body b{
+            font-size:11px;
+          }
+
+          .lb-toast-body span{
+            font-size:9px;
+            line-height:1.45;
+          }
+
+          .lb-confirm{
+            width:calc(100vw - 22px);
+            padding:16px;
             border-radius:16px;
           }
-          .lb-modal-head{padding:11px 12px}
-          .lb-modal-head h3{font-size:12px}
-          .lb-close{width:28px;height:28px;border-radius:7px}
-          .lb-modal-body{padding:11px}
-          .lb-form{gap:8px}
-          .lb-field{gap:4px}
-          .lb-field label{font-size:7px}
-          .lb-field input,.lb-field textarea,.lb-field select{font-size:10px;border-radius:8px}
-          .lb-field input,.lb-field select{height:36px}
-          .lb-field textarea{min-height:68px}
-          .lb-submit{height:37px;border-radius:8px;font-size:9px}
-          .lb-detail-grid{grid-template-columns:1fr}
-          .lb-detail{padding:8px;border-radius:9px}
-          .lb-detail small{font-size:6px}
-          .lb-detail strong{font-size:9px}
-          .lb-toast-wrap{padding:10px}
-          .lb-toast{width:min(340px,calc(100vw - 20px));padding:10px;border-radius:11px}
-          .lb-toast-body b{font-size:10px}
-          .lb-toast-body span{font-size:8px}
-          .lb-confirm{
-            width:calc(100vw - 24px);
-            padding:15px;
-            border-radius:15px;
+
+          .lb-confirm-icon{
+            width:42px;
+            height:42px;
+            border-radius:12px;
           }
-          .lb-confirm-icon{width:40px;height:40px;border-radius:11px}
-          .lb-confirm h3{font-size:13px}
-          .lb-confirm p{font-size:8px;line-height:1.45}
-          .lb-confirm-actions{gap:5px;margin-top:11px}
-          .lb-confirm-actions button{height:34px;font-size:8px;border-radius:8px}
+
+          .lb-confirm h3{
+            font-size:14px;
+          }
+
+          .lb-confirm p{
+            font-size:9px;
+            line-height:1.5;
+          }
+
+          .lb-confirm-actions{
+            gap:6px;
+            margin-top:12px;
+          }
+
+          .lb-confirm-actions button{
+            height:36px;
+            font-size:9px;
+            border-radius:9px;
+          }
+        }
+
+        @media(max-width:420px){
+          .lb-detail-grid{
+            grid-template-columns:1fr;
+          }
+
+          .lb-detail:last-child{
+            grid-column:auto;
+          }
+
+          .lb-stat-value{
+            font-size:14px;
+          }
+
+          .lb-money strong{
+            font-size:11px;
+          }
         }
         @media(max-width:380px){
           .lb-stats{grid-template-columns:1fr 1fr}
@@ -1056,6 +1551,11 @@ export default function LoanBorrow() {
                       })
                     }
                     onPayment={() => openPayment(item.id, activeTab)}
+                    onReturn={
+                      activeTab === "borrow"
+                        ? () => markBorrowReturned(item)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -1169,10 +1669,98 @@ export default function LoanBorrow() {
                 <Detail label="Status" value={detailItem.calculated_status || detailItem.status || "Active"} />
                 <Detail label={detailItem.recordType === "borrow" ? "Person" : "Bank"} value={detailItem.person_name || detailItem.bank_name || detailItem.person_or_bank_name} />
                 <Detail label="Amount" value={money(detailItem.borrow_amount || detailItem.total_loan_amount || detailItem.total_amount)} />
-                <Detail label="Remaining" value={money(detailItem.remaining_amount)} />
-                <Detail label="Date" value={dateInput(detailItem.take_date || detailItem.created_at)} />
-                {detailItem.recordType === "loan" && <Detail label="EMI" value={money(detailItem.emi_amount)} />}
-                {detailItem.recordType === "loan" && <Detail label="Next EMI" value={detailItem.next_emi_date ? dateInput(detailItem.next_emi_date) : "—"} />}
+
+                {detailItem.recordType === "borrow" ? (
+                  <>
+                    <Detail label="Added Date" value={detailItem.take_date ? dateInput(detailItem.take_date) : "—"} />
+                    <Detail label="Return Date" value={detailItem.return_date ? dateInput(detailItem.return_date) : "Not returned"} />
+                    <Detail
+                      label="Return Duration"
+                      value={
+                        detailItem.take_date
+                          ? `${Math.max(
+                              0,
+                              daysBetween(
+                                detailItem.take_date,
+                                detailItem.return_date || new Date()
+                              ) || 0
+                            )} days`
+                          : "—"
+                      }
+                    />
+                    <Detail
+                      label="Days Status"
+                      value={
+                        detailItem.return_date
+                          ? "Returned"
+                          : dayText(
+                              daysBetween(
+                                new Date(),
+                                detailItem.return_date
+                              )
+                            )
+                      }
+                    />
+                    <Detail label="Remaining" value={money(detailItem.remaining_amount)} />
+                  </>
+                ) : (
+                  <>
+                    <Detail label="Loan Start" value={detailItem.created_at ? dateInput(detailItem.created_at) : "—"} />
+                    <Detail label="EMI" value={money(detailItem.emi_amount)} />
+                    <Detail label="Total EMIs" value={String(detailItem.total_emis || 0)} />
+                    <Detail
+                      label="EMIs Remaining"
+                      value={String(
+                        Math.max(
+                          0,
+                          Number(
+                            detailItem.remaining_emis ??
+                              (
+                                Number(detailItem.total_emis || 0) -
+                                Number(
+                                  detailItem.paid_emis ??
+                                    detailItem.emis_paid ??
+                                    detailItem.completed_emis ??
+                                    0
+                                )
+                              )
+                          ) || 0
+                        )
+                      )}
+                    />
+                    <Detail
+                      label="Remaining Amount"
+                      value={money(
+                        detailItem.remaining_amount ??
+                          (
+                            Number(detailItem.total_loan_amount || 0) -
+                            Number(
+                              detailItem.paid_emis ??
+                                detailItem.emis_paid ??
+                                detailItem.completed_emis ??
+                                0
+                            ) *
+                              Number(detailItem.emi_amount || 0)
+                          )
+                      )}
+                    />
+                    <Detail label="Next EMI" value={detailItem.next_emi_date ? dateInput(detailItem.next_emi_date) : "—"} />
+                    <Detail
+                      label="Next EMI Status"
+                      value={
+                        detailItem.next_emi_date
+                          ? dayText(
+                              daysBetween(
+                                new Date(),
+                                detailItem.next_emi_date
+                              )
+                            )
+                          : "—"
+                      }
+                    />
+                  </>
+                )}
+
                 {detailItem.notes && <Detail label="Notes" value={detailItem.notes} />}
               </div>
             </div>
@@ -1244,44 +1832,354 @@ function Stat({ icon, iconClass, title, value, sub }) {
   );
 }
 
-function RecordCard({ item, type, onView, onEdit, onDelete, onPayment }) {
-  const status = item.calculated_status || item.status || "Active";
-  const normalized = status.toLowerCase();
-  const name = item.person_name || item.bank_name || item.person_or_bank_name || "Unknown";
-  const amount = item.borrow_amount || item.total_loan_amount || item.total_amount || 0;
-  const remaining = item.remaining_amount;
-  const date = item.take_date || item.created_at || item.next_emi_date;
+function RecordCard({
+  item,
+  type,
+  onView,
+  onEdit,
+  onDelete,
+  onPayment,
+  onReturn,
+}) {
+  const status =
+    item.calculated_status ||
+    item.status ||
+    "Active";
+
+  const normalized = status
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+
+  const name =
+    item.person_name ||
+    item.bank_name ||
+    item.person_or_bank_name ||
+    "Unknown";
+
+  const amount =
+    item.borrow_amount ||
+    item.total_loan_amount ||
+    item.total_amount ||
+    0;
+
+  const addedDate =
+    item.take_date ||
+    item.created_at ||
+    item.start_date ||
+    item.next_emi_date;
+
+  const returnDate =
+    item.return_date ||
+    null;
+
+  const today = new Date();
+
+  const borrowDurationDays =
+    type === "borrow"
+      ? daysBetween(
+          addedDate,
+          returnDate || today
+        )
+      : null;
+
+  const returnRemainingDays =
+    type === "borrow" && !returnDate
+      ? daysBetween(today, item.return_date)
+      : null;
+
+  const paidEmis = Math.max(
+    0,
+    Number(
+      item.paid_emis ??
+        item.emis_paid ??
+        item.completed_emis ??
+        item.number_of_paid_emis ??
+        0
+    ) || 0
+  );
+
+  const totalEmis = Math.max(
+    0,
+    Number(item.total_emis || 0)
+  );
+
+  const remainingEmis = Math.max(
+    0,
+    Number(
+      item.remaining_emis ??
+        (totalEmis > 0
+          ? totalEmis - paidEmis
+          : 0)
+    ) || 0
+  );
+
+  const loanRemainingAmount =
+    type === "loan"
+      ? Math.max(
+          0,
+          Number(
+            item.remaining_amount ??
+              item.remaining_loan_amount ??
+              (
+                Number(
+                  item.total_loan_amount || 0
+                ) -
+                paidEmis *
+                  Number(
+                    item.emi_amount || 0
+                  )
+              )
+          ) || 0
+        )
+      : null;
+
+  const nextEmiDays =
+    type === "loan" &&
+    item.next_emi_date
+      ? daysBetween(
+          today,
+          item.next_emi_date
+        )
+      : null;
+
+  const nextEmiText =
+    type === "loan" &&
+    item.next_emi_date
+      ? dayText(nextEmiDays)
+      : "";
 
   return (
     <article className="lb-item">
       <div className={`lb-avatar ${type}`}>
-        {type === "borrow" ? <UserRound size={19} /> : <Banknote size={19} />}
+        {type === "borrow" ? (
+          <UserRound size={19} />
+        ) : (
+          <Banknote size={19} />
+        )}
       </div>
 
       <div className="lb-main">
-        <div className="lb-name">{name}</div>
+        <div className="lb-name">
+          {name}
+        </div>
+
         <div className="lb-meta">
-          <span>{date ? new Date(date).toLocaleDateString("en-IN") : "No date"}</span>
-          <span className={`lb-status status-${normalized}`}>
-            {normalized === "completed" ? <CheckCircle2 size={9} /> : normalized === "overdue" ? <AlertCircle size={9} /> : <Clock3 size={9} />}
+          <span>
+            Added:{" "}
+            {addedDate
+              ? new Date(
+                  addedDate
+                ).toLocaleDateString(
+                  "en-IN"
+                )
+              : "No date"}
+          </span>
+
+          <span
+            className={`lb-status status-${normalized}`}
+          >
+            {normalized === "completed" ? (
+              <CheckCircle2 size={9} />
+            ) : normalized ===
+              "overdue" ? (
+              <AlertCircle size={9} />
+            ) : (
+              <Clock3 size={9} />
+            )}
             {status}
           </span>
         </div>
-        {item.notes && <div className="lb-note">{item.notes}</div>}
+
+        {type === "borrow" && (
+          <div className="lb-schedule">
+            <span>
+              Return:{" "}
+              {returnDate
+                ? new Date(
+                    returnDate
+                  ).toLocaleDateString(
+                    "en-IN"
+                  )
+                : "Not set"}
+            </span>
+
+            <strong
+              className={
+                returnDate
+                  ? "returned"
+                  : borrowDurationDays !==
+                      null &&
+                    borrowDurationDays < 0
+                  ? "overdue"
+                  : ""
+              }
+            >
+              {returnDate
+                ? `Duration: ${Math.max(
+                    0,
+                    borrowDurationDays || 0
+                  )} day${
+                    Math.max(
+                      0,
+                      borrowDurationDays || 0
+                    ) === 1
+                      ? ""
+                      : "s"
+                  }`
+                : dayText(
+                    returnRemainingDays
+                  )}
+            </strong>
+          </div>
+        )}
+
+        {type === "loan" && (
+          <div className="lb-loan-metrics">
+            <span>
+              EMI:{" "}
+              {money(
+                item.emi_amount
+              )}
+            </span>
+
+            <span>
+              EMIs left:{" "}
+              <b>
+                {remainingEmis}
+              </b>
+            </span>
+
+            {item.next_emi_date && (
+              <span>
+                Next EMI:{" "}
+                {new Date(
+                  item.next_emi_date
+                ).toLocaleDateString(
+                  "en-IN"
+                )}
+              </span>
+            )}
+
+            {item.next_emi_date && (
+              <strong
+                className={
+                  nextEmiDays !== null &&
+                  nextEmiDays < 0
+                    ? "overdue"
+                    : ""
+                }
+              >
+                {nextEmiText}
+              </strong>
+            )}
+          </div>
+        )}
+
+        {item.notes && (
+          <div className="lb-note">
+            {item.notes}
+          </div>
+        )}
       </div>
 
       <div className="lb-money">
-        <strong>{money(amount)}</strong>
-        <span>{remaining !== undefined ? `Remaining ${money(remaining)}` : type === "loan" ? `EMI ${money(item.emi_amount)}` : "Total amount"}</span>
+        <strong>
+          {money(amount)}
+        </strong>
+
+        {type === "loan" ? (
+          <>
+            <span>
+              Remaining{" "}
+              {money(loanRemainingAmount)}
+            </span>
+
+            <small>
+              {remainingEmis} of{" "}
+              {totalEmis} EMIs
+            </small>
+          </>
+        ) : (
+          <span>
+            Remaining{" "}
+            {money(
+              item.remaining_amount
+            )}
+          </span>
+        )}
       </div>
 
       <div className="lb-actions">
-        <button className="lb-action" title="View" onClick={onView}><Eye size={15} /></button>
-        <button className="lb-action pay" title={type === "borrow" ? "Repay" : "Pay EMI"} onClick={onPayment}><Send size={15} /></button>
-        <button className="lb-action" title="Edit" onClick={onEdit}><Edit3 size={15} /></button>
-        <button className="lb-action delete" title="Delete" onClick={onDelete}><Trash2 size={15} /></button>
+        <button
+          className="lb-action"
+          title="View details"
+          onClick={onView}
+        >
+          <Eye size={15} />
+        </button>
+
+        {type === "borrow" && onReturn && (
+          <button
+            className={`lb-action return ${
+              busyActionForItem(item.id)
+                ? "is-busy"
+                : ""
+            }`}
+            title="Mark returned today"
+            onClick={onReturn}
+            disabled={
+              Boolean(
+                window.__loanBusyAction &&
+                  window.__loanBusyAction.includes(
+                    `return-borrow-${item.id}`
+                  )
+              ) || returnDate
+            }
+          >
+            {returnDate ? (
+              <CheckCircle2 size={15} />
+            ) : (
+              <RotateCcw size={15} />
+            )}
+          </button>
+        )}
+
+        <button
+          className="lb-action pay"
+          title={
+            type === "borrow"
+              ? "Repay"
+              : "Pay EMI"
+          }
+          onClick={onPayment}
+        >
+          <Send size={15} />
+        </button>
+
+        <button
+          className="lb-action"
+          title="Edit"
+          onClick={onEdit}
+        >
+          <Edit3 size={15} />
+        </button>
+
+        <button
+          className="lb-action delete"
+          title="Delete"
+          onClick={onDelete}
+        >
+          <Trash2 size={15} />
+        </button>
       </div>
     </article>
+  );
+}
+
+function busyActionForItem(id) {
+  return Boolean(
+    window.__loanBusyAction ===
+      `return-borrow-${id}`
   );
 }
 

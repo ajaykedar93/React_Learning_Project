@@ -651,9 +651,15 @@ function PaymentCard({ title, value, count, tone }) {
   return (
     <div className={`pd-payment ${tone}`}>
       <small>{title}</small>
-      <strong>{n(count)}</strong>
-      <span>{n(count) === 1 ? "Payment" : "Payments"}</span>
-      <b>{money(value)}</b>
+
+      <div className="pd-payment-count">
+        <strong>{n(count)}</strong>
+        <span>{n(count) === 1 ? "Payment" : "Payments"}</span>
+      </div>
+
+      <b className="pd-payment-amount">
+        {money(value)}
+      </b>
     </div>
   );
 }
@@ -715,14 +721,14 @@ button{font:inherit}
 .pd-error{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;margin-bottom:9px;border:1px solid #fecdd3;border-radius:12px;background:#fff1f2;color:#9f1239}.pd-error>div{flex:1;min-width:0}.pd-error strong,.pd-error span{display:block}.pd-error strong{font-size:10px}.pd-error span{margin-top:2px;font-size:9px;overflow-wrap:anywhere}.pd-error button{width:26px;height:26px;border:0;border-radius:7px;background:#ffe4e6;color:#be123c;display:grid;place-items:center}
 .pd-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:9px}.pd-kpi{min-width:0;padding:12px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;box-shadow:0 7px 22px rgba(15,23,42,.05);display:flex;justify-content:space-between;gap:7px}.pd-kpi:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,23,42,.08)}.pd-kpi small{display:block;color:#64748b;font-size:7px;text-transform:uppercase;font-weight:900}.pd-kpi strong{display:block;margin-top:5px;font-size:16px;font-weight:950;overflow-wrap:anywhere}.pd-kpi span{display:block;margin-top:3px;color:#94a3b8;font-size:7px}.pd-kpi-icon{width:32px;height:32px;flex:0 0 32px;border-radius:9px;display:grid;place-items:center}.pd-kpi.green .pd-kpi-icon{background:#d1fae5;color:#047857}.pd-kpi.red .pd-kpi-icon{background:#fee2e2;color:#dc2626}.pd-kpi.orange .pd-kpi-icon{background:#ffedd5;color:#c2410c}.pd-kpi.blue .pd-kpi-icon{background:#dbeafe;color:#2563eb}.pd-kpi.purple .pd-kpi-icon{background:#ede9fe;color:#6d28d9}
 .pd-savings{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 16px;margin-bottom:9px;border-radius:16px;color:#fff;box-shadow:0 13px 35px rgba(15,23,42,.13)}.pd-savings.profit{background:linear-gradient(135deg,#065f46,#059669)}.pd-savings.loss{background:linear-gradient(135deg,#991b1b,#dc2626)}.pd-savings.break_even{background:linear-gradient(135deg,#92400e,#d97706)}.pd-savings-left{display:flex;align-items:center;gap:10px}.pd-savings-icon{width:40px;height:40px;flex:0 0 40px;border-radius:11px;background:rgba(255,255,255,.13);display:grid;place-items:center}.pd-savings small{display:block;color:rgba(255,255,255,.65);font-size:7px;letter-spacing:.1em;font-weight:900}.pd-savings h2{margin:3px 0 0;font-size:16px}.pd-savings p{margin:3px 0 0;color:rgba(255,255,255,.7);font-size:8px}.pd-savings-rate{display:flex;align-items:center;gap:10px}.pd-savings-rate strong{display:block;margin-top:3px;font-size:20px}.pd-ring{position:relative;width:52px;height:52px;display:grid;place-items:center}.pd-ring svg{position:absolute;width:100%;height:100%;inset:0}.pd-ring b{position:relative;font-size:9px}
-.pd-pies{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:9px}.pd-pie-card,.pd-panel{padding:13px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 7px 24px rgba(15,23,42,.05)}.pd-pie-head,.pd-panel-head{display:flex;align-items:center;gap:8px}.pd-pie-head{justify-content:space-between;color:#4f46e5}.pd-pie-head h3,.pd-panel-head h3{margin:0;font-size:12px}.pd-pie-head p,.pd-panel-head p{margin:2px 0 0;color:#94a3b8;font-size:7px}.pd-pie-body{display:grid;grid-template-columns:100px 1fr;gap:11px;align-items:center;margin-top:10px}.pd-pie{width:94px;height:94px;border-radius:50%;display:grid;place-items:center}.pd-pie-center{width:60px;height:60px;border-radius:50%;background:#fff;box-shadow:0 5px 16px rgba(15,23,42,.09);display:flex;align-items:center;justify-content:center;flex-direction:column}.pd-pie-center strong{font-size:8px;max-width:54px;overflow-wrap:anywhere}.pd-pie-center span{margin-top:2px;color:#94a3b8;font-size:6px}.pd-legend{display:grid;gap:6px;min-width:0}.pd-legend-row{display:grid;grid-template-columns:7px 1fr auto;gap:5px;align-items:center}.pd-legend-row i{width:7px;height:7px;border-radius:50%}.pd-legend-row div{min-width:0}.pd-legend-row strong,.pd-legend-row span{display:block}.pd-legend-row strong{font-size:7px;overflow-wrap:anywhere}.pd-legend-row span{color:#94a3b8;font-size:6px}.pd-legend-row b{font-size:7px;white-space:nowrap}
+.pd-pies{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}.pd-pie-card,.pd-panel{padding:14px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 7px 24px rgba(15,23,42,.05)}.pd-pie-head,.pd-panel-head{display:flex;align-items:center;gap:8px}.pd-pie-head{justify-content:space-between;color:#4f46e5}.pd-pie-head h3,.pd-panel-head h3{margin:0;font-size:12px}.pd-pie-head p,.pd-panel-head p{margin:2px 0 0;color:#94a3b8;font-size:7px}.pd-pie-body{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;align-items:center;margin-top:12px}.pd-pie{width:138px;height:138px;border-radius:50%;display:grid;place-items:center;box-shadow:0 8px 24px rgba(15,23,42,.08)}.pd-pie-center{width:84px;height:84px;border-radius:50%;background:#fff;box-shadow:0 7px 18px rgba(15,23,42,.10);display:flex;align-items:center;justify-content:center;flex-direction:column}.pd-pie-center strong{font-size:11px;line-height:1.15;max-width:72px;text-align:center;overflow-wrap:anywhere}.pd-pie-center span{margin-top:3px;color:#94a3b8;font-size:7px}.pd-legend{display:grid;gap:7px;min-width:0}.pd-legend-row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:6px;align-items:center}.pd-legend-row i{width:8px;height:8px;border-radius:50%}.pd-legend-row div{min-width:0}.pd-legend-row strong,.pd-legend-row span{display:block}.pd-legend-row strong{font-size:8px;overflow-wrap:anywhere}.pd-legend-row span{color:#94a3b8;font-size:6px}.pd-legend-row b{font-size:8px;white-space:nowrap}
 .pd-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.pd-section{margin-bottom:9px}.pd-panel-head{margin-bottom:10px}.pd-panel-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center}.pd-panel-icon.green{background:#d1fae5;color:#047857}.pd-panel-icon.red{background:#fee2e2;color:#dc2626}.pd-panel-icon.blue{background:#dbeafe;color:#2563eb}.pd-panel-icon.purple{background:#ede9fe;color:#6d28d9}.pd-panel-icon.orange{background:#ffedd5;color:#c2410c}.pd-panel-icon.cyan{background:#cffafe;color:#0e7490}
 .pd-progress{display:flex;gap:8px;padding:7px 0}.pd-progress-icon{width:28px;height:28px;flex:0 0 28px;border-radius:8px;background:#f8fafc;display:grid;place-items:center}.pd-progress-main{flex:1;min-width:0}.pd-progress-main>div:first-child{display:flex;justify-content:space-between;gap:7px}.pd-progress-main span{font-size:8px;color:#475569;font-weight:800;overflow-wrap:anywhere}.pd-progress-main b{font-size:9px;white-space:nowrap}.pd-track{height:6px;margin-top:4px;border-radius:99px;background:#edf1f6;overflow:hidden}.pd-track i{display:block;height:100%;border-radius:99px}.pd-progress-main small{display:block;margin-top:3px;color:#94a3b8;font-size:7px}
 .pd-divider{height:1px;background:#e8edf3;margin:5px 0}.pd-info{display:flex;justify-content:space-between;gap:8px;padding:5px 0}.pd-info span{color:#64748b;font-size:8px}.pd-info b{font-size:9px}.pd-info .danger{color:#dc2626}.pd-info .purple{color:#7c3aed}.pd-info .orange{color:#ea580c}
 .pd-week-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.pd-week{padding:10px;border:1px solid #dce4f3;border-radius:12px;background:linear-gradient(145deg,#f8fbff,#eef2ff)}.pd-week>div:first-child{display:flex;justify-content:space-between;color:#2563eb;font-size:7px;font-weight:900}.pd-week>strong{display:block;margin-top:5px;font-size:14px}.pd-week small{display:block;margin-top:2px;color:#94a3b8;font-size:7px}.pd-week .pd-track{margin-top:7px}.pd-week em{display:block;margin-top:3px;color:#64748b;font-size:6px;font-style:normal}
 .pd-debt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px;margin-bottom:6px;border-radius:11px}.pd-debt.loan{background:#faf7ff;border:1px solid #e9d5ff}.pd-debt.borrow{background:#fffaf5;border:1px solid #fed7aa}.pd-debt-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center}.pd-debt.loan .pd-debt-icon{background:#ede9fe;color:#7c3aed}.pd-debt.borrow .pd-debt-icon{background:#ffedd5;color:#ea580c}.pd-debt-main{min-width:0}.pd-debt-main strong,.pd-debt-main span,.pd-debt-main small{display:block}.pd-debt-main strong{font-size:9px;overflow-wrap:anywhere}.pd-debt-main span{margin-top:2px;color:#64748b;font-size:7px;overflow-wrap:anywhere}.pd-debt-main small{margin-top:2px;font-size:7px}.pd-debt-main .safe{color:#059669}.pd-debt-main .urgent{color:#dc2626}.pd-debt-amount{text-align:right}.pd-debt-amount b{font-size:9px}.pd-debt-amount span{display:block;margin-top:2px;color:#94a3b8;font-size:6px}
 .pd-debt-total{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:8px;margin-bottom:9px;padding:13px 15px;border-radius:15px;color:#fff;background:linear-gradient(135deg,#111827,#334155)}.pd-debt-total>div{padding:0 9px;border-left:1px solid rgba(255,255,255,.12)}.pd-debt-total .main{border-left:0}.pd-debt-total small{display:block;color:#94a3b8;font-size:7px}.pd-debt-total strong{display:block;margin-top:4px;font-size:17px}.pd-debt-total b{display:block;margin-top:4px;font-size:10px}
-.pd-payment-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.pd-payment{padding:11px;border-radius:12px}.pd-payment small,.pd-payment strong,.pd-payment span{display:block}.pd-payment small{font-size:8px;font-weight:900}.pd-payment strong{margin-top:5px;font-size:14px}.pd-payment span{margin-top:2px;color:#64748b;font-size:7px}.pd-payment.received{background:#ecfdf5;border:1px solid #86efac;color:#047857}.pd-payment.pending{background:#fffbeb;border:1px solid #fcd34d;color:#b45309}.pd-payment.overdue{background:#fff1f2;border:1px solid #fda4af;color:#b91c1c}.pd-payment.lost{background:#f8fafc;border:1px solid #cbd5e1;color:#475569}
+.pd-payment-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.pd-payment{min-width:0;min-height:108px;padding:13px 14px;border-radius:12px;display:flex;flex-direction:column;justify-content:flex-start}.pd-payment small{display:block;font-size:10px;font-weight:900;letter-spacing:.03em;line-height:1.2}.pd-payment-count{display:flex;align-items:baseline;gap:5px;margin-top:7px}.pd-payment-count strong{font-size:20px;line-height:1;font-weight:850}.pd-payment-count span{font-size:9px;color:#64748b}.pd-payment-amount{display:block;margin-top:14px;font-size:24px;line-height:1.05;font-weight:950;letter-spacing:-.02em;overflow-wrap:anywhere}.pd-payment.received{background:#ecfdf5;border:1px solid #86efac;color:#047857}.pd-payment.pending{background:#fffbeb;border:1px solid #fcd34d;color:#b45309}.pd-payment.overdue{background:#fff1f2;border:1px solid #fda4af;color:#b91c1c}.pd-payment.lost{background:#f8fafc;border:1px solid #cbd5e1;color:#475569}
 .pd-quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.pd-quick{padding:10px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc}.pd-quick small{display:block;color:#64748b;font-size:7px}.pd-quick strong{display:block;margin-top:4px;font-size:10px;overflow-wrap:anywhere}.pd-quick.highlight{border-color:#c7d2fe;background:#eef2ff}.pd-quick.highlight strong{color:#4f46e5}
 .pd-widget-group h4{margin:7px 0 6px;color:#475569;font-size:9px}.pd-widget-group:first-child h4{margin-top:0}.pd-widget-list{display:grid;gap:6px}.pd-widget-row{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:7px;padding:7px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc}.pd-widget-icon{width:28px;height:28px;border-radius:8px;background:#eef2ff;display:grid;place-items:center}.pd-widget-row div{min-width:0}.pd-widget-row strong,.pd-widget-row small{display:block}.pd-widget-row strong{font-size:8px;overflow-wrap:anywhere}.pd-widget-row small{margin-top:2px;color:#94a3b8;font-size:6px}.pd-widget-row>b{font-size:8px;white-space:nowrap}
 .pd-transaction{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #edf1f5}.pd-transaction:last-child{border-bottom:0}.pd-transaction-icon{width:30px;height:30px;border-radius:9px;display:grid;place-items:center}.pd-transaction-icon.expense{background:#fee2e2;color:#dc2626}.pd-transaction-icon.income{background:#d1fae5;color:#047857}.pd-transaction-main{min-width:0}.pd-transaction-main strong,.pd-transaction-main span{display:block}.pd-transaction-main strong{font-size:8px;overflow-wrap:anywhere}.pd-transaction-main span{margin-top:2px;color:#94a3b8;font-size:6px}.pd-transaction-main i{font-style:normal;margin:0 3px}.amount-income{color:#059669;font-size:9px}.amount-expense{color:#dc2626;font-size:9px}
@@ -751,8 +757,30 @@ button{font:inherit}
   .pd-month-detail-card>span{font-size:6px}
   .pd-month-detail-card>strong{margin-top:4px;font-size:10px}
   .pd-month-detail-card>small{margin-top:2px;font-size:5.5px}
-  .pd-payment strong{font-size:16px}
-  .pd-payment b{margin-top:4px;font-size:7px}
+  .pd-payment{
+    min-height:94px;
+    padding:11px;
+    border-radius:10px;
+  }
+  .pd-payment small{
+    font-size:9px;
+    line-height:1.2;
+  }
+  .pd-payment-count{
+    margin-top:6px;
+    gap:4px;
+  }
+  .pd-payment-count strong{
+    font-size:20px;
+  }
+  .pd-payment-count span{
+    font-size:8px;
+  }
+  .pd-payment-amount{
+    margin-top:11px;
+    font-size:23px;
+    line-height:1.05;
+  }
 }
 @media(max-width:1100px){
   .pd-kpis{grid-template-columns:repeat(3,1fr)}
@@ -771,7 +799,7 @@ button{font:inherit}
   .pd-page{
     width:100%;
     min-height:100%;
-    padding:6px 6px calc(22px + env(safe-area-inset-bottom));
+    padding:6px 6px calc(30px + env(safe-area-inset-bottom));
     overflow-x:hidden;
   }
 
@@ -853,12 +881,12 @@ button{font:inherit}
   }
 
   .pd-monthbar small{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-monthbar strong{
     margin-top:2px;
-    font-size:10px;
+    font-size:12px;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
@@ -878,11 +906,11 @@ button{font:inherit}
 
   .pd-month-control > div{
     min-width:0;
-    width:118px;
-    height:28px;
-    padding:0 6px;
+    width:126px;
+    height:30px;
+    padding:0 7px;
     border-radius:7px;
-    font-size:7px;
+    font-size:9px;
     white-space:nowrap;
     overflow:hidden;
   }
@@ -901,20 +929,20 @@ button{font:inherit}
   }
 
   .pd-kpi small{
-    font-size:6px;
-    line-height:1.15;
+    font-size:8px;
+    line-height:1.2;
   }
 
   .pd-kpi strong{
-    margin-top:4px;
-    font-size:11px;
-    line-height:1.15;
+    margin-top:5px;
+    font-size:15px;
+    line-height:1.2;
   }
 
   .pd-kpi span{
-    margin-top:2px;
-    font-size:6px;
-    line-height:1.15;
+    margin-top:3px;
+    font-size:8px;
+    line-height:1.2;
   }
 
   .pd-kpi-icon{
@@ -958,18 +986,18 @@ button{font:inherit}
   }
 
   .pd-savings small{
-    font-size:5.5px;
+    font-size:7px;
   }
 
   .pd-savings h2{
-    margin-top:2px;
-    font-size:10px;
-    line-height:1.2;
+    margin-top:3px;
+    font-size:14px;
+    line-height:1.25;
   }
 
   .pd-savings p{
-    margin-top:2px;
-    font-size:6px;
+    margin-top:3px;
+    font-size:8px;
   }
 
   .pd-savings-rate{
@@ -979,7 +1007,7 @@ button{font:inherit}
   }
 
   .pd-savings-rate strong{
-    font-size:12px;
+    font-size:16px;
   }
 
   .pd-ring{
@@ -988,7 +1016,7 @@ button{font:inherit}
   }
 
   .pd-ring b{
-    font-size:6px;
+    font-size:8px;
   }
 
   /* Charts/cards */
@@ -1006,12 +1034,12 @@ button{font:inherit}
 
   .pd-pie-head h3,
   .pd-panel-head h3{
-    font-size:9px;
+    font-size:12px;
   }
 
   .pd-pie-head p,
   .pd-panel-head p{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-panel-icon{
@@ -1027,28 +1055,29 @@ button{font:inherit}
   }
 
   .pd-pie-body{
-    grid-template-columns:88px minmax(0,1fr);
-    gap:7px;
-    margin-top:7px;
+    grid-template-columns:132px minmax(0,1fr);
+    gap:10px;
+    margin-top:8px;
   }
 
   .pd-pie{
-    width:82px;
-    height:82px;
+    width:120px;
+    height:120px;
   }
 
   .pd-pie-center{
-    width:52px;
-    height:52px;
+    width:72px;
+    height:72px;
   }
 
   .pd-pie-center strong{
-    font-size:6px;
-    max-width:47px;
+    font-size:12px;
+    max-width:70px;
+    text-align:center;
   }
 
   .pd-pie-center span{
-    font-size:5px;
+    font-size:8px;
   }
 
   .pd-legend{
@@ -1066,15 +1095,15 @@ button{font:inherit}
   }
 
   .pd-legend-row strong{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-legend-row span{
-    font-size:5px;
+    font-size:7px;
   }
 
   .pd-legend-row b{
-    font-size:6px;
+    font-size:8px;
   }
 
   /* Single column content; nothing gets squeezed/cut */
@@ -1101,15 +1130,15 @@ button{font:inherit}
   }
 
   .pd-progress-main span{
-    font-size:7px;
+    font-size:9px;
   }
 
   .pd-progress-main b{
-    font-size:8px;
+    font-size:10px;
   }
 
   .pd-progress-main small{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-track{
@@ -1121,7 +1150,7 @@ button{font:inherit}
   }
 
   .pd-info span{
-    font-size:7px;
+    font-size:9px;
   }
 
   .pd-info b{
@@ -1140,15 +1169,15 @@ button{font:inherit}
   }
 
   .pd-week>strong{
-    font-size:10px;
+    font-size:14px;
   }
 
   .pd-week small{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-week em{
-    font-size:5px;
+    font-size:7px;
   }
 
   .pd-debt{
@@ -1171,15 +1200,15 @@ button{font:inherit}
   }
 
   .pd-debt-main strong{
-    font-size:7px;
+    font-size:9px;
   }
 
   .pd-debt-main span{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-debt-main small{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-debt-amount{
@@ -1189,11 +1218,11 @@ button{font:inherit}
   }
 
   .pd-debt-amount b{
-    font-size:8px;
+    font-size:10px;
   }
 
   .pd-debt-amount span{
-    font-size:5px;
+    font-size:7px;
   }
 
   .pd-debt-total{
@@ -1217,15 +1246,15 @@ button{font:inherit}
   }
 
   .pd-debt-total small{
-    font-size:5.5px;
+    font-size:7px;
   }
 
   .pd-debt-total strong{
-    font-size:12px;
+    font-size:16px;
   }
 
   .pd-debt-total b{
-    font-size:8px;
+    font-size:10px;
   }
 
   .pd-payment-grid,
@@ -1258,17 +1287,17 @@ button{font:inherit}
   }
 
   .pd-quick small{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-quick strong{
-    font-size:8px;
-    margin-top:3px;
+    font-size:11px;
+    margin-top:4px;
   }
 
   .pd-widget-group h4{
-    margin:5px 0 4px;
-    font-size:7px;
+    margin:6px 0 5px;
+    font-size:9px;
   }
 
   .pd-widget-row{
@@ -1286,15 +1315,15 @@ button{font:inherit}
   }
 
   .pd-widget-row strong{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-widget-row small{
-    font-size:5px;
+    font-size:7px;
   }
 
   .pd-widget-row>b{
-    font-size:6px;
+    font-size:8px;
   }
 
   .pd-transaction{
@@ -1324,7 +1353,7 @@ button{font:inherit}
 
   .amount-income,
   .amount-expense{
-    font-size:7px;
+    font-size:9px;
     white-space:nowrap;
   }
 
@@ -1355,6 +1384,53 @@ button{font:inherit}
   .pd-pie{width:74px;height:74px}
   .pd-pie-center{width:47px;height:47px}
   .pd-week-grid{grid-template-columns:1fr 1fr}
+}
+
+@media(max-width:460px){
+  .pd-pie-body{grid-template-columns:1fr;justify-items:center;gap:9px}
+  .pd-pie{width:132px;height:132px}
+  .pd-pie-center{width:78px;height:78px}
+  .pd-legend{width:100%}
+}
+
+@media(max-width:420px){
+  .pd-payment-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px;
+  }
+  .pd-payment{
+    min-height:98px;
+    padding:11px;
+  }
+  .pd-payment small{
+    font-size:8px;
+  }
+  .pd-payment-count strong{
+    font-size:18px;
+  }
+  .pd-payment-count span{
+    font-size:7px;
+  }
+  .pd-payment-amount{
+    font-size:21px;
+    margin-top:12px;
+  }
+}
+
+@media(max-width:650px){
+  .pd-page{font-size:14px}
+  .pd-empty{font-size:9px}
+  .pd-loading strong{font-size:16px}
+  .pd-loading span{font-size:10px}
+  .pd-empty-page h2{font-size:20px}
+  .pd-empty-page p{font-size:11px}
+  .pd-empty-page>span{font-size:9px}
+  .pd-empty-page button{font-size:10px}
+  .pd-toast strong{font-size:12px}
+  .pd-toast span{font-size:10px}
+  .pd-month-detail-card>span{font-size:8px}
+  .pd-month-detail-card>strong{font-size:13px}
+  .pd-month-detail-card>small{font-size:7px}
 }
 `;
 

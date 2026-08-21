@@ -5,7 +5,7 @@ import { AlertCircle, BarChart3, CalendarDays, CheckCircle2, Download, FileSprea
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const API_ROOT = (import.meta.env.VITE_API_URL || "https://express-project-learning-new.onrender.com/api" || "http://localhost:5000/api").replace(/\/$/, "");
+const API_ROOT = (import.meta.env.VITE_API_URL || "https://express-project-learning-new.onrender.com/api").replace(/\/$/, "");
 const EXPORT_API_URL = `${API_ROOT}/export-details`;
 const token = () => localStorage.getItem("token") || localStorage.getItem("accessToken") || localStorage.getItem("auth_token") || "";
 const monthValue = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
@@ -13,7 +13,47 @@ const monthName = d => d.toLocaleDateString("en-IN", { month:"long", year:"numer
 const money = v => new Intl.NumberFormat("en-IN", { style:"currency", currency:"INR", maximumFractionDigits:2 }).format(Number(v)||0);
 const pdfMoney = v => `INR ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v)||0)}`;
 const n = v => Number(v)||0;
-const blobDownload = (blob, name) => { const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); };
+const blobDownload = async (blob, name, mimeType = "") => {
+  const file = new File([blob], name, {
+    type: mimeType || blob.type || "application/octet-stream",
+  });
+
+  // Use the device share sheet when supported (useful for mobile/WebView).
+  if (
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
+    navigator.share &&
+    navigator.canShare &&
+    navigator.canShare({ files: [file] })
+  ) {
+    try {
+      await navigator.share({
+        title: name,
+        files: [file],
+      });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.rel = "noopener";
+  a.style.display = "none";
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  window.setTimeout(
+    () => URL.revokeObjectURL(url),
+    30000
+  );
+};
 
 export default function ExportDetails(){
   const [selectedMonth,setSelectedMonth]=useState(new Date());
@@ -53,7 +93,7 @@ export default function ExportDetails(){
     if(!report)return; setDownloading("text");
     try{
       const lines=["======================================================================","                            MONTH REPORT","======================================================================",`Month       : ${report.report.month}`,`Period      : ${report.report.month_start} to ${report.report.month_end}`,"","SUMMARY","----------------------------------------------------------------------",...rows.map(x=>`${x[0].padEnd(20," ")} : ${x[1]}`),"","EXPENSES BY CATEGORY","----------------------------------------------------------------------",...(categories.length?categories.map(x=>`${String(x.category_name).padEnd(28," ")} ${money(x.total_amount)}`):["No expenses recorded for this month."]),"","======================================================================"];
-      blobDownload(new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"}),`Month_Report_${monthValue(selectedMonth)}.txt`); setToast("Text report downloaded.");
+      await blobDownload(new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"}),`Month_Report_${monthValue(selectedMonth)}.txt`,"text/plain;charset=utf-8"); setToast("Text report downloaded.");
     }catch(e){setError("Unable to create text report.");}finally{setDownloading("");}
   };
 
@@ -117,7 +157,7 @@ export default function ExportDetails(){
       [["Property","Value"],["Report","Month Report"],["Month",report.report.month],["Period",`${report.report.month_start} to ${report.report.month_end}`],["Result",result],["Generated","Personal Dashboard"]].forEach((r,i)=>{const row=info.addRow(r);row.eachCell(cell=>{cell.font={name:"Aptos",size:10,bold:i===0,color:{argb:i===0?white:dark}};if(i===0)cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:navy}};});});
 
       const buffer=await workbook.xlsx.writeBuffer();
-      downloadBlob(new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),`Month_Report_${monthValue(selectedMonth)}.xlsx`);
+      await blobDownload(new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),`Month_Report_${monthValue(selectedMonth)}.xlsx`,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       setToast("Professional Excel report downloaded.");
     }catch(e){console.error(e);setError(e?.message||"Excel export failed. Install exceljs with: npm install exceljs");}
     finally{setDownloading("");}
@@ -143,7 +183,7 @@ export default function ExportDetails(){
       autoTable(doc,{startY:y+5,margin:{left:M,right:M},head:[["Category","Amount","Transactions"]],body,theme:"grid",rowPageBreak:"avoid",headStyles:{fillColor:teal,textColor:[255,255,255],fontStyle:"bold",fontSize:8.5,cellPadding:3.4},bodyStyles:{fontSize:8.5,textColor:text,cellPadding:3.4},alternateRowStyles:{fillColor:[249,250,251]},styles:{lineColor:border,lineWidth:.2,overflow:"linebreak",valign:"middle"},columnStyles:{0:{cellWidth:95},1:{cellWidth:55,halign:"right"},2:{cellWidth:30,halign:"center"}}});
       y=doc.lastAutoTable.finalY+10; if(y>H-38){doc.addPage();header();y=46;}
       doc.setFillColor(241,245,249);doc.setDrawColor(...border);doc.roundedRect(M,y,W-M*2,24,4,4,"FD");doc.setTextColor(...muted);doc.setFont("helvetica","bold");doc.setFontSize(7);doc.text("REPORT TOTALS",M+8,y+8);doc.setTextColor(...text);doc.setFont("helvetica","normal");doc.setFontSize(8.3);doc.text(`Income ${pdfMoney(s.total_income)}`,M+8,y+16);doc.text(`Expenses ${pdfMoney(s.total_expenses)}`,M+78,y+16);doc.text(`EMI ${pdfMoney(s.total_emi_paid)}`,M+153,y+16);
-      for(let page=1;page<=doc.getNumberOfPages();page++){doc.setPage(page);footer(page);} doc.save(`Month_Report_${monthValue(selectedMonth)}.pdf`); setToast("Professional PDF report downloaded.");
+      for(let page=1;page<=doc.getNumberOfPages();page++){doc.setPage(page);footer(page);} await blobDownload(doc.output("blob"),`Month_Report_${monthValue(selectedMonth)}.pdf`,"application/pdf"); setToast("Professional PDF report downloaded.");
     }catch(e){console.error(e);setError(e?.message||"PDF export failed. Install jspdf and jspdf-autotable");} finally{setDownloading("");}
   };
 
@@ -164,6 +204,28 @@ function Metric({t,v,i,c}){return <article className={`ed-metric ${c}`}><div><sp
 function DownloadButton({title,sub,icon,load,click,c}){return <button className={`ed-dl ${c}`} onClick={click} disabled={load}><span>{load?<Loader2 className="ed-spin"/>:icon}</span><div><b>{title}</b><small>{load?"Generating...":sub}</small></div><Download size={14}/></button>}
 
 const styles=`
-.ed-page{min-height:100%;padding:16px;background:radial-gradient(circle at 8% 0%,rgba(59,130,246,.08),transparent 24rem),#f6f8fc;color:#172033;font-family:Inter,system-ui,sans-serif}.ed-shell{width:min(1180px,100%);margin:auto}.ed-header{display:flex;justify-content:space-between;gap:16px;padding:19px;border-radius:20px;color:#fff;background:linear-gradient(135deg,#1e1b4b,#4338ca 55%,#2563eb);box-shadow:0 18px 45px rgba(37,56,138,.18)}.ed-eyebrow{display:flex;gap:6px;align-items:center;color:#a5b4fc;font-size:8px;letter-spacing:.14em;font-weight:900}.ed-eyebrow.dark{color:#4f46e5}.ed-header h1{margin:6px 0 0;font-size:27px}.ed-header p{margin:7px 0 0;color:#dbeafe;font-size:9px}.ed-refresh{height:36px;padding:0 12px;display:flex;gap:6px;align-items:center;border:1px solid #ffffff33;border-radius:10px;color:#fff;background:#ffffff18;font-size:9px;font-weight:900}.ed-month{margin-top:10px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;box-shadow:0 8px 25px #0f172a0d}.ed-month span{display:block;color:#94a3b8;font-size:7px;letter-spacing:.12em;font-weight:900}.ed-month strong{display:block;margin-top:4px;font-size:16px}.ed-month-control{display:flex;gap:6px;align-items:center}.ed-month-control>button{width:33px;height:33px;border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc;font-size:20px;color:#334155}.ed-month-control label{min-width:175px;height:33px;padding:0 9px;display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;border-radius:9px}.ed-month-control input{width:100%;border:0;outline:0;font-size:10px;font-weight:800}.ed-error{margin-top:10px;padding:11px 12px;display:flex;gap:8px;align-items:flex-start;border:1px solid #fecdd3;border-radius:12px;background:#fff1f2;color:#9f1239}.ed-error>div{flex:1}.ed-error span{display:block;margin-top:3px;font-size:9px}.ed-error button{width:27px;height:27px;border:0;border-radius:7px;background:#ffe4e6;color:#be123c}.ed-loading{min-height:330px;margin-top:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid #e2e8f0;border-radius:16px;background:#fff}.ed-loading span{color:#94a3b8;font-size:9px}.ed-spin{animation:edSpin .8s linear infinite}@keyframes edSpin{to{transform:rotate(360deg)}}.ed-metrics{margin-top:10px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.ed-metric{padding:12px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 8px 22px #0f172a0d}.ed-metric>div{display:flex;justify-content:space-between;gap:6px}.ed-metric span{color:#64748b;font-size:7px;text-transform:uppercase;font-weight:900}.ed-metric i{width:28px;height:28px;display:grid;place-items:center;border-radius:8px;font-style:normal}.ed-metric strong{display:block;margin-top:7px;font-size:15px}.ed-metric.green i,.ed-dl.excel>span{background:#d1fae5;color:#047857}.ed-metric.blue i{background:#dbeafe;color:#2563eb}.ed-metric.orange i{background:#ffedd5;color:#c2410c}.ed-metric.purple i{background:#ede9fe;color:#7c3aed}.ed-metric.red i,.ed-dl.pdf>span{background:#fee2e2;color:#dc2626}.ed-metric.profit i{background:#d1fae5;color:#047857}.ed-metric.loss i{background:#fee2e2;color:#dc2626}.ed-metric.break i{background:#fef3c7;color:#b45309}.ed-result{margin-top:10px;padding:15px 17px;display:flex;justify-content:space-between;align-items:center;border-radius:15px;color:#fff;box-shadow:0 12px 30px #0f172a22}.ed-result.profit{background:linear-gradient(135deg,#065f46,#059669)}.ed-result.loss{background:linear-gradient(135deg,#991b1b,#dc2626)}.ed-result.break{background:linear-gradient(135deg,#92400e,#d97706)}.ed-result span{display:block;color:#ffffffaa;font-size:7px;letter-spacing:.13em;font-weight:900}.ed-result strong{display:block;margin-top:4px;font-size:16px}.ed-result small{display:block;margin-top:4px;color:#ffffffb8;font-size:8px}.ed-result>b{font-size:24px}.ed-card,.ed-download{margin-top:10px;padding:14px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;box-shadow:0 8px 25px #0f172a0d}.ed-card-head{display:flex;justify-content:space-between;align-items:center;color:#2563eb}.ed-card-head h2,.ed-download h2{margin:0;font-size:13px;color:#172033}.ed-card-head p,.ed-download p{margin:3px 0 0;color:#94a3b8;font-size:8px}.ed-table-wrap{margin-top:10px;overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:9px 8px;border-bottom:1px solid #edf2f7;text-align:left;font-size:9px}th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:7px}td:nth-child(2),th:nth-child(2){text-align:center}td:last-child,th:last-child{text-align:right}tfoot th{background:#fff;color:#172033}.ed-empty{padding:25px;text-align:center;color:#94a3b8;font-size:9px;border:1px dashed #cbd5e1;border-radius:10px}.ed-download{display:grid;grid-template-columns:1fr 1.6fr;align-items:center;gap:14px}.ed-download h2{margin-top:5px;font-size:15px}.ed-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.ed-dl{min-height:70px;padding:9px;display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:7px;text-align:left;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.ed-dl>span{width:30px;height:30px;display:grid;place-items:center;border-radius:8px}.ed-dl.text>span{background:#dbeafe;color:#2563eb}.ed-dl b{display:block;font-size:10px;color:#172033}.ed-dl small{display:block;margin-top:2px;color:#94a3b8;font-size:7px}.ed-toast{position:fixed;right:16px;bottom:16px;z-index:5000;display:flex;gap:7px;align-items:center;padding:10px 13px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#047857;font-size:9px;font-weight:800}
+.ed-page{min-height:100%;padding:16px;background:radial-gradient(circle at 8% 0%,rgba(59,130,246,.08),transparent 24rem),#f6f8fc;color:#172033;font-family:Inter,system-ui,sans-serif}.ed-shell{width:min(1180px,100%);margin:auto}.ed-header{display:flex;justify-content:space-between;gap:16px;padding:19px;border-radius:20px;color:#fff;background:linear-gradient(135deg,#1e1b4b,#4338ca 55%,#2563eb);box-shadow:0 18px 45px rgba(37,56,138,.18)}.ed-eyebrow{display:flex;gap:6px;align-items:center;color:#a5b4fc;font-size:8px;letter-spacing:.14em;font-weight:900}.ed-eyebrow.dark{color:#4f46e5}.ed-header h1{margin:6px 0 0;font-size:27px}.ed-header p{margin:7px 0 0;color:#dbeafe;font-size:9px}.ed-refresh{height:36px;padding:0 12px;display:flex;gap:6px;align-items:center;border:1px solid #ffffff33;border-radius:10px;color:#fff;background:#ffffff18;font-size:9px;font-weight:900}.ed-month{margin-top:10px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;box-shadow:0 8px 25px #0f172a0d}.ed-month span{display:block;color:#94a3b8;font-size:7px;letter-spacing:.12em;font-weight:900}.ed-month strong{display:block;margin-top:4px;font-size:16px}.ed-month-control{display:flex;gap:6px;align-items:center}.ed-month-control>button{width:33px;height:33px;border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc;font-size:20px;color:#334155}.ed-month-control label{min-width:175px;height:33px;padding:0 9px;display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;border-radius:9px}.ed-month-control input{width:100%;border:0;outline:0;font-size:10px;font-weight:800}.ed-error{margin-top:10px;padding:11px 12px;display:flex;gap:8px;align-items:flex-start;border:1px solid #fecdd3;border-radius:12px;background:#fff1f2;color:#9f1239}.ed-error>div{flex:1}.ed-error span{display:block;margin-top:3px;font-size:9px}.ed-error button{width:27px;height:27px;border:0;border-radius:7px;background:#ffe4e6;color:#be123c}.ed-loading{min-height:330px;margin-top:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid #e2e8f0;border-radius:16px;background:#fff}.ed-loading span{color:#94a3b8;font-size:9px}.ed-spin{animation:edSpin .8s linear infinite}@keyframes edSpin{to{transform:rotate(360deg)}}.ed-metrics{margin-top:10px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.ed-metric{padding:12px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 8px 22px #0f172a0d}.ed-metric>div{display:flex;justify-content:space-between;gap:6px}.ed-metric span{color:#64748b;font-size:7px;text-transform:uppercase;font-weight:900}.ed-metric i{width:28px;height:28px;display:grid;place-items:center;border-radius:8px;font-style:normal}.ed-metric strong{display:block;margin-top:7px;font-size:15px}.ed-metric.green i,.ed-dl.excel>span{background:#d1fae5;color:#047857}.ed-metric.blue i{background:#dbeafe;color:#2563eb}.ed-metric.orange i{background:#ffedd5;color:#c2410c}.ed-metric.purple i{background:#ede9fe;color:#7c3aed}.ed-metric.red i,.ed-dl.pdf>span{background:#fee2e2;color:#dc2626}.ed-metric.profit i{background:#d1fae5;color:#047857}.ed-metric.loss i{background:#fee2e2;color:#dc2626}.ed-metric.break i{background:#fef3c7;color:#b45309}.ed-result{margin-top:10px;padding:15px 17px;display:flex;justify-content:space-between;align-items:center;border-radius:15px;color:#fff;box-shadow:0 12px 30px #0f172a22}.ed-result.profit{background:linear-gradient(135deg,#065f46,#059669)}.ed-result.loss{background:linear-gradient(135deg,#991b1b,#dc2626)}.ed-result.break{background:linear-gradient(135deg,#92400e,#d97706)}.ed-result span{display:block;color:#ffffffaa;font-size:7px;letter-spacing:.13em;font-weight:900}.ed-result strong{display:block;margin-top:4px;font-size:16px}.ed-result small{display:block;margin-top:4px;color:#ffffffb8;font-size:8px}.ed-result>b{font-size:24px}.ed-card,.ed-download{margin-top:10px;padding:14px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;box-shadow:0 8px 25px #0f172a0d}.ed-card-head{display:flex;justify-content:space-between;align-items:center;color:#2563eb}.ed-card-head h2,.ed-download h2{margin:0;font-size:13px;color:#172033}.ed-card-head p,.ed-download p{margin:3px 0 0;color:#94a3b8;font-size:8px}.ed-table-wrap{margin-top:10px;overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:9px 8px;border-bottom:1px solid #edf2f7;text-align:left;font-size:9px}th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:7px}td:nth-child(2),th:nth-child(2){text-align:center}td:last-child,th:last-child{text-align:right}tfoot th{background:#fff;color:#172033}.ed-empty{padding:25px;text-align:center;color:#94a3b8;font-size:9px;border:1px dashed #cbd5e1;border-radius:10px}.ed-download{display:grid;grid-template-columns:1fr 1.6fr;align-items:center;gap:14px}.ed-download h2{margin-top:5px;font-size:15px}.ed-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.ed-dl{min-height:70px;padding:9px;display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:7px;text-align:left;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.ed-dl>span{width:30px;height:30px;display:grid;place-items:center;border-radius:8px}.ed-dl.text>span{background:#dbeafe;color:#2563eb}.ed-dl b{display:block;font-size:10px;color:#172033}.ed-dl small{display:block;margin-top:2px;color:#94a3b8;font-size:7px}.ed-toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5000;display:flex;gap:7px;align-items:center;justify-content:center;max-width:min(380px,calc(100vw - 24px));padding:11px 14px;border:1px solid #bbf7d0;border-radius:11px;background:#f0fdf4;color:#047857;font-size:10px;font-weight:850;box-shadow:0 18px 55px rgba(15,23,42,.18);text-align:center}
 @media(max-width:1100px){.ed-metrics{grid-template-columns:repeat(3,1fr)}.ed-download{grid-template-columns:1fr}}@media(max-width:700px){.ed-page{padding:9px}.ed-header{padding:13px;border-radius:15px}.ed-header h1{font-size:21px}.ed-refresh span{display:none}.ed-month{flex-direction:column;align-items:stretch}.ed-month-control label{flex:1;min-width:0}.ed-metrics{grid-template-columns:repeat(2,1fr);gap:6px}.ed-result{flex-direction:column;align-items:flex-start}.ed-buttons{grid-template-columns:1fr}}@media(max-width:420px){.ed-metrics{grid-template-columns:1fr}}
+
+@media(max-width:700px){
+  .ed-eyebrow{font-size:9px}
+  .ed-header h1{font-size:22px}
+  .ed-header p{font-size:10px}
+  .ed-month span{font-size:8px}
+  .ed-month strong{font-size:16px}
+  .ed-month-control input{font-size:11px}
+  .ed-metric span{font-size:8px}
+  .ed-metric strong{font-size:16px}
+  .ed-result span{font-size:8px}
+  .ed-result strong{font-size:18px}
+  .ed-result small{font-size:9px}
+  .ed-result>b{font-size:26px}
+  th,td{font-size:10px}
+  th{font-size:8px}
+  .ed-card-head h2,.ed-download h2{font-size:14px}
+  .ed-card-head p,.ed-download p{font-size:9px}
+  .ed-dl b{font-size:11px}
+  .ed-dl small{font-size:8px}
+  .ed-toast{font-size:11px}
+}
 `;

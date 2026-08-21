@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 const API_BASE_URL = (
-  import.meta.env?.VITE_API_URL || "https://express-project-learning-new.onrender.com/api" ||
+  import.meta.env?.VITE_API_URL ||  "https://express-project-learning-new.onrender.com/api" ||
   "http://localhost:5000/api"
 ).replace(/\/$/, "");
 
@@ -199,31 +199,46 @@ export default function Expense() {
   const loadCategories =
     useCallback(async () => {
       try {
-        const response =
-          await axios.get(
-            `${API_BASE_URL}/expenses/categories`,
-            axiosConfig
-          );
+        const response = await axios.get(
+          `${API_BASE_URL}/expenses/categories`,
+          axiosConfig
+        );
 
-        const result =
-          response.data?.data ??
-          response.data ??
+        const payload = response?.data ?? {};
+        const raw =
+          payload?.data ??
+          payload?.categories ??
+          payload?.rows ??
           [];
 
-        if (Array.isArray(result)) {
-          setCategories(result);
-        } else {
-          setCategories(
-            result.categories ??
-              result.rows ??
-              []
-          );
-        }
+        const list = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.categories)
+          ? raw.categories
+          : Array.isArray(raw?.rows)
+          ? raw.rows
+          : [];
+
+        setCategories(
+          list
+            .filter((item) => item && item.id != null)
+            .map((item) => ({
+              ...item,
+              category_name:
+                item.category_name ||
+                item.name ||
+                "Unnamed category",
+              is_default:
+                Boolean(item.is_default),
+            }))
+        );
       } catch (error) {
         console.error(
           "Get categories error:",
           error
         );
+
+        setCategories([]);
 
         showToast(
           "error",
@@ -494,13 +509,32 @@ export default function Expense() {
    * ADD CATEGORY
    */
   const addCategory = async () => {
-    const name =
-      categoryName.trim();
+    const name = categoryName.trim();
 
     if (!name) {
+      showToast("error", "Enter category name.");
+      return;
+    }
+
+    if (name.length < 2) {
       showToast(
         "error",
-        "Enter category name."
+        "Category name must contain at least 2 characters."
+      );
+      return;
+    }
+
+    const duplicate = categories.some(
+      (category) =>
+        String(category.category_name || "")
+          .trim()
+          .toLowerCase() === name.toLowerCase()
+    );
+
+    if (duplicate) {
+      showToast(
+        "error",
+        "Category already exists."
       );
       return;
     }
@@ -508,13 +542,20 @@ export default function Expense() {
     setSaving(true);
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `${API_BASE_URL}/expenses/categories`,
         {
           category_name: name,
         },
         axiosConfig
       );
+
+      if (response?.data?.success === false) {
+        throw new Error(
+          response?.data?.error ||
+            "Could not add category."
+        );
+      }
 
       setCategoryName("");
 
@@ -549,28 +590,66 @@ export default function Expense() {
    * expenses cannot be deleted.
    */
   const deleteCategory = async (categoryId) => {
+    const category = categories.find(
+      (item) =>
+        String(item.id) === String(categoryId)
+    );
+
+    if (!category) {
+      setConfirmAction(null);
+      showToast(
+        "error",
+        "Category not found."
+      );
+      return;
+    }
+
+    if (category.is_default) {
+      setConfirmAction(null);
+      showToast(
+        "error",
+        "Default categories cannot be deleted."
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
-      await axios.delete(
+      const response = await axios.delete(
         `${API_BASE_URL}/expenses/categories/${categoryId}`,
         axiosConfig
       );
 
+      if (response?.data?.success === false) {
+        throw new Error(
+          response?.data?.error ||
+            "Could not delete category."
+        );
+      }
+
       setConfirmAction(null);
+      setCategoryName("");
       await loadCategories();
+
+      // Refresh the expense list as well because category counts/filters can change.
+      await loadExpenses();
 
       showToast(
         "success",
         "Category deleted successfully."
       );
     } catch (error) {
-      console.error("Delete category error:", error);
+      console.error(
+        "Delete category error:",
+        error
+      );
 
       showToast(
         "error",
         error.response?.data?.message ||
           error.response?.data?.error ||
+          error.message ||
           "Category is already being used or cannot be deleted."
       );
     } finally {
@@ -1802,6 +1881,144 @@ export default function Expense() {
           cursor: pointer;
         }
 
+
+        .expense-category-info {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .expense-category-info > div {
+          min-width: 0;
+        }
+
+        .expense-category-info strong,
+        .expense-category-info small {
+          display: block;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .expense-category-info strong {
+          color: #172033;
+          font-size: 10px;
+          line-height: 1.25;
+        }
+
+        .expense-category-info small {
+          margin-top: 2px;
+          color: #8a94a6;
+          font-size: 7px;
+          line-height: 1.2;
+        }
+
+        .expense-category-dot {
+          width: 29px;
+          height: 29px;
+          flex: 0 0 29px;
+          display: grid;
+          place-items: center;
+          border-radius: 8px;
+          color: #1769aa;
+          background: #eaf3ff;
+        }
+
+        .expense-category-default {
+          flex: 0 0 auto;
+          color: #8a94a6;
+          font-size: 7px;
+          font-weight: 850;
+        }
+
+
+        .expense-modal-header > div {
+          min-width: 0;
+        }
+
+        .expense-modal-subtitle {
+          margin: 3px 0 0;
+          color: #8a94a6;
+          font-size: 8px;
+          line-height: 1.2;
+          font-weight: 650;
+        }
+
+        .expense-category-info {
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .expense-category-info > div {
+          min-width: 0;
+        }
+
+        .expense-category-info strong,
+        .expense-category-info small {
+          display: block;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .expense-category-info strong {
+          color: #172033;
+          font-size: 10px;
+          line-height: 1.25;
+        }
+
+        .expense-category-info small {
+          margin-top: 2px;
+          color: #8a94a6;
+          font-size: 7px;
+          line-height: 1.2;
+        }
+
+        .expense-category-dot {
+          width: 30px;
+          height: 30px;
+          flex: 0 0 30px;
+          display: grid;
+          place-items: center;
+          border-radius: 8px;
+          color: #1769aa;
+          background: #eaf3ff;
+        }
+
+        .expense-category-default {
+          flex: 0 0 auto;
+          color: #8a94a6;
+          font-size: 7px;
+          font-weight: 850;
+        }
+
+        .expense-category-empty {
+          min-height: 130px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 18px;
+          border: 1px dashed #d8e0eb;
+          border-radius: 11px;
+          background: #f8fafc;
+          color: #8a94a6;
+          text-align: center;
+        }
+
+        .expense-category-empty strong {
+          color: #596579;
+          font-size: 11px;
+        }
+
+        .expense-category-empty span {
+          max-width: 280px;
+          font-size: 8px;
+          line-height: 1.4;
+        }
+
         /* CENTER CONFIRMATION */
         .expense-confirm-backdrop {
           position: fixed;
@@ -2041,7 +2258,7 @@ export default function Expense() {
           .expense-page {
             width: 100%;
             min-height: 100%;
-            padding: 7px 7px calc(30px + env(safe-area-inset-bottom));
+            padding: 7px 7px calc(42px + env(safe-area-inset-bottom));
             overflow-x: hidden;
           }
 
@@ -2426,6 +2643,109 @@ export default function Expense() {
             max-width: 100%;
             max-height: calc(100dvh - 18px);
             border-radius: 15px;
+          }
+
+          .expense-category-add {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 5px;
+          }
+
+          .expense-category-add input {
+            min-width: 0;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 8px;
+            font-size: 8px;
+          }
+
+          .expense-category-add button {
+            min-width: 66px;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 8px;
+            font-size: 8px;
+            white-space: nowrap;
+          }
+
+          .expense-category-item {
+            min-width: 0;
+            gap: 7px;
+            padding: 8px;
+            border-radius: 9px;
+          }
+
+          .expense-category-info {
+            min-width: 0;
+            gap: 6px;
+          }
+
+          .expense-category-dot {
+            width: 27px;
+            height: 27px;
+            flex-basis: 27px;
+            border-radius: 7px;
+          }
+
+          .expense-category-info strong {
+            font-size: 8px;
+          }
+
+          .expense-category-info small {
+            font-size: 6px;
+          }
+
+          .expense-category-delete {
+            width: 27px;
+            height: 27px;
+            flex: 0 0 27px;
+            border-radius: 7px;
+          }
+
+          .expense-category-list {
+            gap: 5px;
+            margin-top: 9px;
+          }
+
+          .expense-category-item {
+            min-width: 0;
+            gap: 7px;
+            padding: 8px;
+            border-radius: 9px;
+          }
+
+          .expense-category-info {
+            gap: 6px;
+          }
+
+          .expense-category-info strong {
+            font-size: 8px;
+          }
+
+          .expense-category-info small {
+            font-size: 6px;
+          }
+
+          .expense-category-dot {
+            width: 27px;
+            height: 27px;
+            flex-basis: 27px;
+            border-radius: 7px;
+          }
+
+          .expense-category-delete {
+            width: 27px;
+            height: 27px;
+            flex: 0 0 27px;
+            border-radius: 7px;
+          }
+
+          .expense-category-default {
+            font-size: 6px;
+          }
+
+          .expense-modal-subtitle {
+            font-size: 6px;
           }
 
           .expense-modal-header {
@@ -3314,11 +3634,10 @@ export default function Expense() {
               <button
                 type="button"
                 className="expense-modal-close"
-                onClick={() =>
-                  setCategoryModal(
-                    false
-                  )
-                }
+                onClick={() => {
+                  setCategoryModal(false);
+                  setCategoryName("");
+                }}
               >
                 <X size={18} />
               </button>
@@ -3354,75 +3673,70 @@ export default function Expense() {
               </div>
 
               <div className="expense-category-list">
-
-                {categories.length ===
-                0 ? (
-                  <div
-                    style={{
-                      textAlign:
-                        "center",
-                      padding:
-                        "20px",
-                      color:
-                        "#7b8496",
-                      fontSize:
-                        "11px",
-                    }}
-                  >
-                    No categories found.
+                {categories.length === 0 ? (
+                  <div className="expense-category-empty">
+                    <Tag size={20} />
+                    <strong>No categories available</strong>
+                    <span>
+                      Add a new category above and it will appear here.
+                    </span>
                   </div>
                 ) : (
-                  categories.map(
-                    (category) => (
-                      <div
-                        className="expense-category-item"
-                        key={
-                          category.id
-                        }
-                      >
-                        <span>
-                          {
-                            category.category_name
-                          }
+                  categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="expense-category-item"
+                    >
+                      <div className="expense-category-info">
+                        <span className="expense-category-dot">
+                          <Tag size={13} />
                         </span>
 
-                        {!category.is_default ? (
-                          <button
-                            type="button"
-                            className="expense-category-delete"
-                            onClick={() =>
-                              setConfirmAction({
-                                type: "category",
-                                id: category.id,
-                                title: "Delete Category?",
-                                message:
-                                  "This category can only be deleted if it is not being used by any expense.",
-                              })
-                            }
-                            disabled={
-                              saving
-                            }
-                            title="Delete category"
-                          >
-                            <Trash2
-                              size={14}
-                            />
-                          </button>
-                        ) : (
-                          <span
-                            style={{
-                              color:
-                                "#8a94a6",
-                              fontSize:
-                                "9px",
-                            }}
-                          >
-                            Default
-                          </span>
-                        )}
+                        <div>
+                          <strong>
+                            {category.category_name}
+                          </strong>
+                          <small>
+                            {category.is_default
+                              ? "Default category"
+                              : "User category"}
+                          </small>
+                        </div>
                       </div>
-                    )
-                  )
+
+                      {!category.is_default ? (
+                        <button
+                          type="button"
+                          className="expense-category-delete"
+                          onClick={() =>
+                            setConfirmAction({
+                              type: "category",
+                              id: category.id,
+                              title: "Delete Category?",
+                              message:
+                                "This user-created category will be permanently deleted. It can only be removed when no expense is using it.",
+                            })
+                          }
+                          disabled={saving}
+                          title="Delete category"
+                          aria-label={`Delete ${category.category_name}`}
+                        >
+                          {saving ? (
+                            <RefreshCw
+                              size={13}
+                              className="expense-spin"
+                            />
+                          ) : (
+                            <Trash2 size={13} />
+                          )}
+                        </button>
+                      ) : (
+                        <span className="expense-category-default">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                  ))
                 )}
               </div>
             </div>
