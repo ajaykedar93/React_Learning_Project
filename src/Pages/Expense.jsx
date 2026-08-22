@@ -38,6 +38,7 @@ const formatMoney = (value) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
 
@@ -80,6 +81,9 @@ export default function Expense() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] =
+    useState("all");
+
+  const [weekFilter, setWeekFilter] =
     useState("all");
 
   const [sortBy, setSortBy] =
@@ -257,6 +261,61 @@ export default function Expense() {
     loadCategories,
   ]);
 
+  useEffect(() => {
+    const overlayOpen =
+      modal !== null ||
+      categoryModal === true ||
+      confirmAction !== null;
+
+    if (!overlayOpen) {
+      return undefined;
+    }
+
+    const scrollY = window.scrollY || 0;
+    const body = document.body;
+    const html = document.documentElement;
+
+    const previousBodyOverflow =
+      body.style.overflow;
+    const previousBodyPosition =
+      body.style.position;
+    const previousBodyTop =
+      body.style.top;
+    const previousBodyWidth =
+      body.style.width;
+    const previousHtmlOverflow =
+      html.style.overflow;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      html.style.overflow =
+        previousHtmlOverflow;
+      body.style.overflow =
+        previousBodyOverflow;
+      body.style.position =
+        previousBodyPosition;
+      body.style.top =
+        previousBodyTop;
+      body.style.width =
+        previousBodyWidth;
+
+      window.scrollTo({
+        top: scrollY,
+        left: 0,
+        behavior: "auto",
+      });
+    };
+  }, [
+    modal,
+    categoryModal,
+    confirmAction,
+  ]);
+
   /*
    * REFRESH
    */
@@ -275,6 +334,8 @@ export default function Expense() {
    * MONTH
    */
   const changeMonth = (amount) => {
+    setWeekFilter("all");
+
     setSelectedMonth((old) => {
       const date = new Date(old);
 
@@ -292,6 +353,8 @@ export default function Expense() {
     const [year, month] =
       value.split("-");
 
+    setWeekFilter("all");
+
     setSelectedMonth(
       new Date(
         Number(year),
@@ -302,6 +365,7 @@ export default function Expense() {
   };
 
   const selectCurrentMonth = () => {
+    setWeekFilter("all");
     setSelectedMonth(new Date());
   };
 
@@ -658,6 +722,89 @@ export default function Expense() {
   };
 
   /*
+   * WEEK FILTER
+   * Week 1: 1-7
+   * Week 2: 8-14
+   * Week 3: 15-21
+   * Week 4: 22-end of selected month
+   */
+  const getWeekRange = useCallback(
+    (week) => {
+      if (week === "all") return null;
+
+      const year = selectedMonth.getFullYear();
+      const month = selectedMonth.getMonth();
+      const lastDay = new Date(
+        year,
+        month + 1,
+        0
+      ).getDate();
+
+      const ranges = {
+        week1: [1, 7],
+        week2: [8, 14],
+        week3: [15, 21],
+        week4: [22, lastDay],
+      };
+
+      const range = ranges[week];
+      if (!range) return null;
+
+      return {
+        start: new Date(
+          year,
+          month,
+          range[0],
+          0,
+          0,
+          0,
+          0
+        ),
+        end: new Date(
+          year,
+          month,
+          range[1],
+          23,
+          59,
+          59,
+          999
+        ),
+      };
+    },
+    [selectedMonth]
+  );
+
+  const matchesWeekFilter = useCallback(
+    (expense) => {
+      if (weekFilter === "all") return true;
+
+      const range =
+        getWeekRange(weekFilter);
+
+      if (!range) return true;
+
+      const value =
+        String(
+          expense.expense_date || ""
+        ).slice(0, 10);
+
+      const date = new Date(
+        `${value}T12:00:00`
+      );
+
+      if (Number.isNaN(date.getTime())) {
+        return false;
+      }
+
+      return (
+        date >= range.start &&
+        date <= range.end
+      );
+    },
+    [getWeekRange, weekFilter]
+  );
+
+  /*
    * FILTER + SORT
    */
   const filteredExpenses =
@@ -686,6 +833,9 @@ export default function Expense() {
           ) ||
           notes.includes(query);
 
+        const matchesWeek =
+          matchesWeekFilter(expense);
+
         const matchesCategory =
           categoryFilter === "all" ||
           String(
@@ -696,6 +846,7 @@ export default function Expense() {
 
         return (
           matchesSearch &&
+          matchesWeek &&
           matchesCategory
         );
       })
@@ -802,7 +953,7 @@ export default function Expense() {
    */
   const categoryTotals = {};
 
-  expenses.forEach(
+  filteredExpenses.forEach(
     (expense) => {
       const name =
         expense.category_name ||
@@ -2229,6 +2380,295 @@ export default function Expense() {
           }
         }
 
+
+        /* FINAL RESPONSIVE EXPENSE POLISH */
+        .expense-month {
+          min-width: 0;
+          max-width: 100%;
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          line-height: 1.25;
+          text-align: center;
+        }
+
+        .expense-category-summary-card,
+        .expense-row,
+        .expense-stat,
+        .expense-panel,
+        .expense-field {
+          min-width: 0;
+        }
+
+        .expense-category-summary-card span,
+        .expense-row-main strong,
+        .expense-row-main span,
+        .expense-row-main small,
+        .expense-row-amount,
+        .expense-stat-text small,
+        .expense-stat-text strong,
+        .expense-stat-text span {
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .expense-category-summary-card {
+          min-width: 155px;
+          min-height: 82px;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+          gap: 4px;
+          border-radius: 12px;
+          overflow: visible;
+        }
+
+        .expense-category-summary-card span {
+          display: block;
+          color: #172033;
+          font-size: 13px;
+          font-weight: 900;
+          line-height: 1.25;
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .expense-category-summary-card strong {
+          display: block;
+          margin-top: 3px;
+          color: #172033;
+          font-size: 20px;
+          font-weight: 950;
+          line-height: 1.15;
+          white-space: normal;
+          overflow: visible;
+          text-overflow: clip;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .expense-filter-context {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin: 8px 0 9px;
+        }
+
+        .expense-filter-context span {
+          max-width: 100%;
+          padding: 5px 8px;
+          border: 1px solid #e4e9f0;
+          border-radius: 999px;
+          background: #f8fafc;
+          color: #596579;
+          font-size: 8px;
+          font-weight: 800;
+          line-height: 1.25;
+          overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 900px) {
+          .expense-filters {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .expense-search {
+            grid-column: 1 / -1;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .expense-page {
+            padding: 8px 8px calc(
+              46px + env(safe-area-inset-bottom)
+            );
+          }
+
+          .expense-brand h1 {
+            font-size: 19px;
+          }
+
+          .expense-brand p {
+            font-size: 9px;
+          }
+
+          .expense-month {
+            min-width: 0;
+            font-size: 10px;
+          }
+
+          .expense-filters {
+            grid-template-columns: 1fr;
+            gap: 6px;
+          }
+
+          .expense-search,
+          .expense-filter {
+            height: 38px;
+            font-size: 10px;
+          }
+
+          .expense-search input {
+            font-size: 10px;
+          }
+
+          .expense-filter-context {
+            gap: 5px;
+            margin: 7px 0 8px;
+          }
+
+          .expense-filter-context span {
+            font-size: 8px;
+          }
+
+          .expense-stats {
+            gap: 7px;
+          }
+
+          .expense-stat {
+            padding: 10px;
+            border-radius: 11px;
+          }
+
+          .expense-stat-text small {
+            font-size: 7px;
+          }
+
+          .expense-stat-text strong {
+            font-size: 14px;
+            line-height: 1.2;
+          }
+
+          .expense-stat-text span {
+            font-size: 7px;
+          }
+
+          .expense-panel-title h2 {
+            font-size: 12px;
+          }
+
+          .expense-panel-title p {
+            font-size: 8px;
+            line-height: 1.35;
+          }
+
+          .expense-category-summary {
+            gap: 7px;
+          }
+
+          .expense-category-summary-card {
+            min-width: 150px;
+            min-height: 86px;
+            padding: 12px;
+            gap: 4px;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 12px;
+            line-height: 1.3;
+          }
+
+          .expense-category-summary-card strong {
+            margin-top: 4px;
+            font-size: 19px;
+            line-height: 1.15;
+          }
+
+          .expense-row {
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px;
+          }
+
+          .expense-row-main strong {
+            font-size: 12px;
+            line-height: 1.3;
+          }
+
+          .expense-row-main span,
+          .expense-row-main small {
+            font-size: 8px;
+            line-height: 1.4;
+          }
+
+          .expense-row-amount {
+            font-size: 14px;
+          }
+
+          .expense-row-action {
+            width: 31px;
+            height: 31px;
+          }
+
+          .expense-modal-backdrop,
+          .expense-confirm-backdrop {
+            position: fixed;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+          }
+
+          .expense-modal {
+            width: min(
+              100%,
+              470px
+            );
+            max-height: calc(100dvh - 24px);
+          }
+
+          .expense-confirm {
+            width: min(
+              100%,
+              390px
+            );
+          }
+
+          .expense-toast-container {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100vw - 24px);
+            max-width: 360px;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .expense-category-summary-card {
+            min-width: 144px;
+            min-height: 82px;
+            padding: 11px;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 11px;
+            line-height: 1.3;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 18px;
+            line-height: 1.15;
+          }
+
+          .expense-row-main strong {
+            font-size: 11px;
+          }
+
+          .expense-row-amount {
+            font-size: 13px;
+          }
+        }
+
         /* TABLET */
 
         @media (max-width: 900px) {
@@ -2920,6 +3360,529 @@ export default function Expense() {
               repeat(2, minmax(0, 1fr));
           }
         }
+
+        /* FINAL CATEGORY TOTALS READABILITY */
+        .expense-category-summary-card span {
+          color: #172033 !important;
+          font-size: 13px !important;
+          font-weight: 900 !important;
+          line-height: 1.3 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        .expense-category-summary-card strong {
+          color: #172033 !important;
+          font-size: 20px !important;
+          font-weight: 950 !important;
+          line-height: 1.15 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        @media (max-width: 600px) {
+          .expense-category-summary-card span {
+            font-size: 12px !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 19px !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .expense-category-summary-card span {
+            font-size: 11px !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 18px !important;
+          }
+        }
+
+        @media (max-width: 340px) {
+          .expense-category-summary-card span {
+            font-size: 10px !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 17px !important;
+          }
+        }
+
+
+        /* FINAL REQUESTED UI:
+           Category name = 22-25px
+           Amount = 16-18px
+           Dialogs/alerts = centered in current viewport
+        */
+
+        .expense-category-summary-card {
+          min-width: 155px !important;
+          min-height: 88px !important;
+          padding: 12px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          align-items: flex-start !important;
+          gap: 4px !important;
+          overflow: visible !important;
+        }
+
+        .expense-category-summary-card span {
+          display: block !important;
+          width: 100% !important;
+          color: #172033 !important;
+          font-size: 23px !important;
+          font-weight: 900 !important;
+          line-height: 1.15 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        .expense-category-summary-card strong {
+          display: block !important;
+          width: 100% !important;
+          margin-top: 3px !important;
+          color: #172033 !important;
+          font-size: 17px !important;
+          font-weight: 900 !important;
+          line-height: 1.15 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        /* Keep the original page position when an overlay opens.
+           Body scrolling is disabled only while the overlay is visible. */
+        .expense-modal-backdrop,
+        .expense-confirm-backdrop,
+        .expense-toast-container {
+          position: fixed !important;
+          inset: 0 !important;
+        }
+
+        .expense-modal-backdrop,
+        .expense-confirm-backdrop {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 14px !important;
+        }
+
+        .expense-modal {
+          margin: 0 auto !important;
+          width: min(470px, calc(100vw - 28px)) !important;
+          max-height: min(90vh, calc(100dvh - 28px)) !important;
+          overflow: auto !important;
+        }
+
+        .expense-confirm {
+          margin: 0 auto !important;
+          width: min(390px, calc(100vw - 28px)) !important;
+          max-height: min(80vh, calc(100dvh - 28px)) !important;
+          overflow: auto !important;
+        }
+
+        .expense-toast-container {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 14px !important;
+          transform: none !important;
+          pointer-events: none !important;
+        }
+
+        .expense-toast {
+          width: min(360px, calc(100vw - 28px)) !important;
+          pointer-events: auto !important;
+        }
+
+        @media (max-width: 700px) {
+          .expense-category-summary-card {
+            min-width: 155px !important;
+            min-height: 94px !important;
+            padding: 12px !important;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 22px !important;
+            line-height: 1.15 !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 18px !important;
+            line-height: 1.15 !important;
+          }
+
+          .expense-modal-backdrop,
+          .expense-confirm-backdrop {
+            padding: 10px !important;
+          }
+
+          .expense-modal {
+            width: min(470px, calc(100vw - 20px)) !important;
+            max-height: calc(100dvh - 20px) !important;
+            border-radius: 17px !important;
+          }
+
+          .expense-confirm {
+            width: min(390px, calc(100vw - 20px)) !important;
+            max-height: calc(100dvh - 20px) !important;
+            border-radius: 16px !important;
+          }
+
+          .expense-toast-container {
+            padding: 10px !important;
+          }
+
+          .expense-toast {
+            width: min(360px, calc(100vw - 20px)) !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .expense-category-summary-card {
+            min-width: 145px !important;
+            min-height: 90px !important;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 22px !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 17px !important;
+          }
+        }
+
+
+        /* TRANSACTIONS ONLY WHEN CATEGORY IS SELECTED */
+        .expense-selected-category-header {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 10px 12px;
+          margin-bottom: 7px;
+          border: 1px solid #e3e9f1;
+          border-radius: 12px;
+          background: linear-gradient(135deg,#ffffff,#f7f9fc);
+        }
+
+        .expense-selected-category-header span,
+        .expense-selected-category-header strong {
+          display: block;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .expense-selected-category-header span {
+          color: #8a94a6;
+          font-size: 8px;
+          font-weight: 850;
+          text-transform: uppercase;
+          letter-spacing: .06em;
+        }
+
+        .expense-selected-category-header strong {
+          margin-top: 3px;
+          color: #172033;
+          font-size: 17px;
+          font-weight: 900;
+          line-height: 1.2;
+        }
+
+        .expense-selected-category-header b {
+          flex: 0 0 auto;
+          padding: 5px 8px;
+          border-radius: 999px;
+          background: #eaf3ff;
+          color: #1769aa;
+          font-size: 8px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 600px) {
+          .expense-selected-category-header {
+            align-items: flex-start;
+            padding: 9px 10px;
+          }
+
+          .expense-selected-category-header strong {
+            font-size: 16px;
+          }
+
+          .expense-selected-category-header b {
+            font-size: 7px;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .expense-selected-category-header {
+            flex-direction: column;
+            gap: 6px;
+          }
+
+          .expense-selected-category-header b {
+            white-space: normal;
+          }
+        }
+
+
+        /* ============================================================
+           FINAL CARD / TOTAL POLISH
+        ============================================================ */
+
+        /* Four top cards: slightly larger, more breathing room,
+           clear separation and stronger hierarchy. */
+        .expense-stats {
+          gap: 11px !important;
+        }
+
+        .expense-stat {
+          min-height: 92px !important;
+          padding: 15px !important;
+          gap: 11px !important;
+          border-radius: 16px !important;
+        }
+
+        .expense-stat-icon {
+          width: 42px !important;
+          height: 42px !important;
+          flex-basis: 42px !important;
+          border-radius: 12px !important;
+        }
+
+        .expense-stat-text {
+          min-width: 0 !important;
+          flex: 1 1 auto !important;
+        }
+
+        .expense-stat-text small {
+          font-size: 10px !important;
+          font-weight: 900 !important;
+          line-height: 1.25 !important;
+        }
+
+        .expense-stat-text strong {
+          margin-top: 5px !important;
+          font-size: 19px !important;
+          line-height: 1.2 !important;
+          font-weight: 950 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        .expense-stat-text span {
+          margin-top: 3px !important;
+          font-size: 9px !important;
+          line-height: 1.3 !important;
+        }
+
+        /* Category total cards: larger category title and red total amount. */
+        .expense-category-summary {
+          display: grid !important;
+          grid-template-columns: repeat(
+            auto-fit,
+            minmax(155px, 1fr)
+          ) !important;
+          gap: 10px !important;
+          overflow: visible !important;
+          padding-bottom: 0 !important;
+        }
+
+        .expense-category-summary-card {
+          min-width: 0 !important;
+          min-height: 94px !important;
+          padding: 13px !important;
+          border-radius: 13px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          align-items: flex-start !important;
+          gap: 5px !important;
+          overflow: visible !important;
+          background: linear-gradient(
+            180deg,
+            #fbfdff 0%,
+            #f5f8fc 100%
+          ) !important;
+          border: 1px solid #dfe6ef !important;
+          box-shadow: 0 5px 16px rgba(
+            20,
+            35,
+            60,
+            0.06
+          ) !important;
+        }
+
+        .expense-category-summary-card span {
+          width: 100% !important;
+          color: #172033 !important;
+          font-size: 22px !important;
+          font-weight: 950 !important;
+          line-height: 1.12 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        .expense-category-summary-card strong {
+          width: 100% !important;
+          margin-top: 2px !important;
+          color: #d04444 !important;
+          font-size: 18px !important;
+          font-weight: 950 !important;
+          line-height: 1.15 !important;
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+
+        /* Extra spacing for the transaction area. */
+        .expense-list {
+          gap: 8px !important;
+        }
+
+        @media (max-width: 900px) {
+          .expense-stats {
+            gap: 9px !important;
+          }
+
+          .expense-stat {
+            min-height: 88px !important;
+            padding: 13px !important;
+          }
+
+          .expense-stat-text strong {
+            font-size: 17px !important;
+          }
+
+          .expense-category-summary {
+            grid-template-columns: repeat(
+              2,
+              minmax(0, 1fr)
+            ) !important;
+            gap: 9px !important;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .expense-stats {
+            gap: 8px !important;
+          }
+
+          .expense-stat {
+            min-height: 86px !important;
+            padding: 11px !important;
+            gap: 8px !important;
+            border-radius: 12px !important;
+          }
+
+          .expense-stat-icon {
+            width: 34px !important;
+            height: 34px !important;
+            flex-basis: 34px !important;
+            border-radius: 9px !important;
+          }
+
+          .expense-stat-text small {
+            font-size: 8.5px !important;
+          }
+
+          .expense-stat-text strong {
+            font-size: 15px !important;
+            line-height: 1.2 !important;
+          }
+
+          .expense-stat-text span {
+            font-size: 8px !important;
+          }
+
+          .expense-category-summary {
+            grid-template-columns: repeat(
+              2,
+              minmax(0, 1fr)
+            ) !important;
+            gap: 8px !important;
+          }
+
+          .expense-category-summary-card {
+            min-height: 88px !important;
+            padding: 11px !important;
+            border-radius: 11px !important;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 19px !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 17px !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .expense-stats {
+            gap: 7px !important;
+          }
+
+          .expense-stat {
+            min-height: 82px !important;
+            padding: 10px !important;
+          }
+
+          .expense-stat-text small {
+            font-size: 8px !important;
+          }
+
+          .expense-stat-text strong {
+            font-size: 14px !important;
+          }
+
+          .expense-stat-text span {
+            font-size: 7.5px !important;
+          }
+
+          .expense-category-summary {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 7px !important;
+          }
+
+          .expense-category-summary-card {
+            min-height: 84px !important;
+            padding: 10px !important;
+          }
+
+          .expense-category-summary-card span {
+            font-size: 17px !important;
+          }
+
+          .expense-category-summary-card strong {
+            font-size: 16px !important;
+          }
+        }
+
       `}</style>
 
       <main className="expense-page">
@@ -3130,7 +4093,8 @@ export default function Expense() {
                 </h2>
 
                 <p>
-                  All expenses for selected month
+                  Expenses for the selected month,
+                  week and category filters
                 </p>
               </div>
 
@@ -3198,6 +4162,32 @@ export default function Expense() {
 
               <select
                 className="expense-filter"
+                value={weekFilter}
+                onChange={(e) =>
+                  setWeekFilter(
+                    e.target.value
+                  )
+                }
+              >
+                <option value="all">
+                  All Weeks
+                </option>
+                <option value="week1">
+                  Week 1 · 1-7
+                </option>
+                <option value="week2">
+                  Week 2 · 8-14
+                </option>
+                <option value="week3">
+                  Week 3 · 15-21
+                </option>
+                <option value="week4">
+                  Week 4 · 22-End
+                </option>
+              </select>
+
+              <select
+                className="expense-filter"
                 value={sortBy}
                 onChange={(e) =>
                   setSortBy(
@@ -3223,6 +4213,47 @@ export default function Expense() {
               </select>
             </div>
           </section>
+
+          <div className="expense-filter-context">
+            <span>
+              Month: {selectedMonth.toLocaleDateString(
+                "en-IN",
+                {
+                  month: "long",
+                  year: "numeric",
+                }
+              )}
+            </span>
+
+            <span>
+              Week:{" "}
+              {weekFilter === "all"
+                ? "All Weeks"
+                : weekFilter === "week1"
+                ? "Week 1 · 1-7"
+                : weekFilter === "week2"
+                ? "Week 2 · 8-14"
+                : weekFilter === "week3"
+                ? "Week 3 · 15-21"
+                : "Week 4 · 22-End"}
+            </span>
+
+            <span>
+              Category:{" "}
+              {categoryFilter === "all"
+                ? "All Categories"
+                : categories.find(
+                    (category) =>
+                      String(
+                        category.id
+                      ) ===
+                      String(
+                        categoryFilter
+                      )
+                  )?.category_name ||
+                  "Selected Category"}
+            </span>
+          </div>
 
           {/* WEEK TOTALS */}
           <section className="expense-panel">
@@ -3333,122 +4364,107 @@ export default function Expense() {
             )}
           </section>
 
-          {/* EXPENSE LIST */}
-          <section className="expense-list">
-
-            {loading &&
-            expenses.length === 0 ? (
-              <div className="expense-empty">
-                <RefreshCw
-                  size={28}
-                  className="expense-spin"
-                />
-
-                <strong>
-                  Loading expenses...
-                </strong>
-              </div>
-            ) : filteredExpenses.length ===
-              0 ? (
-              <div className="expense-empty">
-                <Receipt size={38} />
-
-                <strong>
-                  No expenses found
-                </strong>
-
-                <span>
-                  Add an expense or change
-                  your filters.
-                </span>
-              </div>
-            ) : (
-              filteredExpenses.map(
-                (expense) => (
-                  <article
-                    className="expense-row"
-                    key={expense.id}
-                  >
-                    <div className="expense-row-icon">
-                      <Receipt size={17} />
-                    </div>
-
-                    <div className="expense-row-main">
+          {/* EXPENSE LIST
+              Hidden until the user selects a category.
+              All matching entries from that category are shown together. */}
+          {categoryFilter !== "all" && (
+            <section className="expense-list">
+              {loading && expenses.length === 0 ? (
+                <div className="expense-empty">
+                  <RefreshCw size={28} className="expense-spin" />
+                  <strong>Loading expenses...</strong>
+                </div>
+              ) : filteredExpenses.length === 0 ? (
+                <div className="expense-empty">
+                  <Receipt size={38} />
+                  <strong>No expenses found</strong>
+                  <span>
+                    No entries match the selected category and active filters.
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="expense-selected-category-header">
+                    <div>
+                      <span>Selected Category</span>
                       <strong>
-                        {
-                          expense.category_name ||
-                          "Expense"
-                        }
+                        {categories.find(
+                          (category) =>
+                            String(category.id) ===
+                            String(categoryFilter)
+                        )?.category_name || "Selected Category"}
                       </strong>
+                    </div>
+                    <b>
+                      {filteredExpenses.length}{" "}
+                      {filteredExpenses.length === 1 ? "entry" : "entries"}
+                    </b>
+                  </div>
 
-                      <span>
-                        {new Date(
-                          expense.expense_date
-                        ).toLocaleDateString(
-                          "en-IN",
-                          {
+                  {filteredExpenses.map((expense) => (
+                    <article className="expense-row" key={expense.id}>
+                      <div className="expense-row-icon">
+                        <Receipt size={17} />
+                      </div>
+
+                      <div className="expense-row-main">
+                        <strong>
+                          {expense.category_name || "Expense"}
+                        </strong>
+
+                        <span>
+                          {new Date(
+                            expense.expense_date
+                          ).toLocaleDateString("en-IN", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
+                          })}
+                        </span>
+
+                        {expense.notes ? (
+                          <small>{expense.notes}</small>
+                        ) : null}
+                      </div>
+
+                      <div className="expense-row-amount">
+                        {formatMoney(expense.amount)}
+                      </div>
+
+                      <div className="expense-row-actions">
+                        <button
+                          type="button"
+                          className="expense-row-action edit"
+                          onClick={() => openEditExpense(expense)}
+                          title="Edit"
+                        >
+                          <Edit2 size={15} />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="expense-row-action delete"
+                          onClick={() =>
+                            setConfirmAction({
+                              type: "expense",
+                              id: expense.id,
+                              title: "Delete Expense?",
+                              message:
+                                "This expense record will be permanently deleted. This action cannot be undone.",
+                            })
                           }
-                        )}
-                      </span>
-
-                      {expense.notes ? (
-                        <small>
-                          {expense.notes}
-                        </small>
-                      ) : null}
-                    </div>
-
-                    <div className="expense-row-amount">
-                      {formatMoney(
-                        expense.amount
-                      )}
-                    </div>
-
-                    <div className="expense-row-actions">
-
-                      <button
-                        type="button"
-                        className="expense-row-action edit"
-                        onClick={() =>
-                          openEditExpense(
-                            expense
-                          )
-                        }
-                        title="Edit"
-                      >
-                        <Edit2
-                          size={15}
-                        />
-                      </button>
-
-                      <button
-                        type="button"
-                        className="expense-row-action delete"
-                        onClick={() =>
-                          setConfirmAction({
-                            type: "expense",
-                            id: expense.id,
-                            title: "Delete Expense?",
-                            message:
-                              "This expense record will be permanently deleted. This action cannot be undone.",
-                          })
-                        }
-                        title="Delete"
-                        disabled={saving}
-                      >
-                        <Trash2
-                          size={15}
-                        />
-                      </button>
-                    </div>
-                  </article>
-                )
-              )
-            )}
-          </section>
+                          title="Delete"
+                          disabled={saving}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </>
+              )}
+            </section>
+          )}
         </div>
       </main>
 

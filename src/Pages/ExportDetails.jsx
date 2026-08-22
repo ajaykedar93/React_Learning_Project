@@ -10,7 +10,7 @@ const EXPORT_API_URL = `${API_ROOT}/export-details`;
 const token = () => localStorage.getItem("token") || localStorage.getItem("accessToken") || localStorage.getItem("auth_token") || "";
 const monthValue = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 const monthName = d => d.toLocaleDateString("en-IN", { month:"long", year:"numeric" });
-const money = v => new Intl.NumberFormat("en-IN", { style:"currency", currency:"INR", maximumFractionDigits:2 }).format(Number(v)||0);
+const money = v => new Intl.NumberFormat("en-IN", { style:"currency", currency:"INR", minimumFractionDigits:0, maximumFractionDigits:0 }).format(Number(v)||0);
 const pdfMoney = v => `INR ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v)||0)}`;
 const n = v => Number(v)||0;
 const blobDownload = async (blob, name, mimeType = "") => {
@@ -86,7 +86,7 @@ export default function ExportDetails(){
     ["Total Income",money(s.total_income)],["Total Borrow",money(s.total_borrow)],
     ["Total Loan",money(s.total_loan)],["Total Expenses",money(s.total_expenses)],
     ["Total EMI Paid",money(s.total_emi_paid)],["Monthly Savings",money(s.total_savings)],
-    ["Savings Rate",`${n(s.savings_rate).toFixed(2)}%`],["Month Result",result]
+    ["Savings Rate",`${Math.round(n(s.savings_rate))}%`],["Month Result",result]
   ];
 
   const exportText=async()=>{
@@ -134,7 +134,7 @@ export default function ExportDetails(){
       excelRows.forEach(([label,val],i)=>{
         const row=ws.addRow([label,val]);
         row.eachCell(cell=>{cell.font={name:"Aptos",size:10,color:{argb:dark}};cell.border={bottom:{style:"thin",color:{argb:line}}};cell.alignment={vertical:"middle"};});
-        if(typeof val==="number") row.getCell(2).numFmt=(label==="Savings Rate"?"0.00%":'₹#,##0.00');
+        if(typeof val==="number") row.getCell(2).numFmt=(label==="Savings Rate"?"0%":'₹#,##0');
         row.getCell(2).alignment={horizontal:"right"};
         if(i%2===1) row.eachCell(cell=>cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:light}});
         if(label==="Monthly Savings"){
@@ -149,8 +149,8 @@ export default function ExportDetails(){
       cat.mergeCells("A2:C2");cat.getCell("A2").value=report.report.month;cat.getCell("A2").font={name:"Aptos",size:11,bold:true,color:{argb:blue}};
       const hdr=cat.addRow(["Category","Amount","Transactions"]);
       hdr.eachCell(cell=>{cell.font={name:"Aptos",size:10,bold:true,color:{argb:white}};cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:teal}};cell.alignment={horizontal:"center",vertical:"middle"};});
-      if(categories.length){categories.forEach((item,idx)=>{const row=cat.addRow([item.category_name,Number(item.total_amount)||0,Number(item.expense_count)||0]);row.getCell(2).numFmt='₹#,##0.00';row.getCell(2).alignment={horizontal:"right"};row.getCell(3).alignment={horizontal:"center"};row.eachCell(cell=>{cell.font={name:"Aptos",size:10,color:{argb:dark}};cell.border={bottom:{style:"thin",color:{argb:line}}};if(idx%2===1)cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:light}};});});}else{const row=cat.addRow(["No expenses recorded",0,0]);row.getCell(2).numFmt='₹#,##0.00';}
-      const totalRow=cat.addRow(["TOTAL",Number(s.total_expenses)||0,Number(s.expense_count)||0]);totalRow.eachCell(cell=>{cell.font={name:"Aptos",size:10,bold:true,color:{argb:dark}};cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"EFF6FF"}};cell.border={top:{style:"medium",color:{argb:blue}}};});totalRow.getCell(2).numFmt='₹#,##0.00';totalRow.getCell(2).alignment={horizontal:"right"};totalRow.getCell(3).alignment={horizontal:"center"};
+      if(categories.length){categories.forEach((item,idx)=>{const row=cat.addRow([item.category_name,Number(item.total_amount)||0,Number(item.expense_count)||0]);row.getCell(2).numFmt='₹#,##0';row.getCell(2).alignment={horizontal:"right"};row.getCell(3).alignment={horizontal:"center"};row.eachCell(cell=>{cell.font={name:"Aptos",size:10,color:{argb:dark}};cell.border={bottom:{style:"thin",color:{argb:line}}};if(idx%2===1)cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:light}};});});}else{const row=cat.addRow(["No expenses recorded",0,0]);row.getCell(2).numFmt='₹#,##0';}
+      const totalRow=cat.addRow(["TOTAL",Number(s.total_expenses)||0,Number(s.expense_count)||0]);totalRow.eachCell(cell=>{cell.font={name:"Aptos",size:10,bold:true,color:{argb:dark}};cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"EFF6FF"}};cell.border={top:{style:"medium",color:{argb:blue}}};});totalRow.getCell(2).numFmt='₹#,##0';totalRow.getCell(2).alignment={horizontal:"right"};totalRow.getCell(3).alignment={horizontal:"center"};
       cat.autoFilter={from:"A3",to:"C3"};
 
       const info=workbook.addWorksheet("Report Info"); info.columns=[{width:28},{width:65}];
@@ -177,7 +177,7 @@ export default function ExportDetails(){
       const cards=[["Work Payment",pdfMoney(s.work_payment),blue],["Business Payment",pdfMoney(s.business_payment),teal],["Total Income",pdfMoney(s.total_income),blue],["Total Borrow",pdfMoney(s.total_borrow),orange],["Total Loan",pdfMoney(s.total_loan),[124,58,237]],["Total Expenses",pdfMoney(s.total_expenses),red],["Total EMI Paid",pdfMoney(s.total_emi_paid),[99,102,241]],["Monthly Savings",pdfMoney(s.total_savings),s.result==="profit"?green:s.result==="loss"?red:orange]];
       cards.forEach((c,i)=>{const x=M+(i%2)*(cw+gap),y=53+Math.floor(i/2)*(ch+4);doc.setFillColor(...light);doc.setDrawColor(...border);doc.roundedRect(x,y,cw,ch,3,3,"FD");doc.setFillColor(...c[2]);doc.roundedRect(x,y,3,ch,1.2,1.2,"F");doc.setTextColor(...muted);doc.setFont("helvetica","normal");doc.setFontSize(7.4);doc.text(c[0],x+8,y+7);doc.setTextColor(...text);doc.setFont("helvetica","bold");doc.setFontSize(9.6);doc.text(c[1],x+cw-8,y+12.5,{align:"right"});});
       let y=53+4*(ch+4)+5;
-      const rc=s.result==="profit"?green:s.result==="loss"?red:orange;doc.setFillColor(...rc);doc.roundedRect(M,y,W-M*2,25,4,4,"F");doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("MONTH-END RESULT",M+8,y+8);doc.setFontSize(14);doc.text(`${result}: ${pdfMoney(s.total_savings)}`,M+8,y+17);doc.setFont("helvetica","normal");doc.setFontSize(8.3);doc.text(`Savings Rate: ${n(s.savings_rate).toFixed(2)}%`,W-M-8,y+12,{align:"right"});
+      const rc=s.result==="profit"?green:s.result==="loss"?red:orange;doc.setFillColor(...rc);doc.roundedRect(M,y,W-M*2,25,4,4,"F");doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("MONTH-END RESULT",M+8,y+8);doc.setFontSize(14);doc.text(`${result}: ${pdfMoney(s.total_savings)}`,M+8,y+17);doc.setFont("helvetica","normal");doc.setFontSize(8.3);doc.text(`Savings Rate: ${Math.round(n(s.savings_rate))}%`,W-M-8,y+12,{align:"right"});
       y+=35;doc.setTextColor(...text);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text("Expenses by Category",M,y);
       const body=categories.length?categories.map(x=>[String(x.category_name),pdfMoney(x.total_amount),String(x.expense_count||0)]):[["No expenses recorded",pdfMoney(0),"0"]];
       autoTable(doc,{startY:y+5,margin:{left:M,right:M},head:[["Category","Amount","Transactions"]],body,theme:"grid",rowPageBreak:"avoid",headStyles:{fillColor:teal,textColor:[255,255,255],fontStyle:"bold",fontSize:8.5,cellPadding:3.4},bodyStyles:{fontSize:8.5,textColor:text,cellPadding:3.4},alternateRowStyles:{fillColor:[249,250,251]},styles:{lineColor:border,lineWidth:.2,overflow:"linebreak",valign:"middle"},columnStyles:{0:{cellWidth:95},1:{cellWidth:55,halign:"right"},2:{cellWidth:30,halign:"center"}}});
@@ -228,4 +228,43 @@ const styles=`
   .ed-dl small{font-size:8px}
   .ed-toast{font-size:11px}
 }
+
+/* ===== PROFESSIONAL RESPONSIVE UPGRADE ===== */
+.ed-page{overflow-x:hidden}
+.ed-header h1,.ed-header p,.ed-month span,.ed-month strong,.ed-card-head h2,.ed-card-head p,.ed-download h2,.ed-download p,.ed-metric span,.ed-metric strong,.ed-result span,.ed-result strong,.ed-result small,.ed-result>b,.ed-dl b,.ed-dl small,th,td{font-weight:800}
+.ed-metric{min-width:0;min-height:105px;padding:15px;border:1.5px solid #cbd5e1;border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.07)}
+.ed-metric span{font-size:9px;color:#334155;line-height:1.35}
+.ed-metric strong{margin-top:9px;font-size:19px;line-height:1.2;color:#000;font-weight:950;overflow-wrap:anywhere;word-break:break-word}
+.ed-result{min-height:88px;border-width:1.5px}
+.ed-result strong{font-size:20px;font-weight:950}
+.ed-result small{font-size:10px}
+.ed-result>b{font-size:30px;font-weight:950}
+.ed-card,.ed-download{border:1.5px solid #cbd5e1;padding:16px}
+.ed-card-head h2,.ed-download h2{font-size:16px;font-weight:950}
+.ed-card-head p,.ed-download p{font-size:10px;color:#475569;font-weight:750}
+.ed-table-wrap{margin-top:12px;border:1.5px solid #111827;border-radius:12px;overflow:auto}
+.ed-table-wrap table{min-width:520px}
+.ed-table-wrap th{padding:11px 10px;font-size:9px;color:#111827;background:#f1f5f9;border-bottom:1.5px solid #111827}
+.ed-table-wrap td{padding:12px 10px;font-size:12px;font-weight:850;color:#000;border-bottom:1px solid #dbe3ec}
+.ed-table-wrap tfoot th{padding:12px 10px;font-size:11px;color:#000;border-top:1.5px solid #111827}
+.ed-buttons{gap:9px}
+.ed-dl{min-height:78px;padding:11px;border:1.5px solid #cbd5e1;border-radius:12px}
+.ed-dl b{font-size:12px;color:#000;font-weight:950}
+.ed-dl small{font-size:9px;color:#475569;font-weight:750}
+@media(max-width:700px){
+ .ed-page{padding:9px}.ed-header{padding:15px;border-radius:16px}.ed-header h1{font-size:23px}.ed-header p{font-size:10px;line-height:1.45}
+ .ed-month{padding:13px;border-radius:14px}.ed-month strong{font-size:17px}
+ .ed-metrics{gap:8px}.ed-metric{min-height:100px;padding:13px;border-color:#111827;border-radius:13px}
+ .ed-metric span{font-size:9px;font-weight:900}.ed-metric strong{font-size:18px;font-weight:950}
+ .ed-result{padding:16px;min-height:94px;border-radius:14px}.ed-result span{font-size:9px}.ed-result strong{font-size:19px}.ed-result small{font-size:9px}.ed-result>b{font-size:28px}
+ .ed-card{padding:12px;border-radius:14px}.ed-card-head h2{font-size:15px}.ed-card-head p{font-size:9px}
+ .ed-table-wrap{border-color:#111827;margin-top:10px}.ed-table-wrap th{font-size:8px;padding:10px}.ed-table-wrap td{font-size:11px;padding:11px 10px}
+ .ed-download{padding:13px;border-radius:14px}.ed-download h2{font-size:15px}.ed-download p{font-size:9px}.ed-buttons{gap:8px}
+ .ed-dl{min-height:72px;border-color:#111827}.ed-dl b{font-size:12px}.ed-dl small{font-size:9px}
+}
+@media(max-width:430px){
+ .ed-metrics{grid-template-columns:1fr}.ed-metric{min-height:92px;padding:13px}.ed-metric strong{font-size:20px}
+ .ed-result strong{font-size:20px}.ed-result>b{font-size:29px}.ed-table-wrap table{min-width:480px}.ed-table-wrap td{font-size:11px}
+}
+@media(min-width:701px){.ed-table-wrap table{min-width:100%}}
 `;

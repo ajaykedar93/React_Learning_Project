@@ -91,6 +91,7 @@ const formatMoney = (value) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
 
@@ -1796,6 +1797,772 @@ export default function Overview() {
             font-size: 8px;
           }
         }
+
+        /* FINAL READABILITY + RESPONSIVE OVERRIDES */
+        .overview-page,
+        .overview-container,
+        .overview-section,
+        .overview-grid,
+        .overview-stat-card,
+        .overview-manual-grid,
+        .overview-summary-grid,
+        .overview-field,
+        .overview-summary-box,
+        .overview-saving {
+          min-width: 0;
+        }
+
+        .overview-stat-value,
+        .overview-field-value,
+        .overview-summary-value,
+        .overview-saving-value {
+          overflow: visible;
+          text-overflow: clip;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .overview-section-note,
+        .overview-stat-subtitle,
+        .overview-auto-note,
+        .overview-saving-formula,
+        .overview-brand p,
+        .overview-section-title {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        @media (max-width: 700px) {
+          .overview-page {
+            padding: 8px 8px calc(42px + env(safe-area-inset-bottom, 0px));
+          }
+
+          .overview-navbar {
+            padding: 11px;
+            border-radius: 14px;
+            margin-bottom: 8px;
+          }
+
+          .overview-brand {
+            gap: 9px;
+          }
+
+          .overview-brand-icon {
+            width: 38px;
+            height: 38px;
+            flex-basis: 38px;
+            border-radius: 11px;
+          }
+
+          .overview-brand-icon svg {
+            width: 19px;
+            height: 19px;
+          }
+
+          .overview-brand h1 {
+            font-size: 19px;
+            line-height: 1.15;
+          }
+
+          .overview-brand p {
+            font-size: 9px;
+            line-height: 1.35;
+          }
+
+          .overview-month-controls {
+            gap: 5px;
+          }
+
+          .overview-icon-button {
+            width: 34px;
+            height: 34px;
+            flex-basis: 34px;
+            border-radius: 9px;
+          }
+
+          .overview-month {
+            min-width: 0;
+            padding: 8px 7px;
+            border-radius: 9px;
+            font-size: 10px;
+          }
+
+          .overview-month-input {
+            width: 118px;
+            min-width: 100px;
+            height: 34px;
+            font-size: 9px;
+            border-radius: 9px;
+          }
+
+          .overview-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 7px;
+            margin-bottom: 7px;
+          }
+
+          .overview-stat-card {
+            padding: 11px;
+            border-radius: 12px;
+          }
+
+          .overview-stat-title {
+            font-size: 8px;
+            line-height: 1.25;
+            letter-spacing: 0.035em;
+          }
+
+          .overview-stat-icon {
+            width: 30px;
+            height: 30px;
+            flex-basis: 30px;
+            border-radius: 8px;
+          }
+
+          .overview-stat-icon svg {
+            width: 14px;
+            height: 14px;
+          }
+
+          .overview-stat-value {
+            margin-top: 6px;
+            font-size: 16px;
+            line-height: 1.2;
+          }
+
+          .overview-stat-subtitle {
+            margin-top: 3px;
+            font-size: 8px;
+            line-height: 1.3;
+          }
+
+          .overview-section {
+            padding: 11px;
+            margin-bottom: 7px;
+            border-radius: 13px;
+          }
+
+          .overview-section-header {
+            gap: 8px;
+            margin-bottom: 9px;
+          }
+
+          .overview-section-title {
+            gap: 6px;
+            font-size: 12px;
+            line-height: 1.25;
+          }
+
+          .overview-section-title svg {
+            width: 15px;
+            height: 15px;
+          }
+
+          .overview-section-note {
+            font-size: 8px;
+            line-height: 1.3;
+            text-align: right;
+          }
+
+          .overview-edit-button,
+          .overview-save-button,
+          .overview-cancel-button {
+            min-height: 34px;
+            padding: 0 9px;
+            border-radius: 8px;
+            font-size: 9px;
+          }
+
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+          }
+
+          .overview-field {
+            padding: 9px;
+            border-radius: 9px;
+          }
+
+          .overview-field label {
+            margin-bottom: 5px;
+            font-size: 8px;
+            line-height: 1.25;
+          }
+
+          .overview-field input {
+            height: 35px;
+            padding: 0 8px;
+            border-radius: 8px;
+            font-size: 11px;
+          }
+
+          .overview-field-value {
+            min-height: 35px;
+            font-size: 13px;
+            line-height: 1.2;
+          }
+
+          .overview-summary-box {
+            padding: 9px;
+            gap: 7px;
+            border-radius: 9px;
+          }
+
+          .overview-summary-icon {
+            width: 28px;
+            height: 28px;
+            flex-basis: 28px;
+            border-radius: 8px;
+          }
+
+          .overview-summary-icon svg {
+            width: 13px;
+            height: 13px;
+          }
+
+          .overview-summary-title {
+            font-size: 8px;
+            line-height: 1.25;
+          }
+
+          .overview-summary-value {
+            margin-top: 3px;
+            font-size: 13px;
+            line-height: 1.2;
+          }
+
+          .overview-auto-note {
+            margin-top: 7px;
+            padding: 8px 9px;
+            border-radius: 9px;
+            font-size: 8px;
+            line-height: 1.5;
+          }
+
+          .overview-saving {
+            margin-top: 8px;
+            padding: 12px;
+            border-radius: 11px;
+            gap: 9px;
+          }
+
+          .overview-saving-label {
+            font-size: 7px;
+            line-height: 1.25;
+          }
+
+          .overview-saving-value {
+            margin-top: 3px;
+            font-size: 21px;
+            line-height: 1.15;
+          }
+
+          .overview-saving-formula {
+            font-size: 8px;
+            line-height: 1.55;
+          }
+
+          .overview-loading,
+          .overview-empty {
+            min-height: 46vh;
+            font-size: 10px;
+          }
+
+          .overview-toast-container {
+            width: calc(100vw - 24px);
+            max-width: 360px;
+          }
+
+          .overview-toast {
+            width: 100%;
+            padding: 11px;
+            border-radius: 11px;
+          }
+
+          .overview-toast-title {
+            font-size: 11px;
+          }
+
+          .overview-toast-message {
+            font-size: 9px;
+            line-height: 1.45;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .overview-month-input {
+            width: 104px;
+            min-width: 92px;
+          }
+
+          .overview-stat-value {
+            font-size: 15px;
+          }
+
+          .overview-summary-value,
+          .overview-field-value {
+            font-size: 12px;
+          }
+
+          .overview-section-title {
+            font-size: 11px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .overview-brand p {
+            display: none;
+          }
+
+          .overview-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .overview-stat-value {
+            font-size: 14px;
+          }
+
+          .overview-stat-title {
+            font-size: 7.5px;
+          }
+
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+
+        /* ============================================================
+           FINAL CARD POLISH
+           Slightly larger values, clear spacing between cards,
+           readable mobile layout, no card merging/touching.
+        ============================================================ */
+
+        .overview-grid,
+        .overview-manual-grid,
+        .overview-summary-grid {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .overview-stat-card,
+        .overview-field,
+        .overview-summary-box {
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .overview-stat-card {
+          padding: 16px;
+        }
+
+        .overview-stat-title {
+          font-size: 10px;
+          line-height: 1.3;
+        }
+
+        .overview-stat-value {
+          margin-top: 8px;
+          font-size: clamp(18px, 2.4vw, 27px);
+          line-height: 1.18;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .overview-stat-subtitle {
+          margin-top: 4px;
+          font-size: 9px;
+          line-height: 1.3;
+        }
+
+        .overview-field {
+          padding: 13px;
+        }
+
+        .overview-field label {
+          font-size: 10px;
+          line-height: 1.3;
+        }
+
+        .overview-field-value {
+          min-height: 40px;
+          font-size: 16px;
+          line-height: 1.2;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .overview-summary-box {
+          padding: 13px;
+          gap: 10px;
+        }
+
+        .overview-summary-title {
+          font-size: 9px;
+          line-height: 1.3;
+        }
+
+        .overview-summary-value {
+          margin-top: 4px;
+          font-size: 16px;
+          line-height: 1.2;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        @media (min-width: 901px) {
+          .overview-grid,
+          .overview-manual-grid,
+          .overview-summary-grid {
+            gap: 12px;
+          }
+        }
+
+        @media (max-width: 900px) {
+          .overview-grid,
+          .overview-manual-grid,
+          .overview-summary-grid {
+            gap: 10px;
+          }
+
+          .overview-stat-card {
+            padding: 14px;
+          }
+
+          .overview-stat-value {
+            font-size: 21px;
+          }
+
+          .overview-field {
+            padding: 12px;
+          }
+
+          .overview-field-value {
+            font-size: 15px;
+          }
+
+          .overview-summary-box {
+            padding: 12px;
+          }
+
+          .overview-summary-value {
+            font-size: 15px;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .overview-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px;
+          }
+
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px;
+          }
+
+          .overview-stat-card {
+            padding: 12px;
+            border-radius: 12px;
+          }
+
+          .overview-stat-top {
+            gap: 7px;
+          }
+
+          .overview-stat-title {
+            font-size: 8.5px;
+            line-height: 1.3;
+          }
+
+          .overview-stat-icon {
+            width: 31px;
+            height: 31px;
+            flex-basis: 31px;
+          }
+
+          .overview-stat-value {
+            margin-top: 6px;
+            font-size: 17px;
+            line-height: 1.2;
+          }
+
+          .overview-stat-subtitle {
+            margin-top: 4px;
+            font-size: 8px;
+            line-height: 1.35;
+          }
+
+          .overview-field {
+            padding: 10px;
+            border-radius: 10px;
+          }
+
+          .overview-field label {
+            margin-bottom: 6px;
+            font-size: 8px;
+            line-height: 1.3;
+          }
+
+          .overview-field-value {
+            min-height: 36px;
+            font-size: 14px;
+            line-height: 1.25;
+          }
+
+          .overview-field input {
+            height: 36px;
+            font-size: 11px;
+          }
+
+          .overview-summary-box {
+            padding: 10px;
+            gap: 8px;
+            border-radius: 10px;
+          }
+
+          .overview-summary-icon {
+            width: 28px;
+            height: 28px;
+            flex-basis: 28px;
+          }
+
+          .overview-summary-title {
+            font-size: 8px;
+            line-height: 1.3;
+          }
+
+          .overview-summary-value {
+            margin-top: 3px;
+            font-size: 14px;
+            line-height: 1.25;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .overview-grid {
+            gap: 8px;
+          }
+
+          .overview-manual-grid,
+          .overview-summary-grid {
+            gap: 8px;
+          }
+
+          .overview-stat-card {
+            padding: 11px;
+          }
+
+          .overview-stat-title {
+            font-size: 8px;
+          }
+
+          .overview-stat-value {
+            font-size: 16px;
+          }
+
+          .overview-stat-subtitle {
+            font-size: 7.5px;
+          }
+
+          .overview-field {
+            padding: 9px;
+          }
+
+          .overview-field-value {
+            font-size: 13px;
+          }
+
+          .overview-summary-box {
+            padding: 9px;
+          }
+
+          .overview-summary-value {
+            font-size: 13px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .overview-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 7px;
+          }
+
+          .overview-manual-grid,
+          .overview-summary-grid {
+            grid-template-columns: 1fr;
+            gap: 7px;
+          }
+
+          .overview-stat-card {
+            padding: 10px;
+          }
+
+          .overview-stat-value {
+            font-size: 15px;
+          }
+        }
+
+
+        /* FINAL MOBILE VISIBILITY / NO-CUT TEXT */
+        .overview-month {
+          min-width: 0;
+          max-width: 100%;
+          overflow: visible;
+          white-space: normal;
+          text-align: center;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          line-height: 1.25;
+        }
+
+        .overview-stat-card,
+        .overview-field,
+        .overview-summary-box {
+          min-width: 0;
+          overflow: visible;
+        }
+
+        .overview-stat-title,
+        .overview-stat-value,
+        .overview-stat-subtitle,
+        .overview-field label,
+        .overview-field-value,
+        .overview-summary-title,
+        .overview-summary-value {
+          min-width: 0;
+          max-width: 100%;
+          overflow: visible;
+          text-overflow: clip;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        @media (max-width: 700px) {
+          .overview-month {
+            font-size: 10px !important;
+            padding: 8px 6px !important;
+          }
+
+          .overview-stat-card {
+            padding: 12px !important;
+            min-height: 106px;
+          }
+
+          .overview-stat-title {
+            font-size: 8.5px !important;
+            line-height: 1.3;
+          }
+
+          .overview-stat-value {
+            font-size: 17px !important;
+            line-height: 1.2;
+            margin-top: 6px;
+          }
+
+          .overview-stat-subtitle {
+            font-size: 8px !important;
+            line-height: 1.35;
+            margin-top: 4px;
+          }
+
+          .overview-field {
+            padding: 10px !important;
+          }
+
+          .overview-field label {
+            font-size: 8px !important;
+            line-height: 1.3;
+          }
+
+          .overview-field-value {
+            font-size: 14px !important;
+            line-height: 1.25;
+          }
+
+          .overview-summary-box {
+            padding: 10px !important;
+            min-height: 58px;
+          }
+
+          .overview-summary-title {
+            font-size: 8px !important;
+            line-height: 1.3;
+          }
+
+          .overview-summary-value {
+            font-size: 14px !important;
+            line-height: 1.25;
+            margin-top: 3px;
+          }
+        }
+
+        @media (max-width: 430px) {
+          .overview-month {
+            font-size: 9px !important;
+          }
+
+          .overview-stat-card {
+            min-height: 100px;
+            padding: 10px !important;
+          }
+
+          .overview-stat-title {
+            font-size: 8px !important;
+          }
+
+          .overview-stat-value {
+            font-size: 15px !important;
+          }
+
+          .overview-stat-subtitle {
+            font-size: 7.5px !important;
+          }
+
+          .overview-field-value,
+          .overview-summary-value {
+            font-size: 13px !important;
+          }
+
+          .overview-summary-title,
+          .overview-field label {
+            font-size: 7.5px !important;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .overview-month {
+            font-size: 8.5px !important;
+          }
+
+          .overview-stat-title {
+            font-size: 7.5px !important;
+          }
+
+          .overview-stat-value {
+            font-size: 14px !important;
+          }
+
+          .overview-stat-subtitle {
+            font-size: 7px !important;
+          }
+
+          .overview-field-value,
+          .overview-summary-value {
+            font-size: 12px !important;
+          }
+
+          .overview-summary-title,
+          .overview-field label {
+            font-size: 7px !important;
+          }
+        }
+
       `}</style>
 
       <main className="overview-page">

@@ -249,57 +249,120 @@ const Home = () => {
         .home-tabs-scroll::-webkit-scrollbar {
           display: none;
         }
-
         .home-tab {
           position: relative;
           flex: 0 0 auto;
           min-width: 124px;
-          height: 50px;
+          height: 52px;
           padding: 0 17px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
           border: 1px solid transparent;
-          border-radius: 13px;
+          border-radius: 14px;
           background: transparent;
           color: #64748b;
           cursor: pointer;
           white-space: nowrap;
           font-size: 12px;
-          font-weight: 700;
-          transition:
-            background .2s ease,
-            color .2s ease,
-            border-color .2s ease,
-            transform .2s ease,
-            box-shadow .2s ease;
+          font-weight: 800;
+          letter-spacing: -.01em;
+          transition: all .22s cubic-bezier(.2,.8,.2,1);
+          overflow: hidden;
+        }
+
+        .home-tab::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: linear-gradient(135deg,rgba(37,99,235,.08),rgba(6,182,212,.08));
+          opacity: 0;
+          transform: scale(.94);
+          transition: all .22s ease;
         }
 
         .home-tab:hover {
-          color: #334155;
-          background: rgba(15,23,42,.035);
+          color: #1e40af;
+          background: #f8fafc;
+          border-color: #dbeafe;
           transform: translateY(-1px);
+          box-shadow: 0 5px 14px rgba(15,23,42,.07);
+        }
+
+        .home-tab:hover::before {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .home-tab:active {
+          transform: translateY(0) scale(.98);
+        }
+
+        .home-tab:focus-visible {
+          outline: 3px solid rgba(37,99,235,.20);
+          outline-offset: 2px;
         }
 
         .home-tab.active {
-          color: #0284c7;
-          border-color: rgba(14,165,233,.25);
-          background: linear-gradient(135deg, #e0f2fe, #dcfce7);
+          color: #ffffff;
+          border-color: transparent;
+          background: linear-gradient(135deg,#2563eb 0%,#0891b2 55%,#10b981 100%);
           box-shadow:
-            0 6px 20px rgba(14,165,233,.10),
-            inset 0 1px 0 rgba(255,255,255,.75);
+            0 9px 22px rgba(37,99,235,.25),
+            inset 0 1px 0 rgba(255,255,255,.30);
+          transform: translateY(-1px);
+        }
+
+        .home-tab.active::before {
+          opacity: 1;
+          transform: scale(1);
+          background: linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.02));
         }
 
         .home-tab.active::after {
           content: "";
           position: absolute;
-          left: 20%;
-          right: 20%;
-          bottom: 5px;
+          left: 18%;
+          right: 18%;
+          bottom: 4px;
           height: 3px;
           border-radius: 999px;
-          background: linear-gradient(90deg, #06b6d4, #10b981, #06b6d4);
+          background: #ffffff;
+          box-shadow: 0 0 10px rgba(255,255,255,.65);
+          animation: homeTabIndicator .22s ease both;
+        }
+
+        @keyframes homeTabIndicator {
+          from { opacity: 0; transform: scaleX(.35); }
+          to { opacity: 1; transform: scaleX(1); }
+        }
+
+        .home-tab-icon,
+        .home-tab-label {
+          position: relative;
+          z-index: 1;
+        }
+
+        .home-tab-icon {
+          font-size: 18px;
+          line-height: 1;
+          flex: 0 0 auto;
+          transition: transform .22s ease;
+        }
+
+        .home-tab:hover .home-tab-icon {
+          transform: scale(1.08);
+        }
+
+        .home-tab.active .home-tab-icon {
+          transform: scale(1.08);
+        }
+
+        .home-tab-label {
+          line-height: 1;
+          font-weight: 850;
         }
 
         .home-tab-icon {
@@ -431,6 +494,187 @@ const Home = () => {
            No horizontal tab scrolling.
            All tabs stay visible like the screenshot.
         ========================================= */
+
+        /* ===== PROFESSIONAL HOME LAYOUT ENHANCEMENT ===== */
+
+        .home-container {
+          isolation: isolate;
+        }
+
+        .home-tabs-fixed {
+          padding-left: 24px;
+          padding-right: 24px;
+        }
+
+        .home-tabs-inner {
+          border: 1px solid #dbe4ef;
+          background: rgba(255,255,255,.94);
+          box-shadow:
+            0 10px 28px rgba(15,23,42,.08),
+            inset 0 1px 0 rgba(255,255,255,.95);
+        }
+
+        .home-tabs-scroll {
+          gap: 7px;
+          padding: 8px;
+        }
+
+        .home-page-inner {
+          padding-top: 18px;
+        }
+
+        .home-tab-content {
+          position: relative;
+          width: 100%;
+          min-width: 0;
+        }
+
+        .home-search-result {
+          border-width: 1.5px;
+          box-shadow: 0 6px 18px rgba(14,165,233,.08);
+          font-weight: 700;
+        }
+
+        .home-refresh-indicator {
+          border-color: #dbeafe;
+          font-weight: 850;
+        }
+
+        /* Smooth, compact scrollbar for desktop page content. */
+        .home-page-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .home-page-scroll::-webkit-scrollbar {
+          width: 7px;
+        }
+
+        .home-page-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .home-page-scroll::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 999px;
+        }
+
+        .home-page-scroll::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+
+        @media (min-width: 769px) {
+          .home-tabs-scroll {
+            justify-content: stretch;
+          }
+
+          .home-tab {
+            min-width: 0;
+            flex: 1 1 0;
+          }
+
+          .home-tab-label {
+            font-size: 12px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .home-tabs-fixed {
+            padding-left: 12px;
+            padding-right: 12px;
+          }
+
+          .home-tabs-inner {
+            border-radius: 15px;
+          }
+
+          .home-tabs-scroll {
+            justify-content: flex-start;
+            gap: 7px;
+            padding: 6px;
+          }
+
+          .home-tab {
+            min-width: 118px;
+            height: 49px;
+            padding: 0 14px;
+            border-radius: 12px;
+            font-size: 11px;
+          }
+
+          .home-tab.active {
+            box-shadow:
+              0 7px 18px rgba(37,99,235,.23),
+              inset 0 1px 0 rgba(255,255,255,.28);
+          }
+
+          .home-tab.active::after {
+            left: 20%;
+            right: 20%;
+            bottom: 4px;
+          }
+
+          .home-page-inner {
+            padding-top: 13px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .home-tabs-fixed {
+            padding-left: 8px;
+            padding-right: 8px;
+          }
+
+          .home-tabs-inner {
+            border-radius: 13px;
+          }
+
+          .home-tab {
+            min-width: 112px;
+            height: 47px;
+            padding: 0 11px;
+          }
+
+          .home-tab-icon {
+            font-size: 17px;
+          }
+
+          .home-tab-label {
+            font-size: 10.5px;
+          }
+
+          .home-page-inner {
+            padding-left: 7px;
+            padding-right: 7px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .home-tabs-fixed {
+            padding-left: 6px;
+            padding-right: 6px;
+          }
+
+          .home-tab {
+            min-width: 105px;
+          }
+
+          .home-tab-label {
+            font-size: 10px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .home-tab,
+          .home-tab::before,
+          .home-tab::after,
+          .home-tab-icon,
+          .home-tab-content {
+            animation: none !important;
+            transition: none !important;
+          }
+        }
+
         @media (min-width: 769px) {
           .home-tabs-scroll {
             overflow-x: hidden;

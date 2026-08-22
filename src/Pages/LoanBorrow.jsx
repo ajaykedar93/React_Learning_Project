@@ -31,7 +31,7 @@ const money = (value) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
 const dateInput = (value = new Date()) => {
@@ -734,709 +734,77 @@ export default function LoanBorrow() {
     <>
       <style>{`
         *{box-sizing:border-box}
-        body{margin:0;background:#f6f8fc}
-        .lb-page{
-          min-height:100vh;
-          padding:18px;
-          color:#0f172a;
-          background:
-            radial-gradient(circle at 8% 0%,rgba(79,70,229,.13),transparent 28%),
-            radial-gradient(circle at 95% 5%,rgba(14,165,233,.11),transparent 25%),
-            linear-gradient(135deg,#f8fafc 0%,#eef2ff 52%,#f8fafc 100%);
-          font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-        }
-        .lb-shell{max-width:1180px;margin:auto}
-        .lb-header{
-          position:sticky;top:10px;z-index:30;
-          padding:18px;
-          border-radius:24px;
-          color:#fff;
-          overflow:hidden;
-          background:linear-gradient(135deg,#1e1b4b,#4338ca 52%,#7c3aed);
-          box-shadow:0 22px 55px rgba(49,46,129,.25);
-          margin-bottom:14px;
-        }
-        .lb-header:before{
-          content:"";position:absolute;width:260px;height:260px;border-radius:50%;
-          right:-100px;top:-150px;background:rgba(255,255,255,.09)
-        }
-        .lb-header-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px}
-        .lb-brand{display:flex;align-items:center;gap:12px;min-width:0}
-        .lb-brand-icon{
-          width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:16px;
-          background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);
-          box-shadow:inset 0 1px rgba(255,255,255,.2)
-        }
-        .lb-brand h1{margin:0;font-size:24px;font-weight:900;letter-spacing:-.04em}
-        .lb-brand p{margin:4px 0 0;color:#ddd6fe;font-size:11px}
-        .lb-header-actions{display:flex;align-items:center;gap:7px}
-        .lb-btn{
-          height:40px;border:0;border-radius:11px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;
-          gap:6px;font-weight:800;font-size:11px;cursor:pointer
-        }
-        .lb-btn-light{background:rgba(255,255,255,.13);color:#fff;border:1px solid rgba(255,255,255,.18)}
-        .lb-btn-add{background:#fff;color:#4338ca;box-shadow:0 10px 25px rgba(0,0,0,.12)}
+        html,body,#root{min-height:100%;margin:0}
+        body{margin:0;background:#f4f7fb;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+        button,input,textarea,select{font:inherit}
+        button{touch-action:manipulation}
+        .lb-page{min-height:100vh;width:100%;padding:20px;overflow-x:hidden;background:radial-gradient(circle at 5% 0%,rgba(79,70,229,.12),transparent 27%),radial-gradient(circle at 96% 4%,rgba(14,165,233,.10),transparent 24%),linear-gradient(135deg,#f8fafc 0%,#eef2ff 52%,#f8fafc 100%)}
+        .lb-shell{width:min(1180px,100%);margin:0 auto;min-width:0}
+        .lb-header{position:sticky;top:12px;z-index:30;margin-bottom:16px;padding:20px;border-radius:24px;color:#fff;overflow:hidden;background:linear-gradient(135deg,#17164a 0%,#4338ca 55%,#7c3aed 100%);box-shadow:0 22px 55px rgba(49,46,129,.22)}
+        .lb-header:before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;right:-120px;top:-170px;background:rgba(255,255,255,.08)}
+        .lb-header-row{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:18px}
+        .lb-brand{display:flex;align-items:center;gap:13px;min-width:0}
+        .lb-brand-icon{width:50px;height:50px;flex:0 0 50px;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.23)}
+        .lb-brand h1{margin:0;font-size:25px;line-height:1.15;font-weight:900;letter-spacing:-.035em;overflow-wrap:anywhere}
+        .lb-brand p{margin:5px 0 0;color:#e0e7ff;font-size:12px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+        .lb-header-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+        .lb-btn{min-height:42px;border:0;border-radius:11px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap;transition:.18s ease}
         .lb-btn:hover{transform:translateY(-1px)}
-        .lb-monthbar{
-          margin-top:14px;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:6px;
-          padding-top:13px;border-top:1px solid rgba(255,255,255,.15)
-        }
-        .lb-month{
-          min-width:175px;height:38px;display:flex;align-items:center;justify-content:center;gap:7px;
-          padding:0 12px;border-radius:11px;background:rgba(255,255,255,.12);font-size:12px;font-weight:850
-        }
-        .lb-nav{
-          width:38px;height:38px;border:0;border-radius:11px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;cursor:pointer
-        }
-        .lb-nav:hover{background:rgba(255,255,255,.2)}
-        .lb-today{height:38px;border:0;border-radius:11px;padding:0 12px;background:#fff;color:#4338ca;font-size:11px;font-weight:850;cursor:pointer}
-        .lb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-        .lb-stat{
-          position:relative;overflow:hidden;padding:15px;border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.9);
-          box-shadow:0 10px 30px rgba(15,23,42,.055);transition:.2s
-        }
-        .lb-stat:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(15,23,42,.09)}
-        .lb-stat:after{content:"";position:absolute;width:100px;height:100px;border-radius:50%;right:-50px;top:-50px;background:rgba(99,102,241,.05)}
-        .lb-stat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-        .lb-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;font-weight:900}
-        .lb-stat-value{margin-top:6px;font-size:21px;font-weight:950;letter-spacing:-.035em;overflow-wrap:anywhere;line-height:1.1}
-        .lb-stat-sub{margin-top:3px;color:#94a3b8;font-size:9px}
-        .lb-stat-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center}
-        .indigo{background:#eef2ff;color:#4f46e5}.green{background:#ecfdf5;color:#059669}.blue{background:#eff6ff;color:#2563eb}.orange{background:#fff7ed;color:#ea580c}
-        .lb-tabs-card,.lb-filter-card,.lb-list-card{
-          border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(15,23,42,.05)
-        }
-        .lb-tabs-card{padding:5px;margin-bottom:10px}
-        .lb-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-        .lb-tab{
-          height:48px;border:0;border-radius:13px;background:transparent;color:#64748b;cursor:pointer;
-          display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:900
-        }
-        .lb-tab.active{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 9px 22px rgba(79,70,229,.24)}
-        .lb-filter-card{padding:12px;margin-bottom:10px}
-        .lb-filters{display:grid;grid-template-columns:1fr 170px 170px;gap:7px}
-        .lb-search,.lb-select{
-          height:39px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc;color:#334155;outline:none;font-size:11px
-        }
-        .lb-search{display:flex;align-items:center;gap:7px;padding:0 11px}
-        .lb-search input{width:100%;border:0;outline:0;background:transparent;font-size:11px}
-        .lb-select{padding:0 9px}
-        .lb-list-card{padding:12px}
-        .lb-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
-        .lb-list-head h2{margin:0;font-size:14px;font-weight:950;letter-spacing:-.02em}
-        .lb-list-head span{color:#94a3b8;font-size:9px;font-weight:750}
-        .lb-list{display:grid;gap:8px}
-        .lb-item{
-          display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:11px;
-          padding:12px;border:1px solid #e5e7eb;border-radius:15px;background:#fff;transition:.2s
-        }
-        .lb-item:hover{transform:translateY(-2px);border-color:#c7d2fe;box-shadow:0 10px 26px rgba(15,23,42,.07)}
-        .lb-avatar{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:0 0 42px}
-        .lb-avatar.borrow{background:#eef2ff;color:#4f46e5}.lb-avatar.loan{background:#ecfeff;color:#0891b2}
-        .lb-main{min-width:0}
-        .lb-name{font-size:13px;font-weight:900;overflow-wrap:anywhere;word-break:break-word;line-height:1.25}
-        .lb-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;color:#94a3b8;font-size:9px}
-        .lb-note{margin-top:4px;color:#64748b;font-size:9px;overflow-wrap:anywhere;word-break:break-word;line-height:1.35}
-        .lb-money{text-align:right;min-width:125px}.lb-money strong{display:block;font-size:14px;font-weight:950}.lb-money span{display:block;margin-top:3px;color:#94a3b8;font-size:9px}
-        .lb-actions{display:flex;gap:4px}
-        .lb-action{width:32px;height:32px;border:0;border-radius:9px;background:#f1f5f9;color:#64748b;display:grid;place-items:center;cursor:pointer}
-        .lb-action:hover{background:#eef2ff;color:#4f46e5}.lb-action.pay:hover{background:#ecfdf5;color:#059669}.lb-action.delete:hover{background:#fef2f2;color:#dc2626}
-        .lb-status{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:99px;font-size:8px;font-weight:900}
-        .status-active{background:#eff6ff;color:#2563eb}.status-completed{background:#ecfdf5;color:#059669}.status-overdue{background:#fef2f2;color:#dc2626}
-        .lb-empty{padding:55px 20px;text-align:center;border:1px dashed #cbd5e1;border-radius:16px;background:linear-gradient(180deg,#fff,#f8fafc);color:#94a3b8}
-        .lb-empty-icon{width:48px;height:48px;margin:0 auto 9px;border-radius:15px;background:#eef2ff;color:#6366f1;display:grid;place-items:center}
-        .lb-empty strong{display:block;color:#334155;font-size:13px}.lb-empty span{display:block;margin-top:4px;font-size:10px}
-        .lb-backdrop{position:fixed;inset:0;z-index:1000;padding:12px;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.62);backdrop-filter:blur(8px)}
-        .lb-modal{width:min(520px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 90px rgba(15,23,42,.28);animation:lbIn .2s ease}
-        @keyframes lbIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
-        .lb-modal-head{position:sticky;top:0;z-index:2;padding:15px 16px;border-bottom:1px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:space-between}
-        .lb-modal-head h3{margin:0;font-size:16px;font-weight:950}.lb-close{width:32px;height:32px;border:0;border-radius:9px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer}
-        .lb-modal-body{padding:16px}
-        .lb-form{display:grid;gap:11px}.lb-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-        .lb-field{display:grid;gap:5px}.lb-field.full{grid-column:1/-1}.lb-field label{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:900}
-        .lb-field input,.lb-field textarea,.lb-field select{width:100%;border:1px solid #dbe3ee;border-radius:11px;background:#f8fafc;padding:10px;color:#0f172a;font-size:12px;outline:none}
-        .lb-field input,.lb-field select{height:41px}.lb-field textarea{min-height:80px;resize:vertical}
-        .lb-submit{width:100%;height:42px;border:0;border-radius:11px;color:#fff;background:linear-gradient(135deg,#4f46e5,#7c3aed);font-weight:900;font-size:11px;cursor:pointer;box-shadow:0 9px 22px rgba(79,70,229,.22)}
-        .lb-submit.green-btn{background:linear-gradient(135deg,#059669,#10b981)}
-        .lb-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.lb-detail{padding:11px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}.lb-detail small{display:block;color:#94a3b8;font-size:8px;text-transform:uppercase;font-weight:900}.lb-detail strong{display:block;margin-top:4px;font-size:12px;overflow-wrap:anywhere}
-        .lb-toast-wrap{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:14px;pointer-events:none}
-        .lb-toast{pointer-events:auto;width:min(370px,calc(100vw - 28px));display:flex;gap:9px;align-items:flex-start;padding:13px;border-radius:15px;background:rgba(255,255,255,.97);backdrop-filter:blur(15px);box-shadow:0 25px 75px rgba(15,23,42,.22);border:1px solid #e2e8f0;animation:lbIn .18s ease}
-        .lb-toast.success{border-left:4px solid #059669}.lb-toast.error{border-left:4px solid #dc2626}
-        .lb-toast-body{flex:1}.lb-toast-body b{display:block;font-size:12px}.lb-toast-body span{display:block;margin-top:3px;color:#64748b;font-size:10px;line-height:1.4}.lb-toast-close{width:27px;height:27px;border:0;border-radius:8px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer}
-        .lb-spin{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-
-        .lb-page{overflow-x:hidden;overflow-wrap:anywhere}
-        .lb-shell{min-width:0}
-        .lb-item > *{min-width:0}
-        .lb-money strong,.lb-money span{overflow-wrap:anywhere;word-break:break-word}
-        .lb-modal{width:min(560px,calc(100vw - 20px));max-width:100%;max-height:min(90vh,760px)}
-        .lb-modal-body{overflow-wrap:anywhere}
-        .lb-field input,.lb-field textarea,.lb-field select{min-width:0;max-width:100%}
-        .lb-confirm{
-          width:min(400px,calc(100vw - 28px));
-          padding:18px;
-          border-radius:18px;
-          background:#fff;
-          box-shadow:0 30px 90px rgba(15,23,42,.30);
-          text-align:center;
-          animation:lbIn .18s ease;
-        }
-        .lb-confirm-icon{
-          width:46px;height:46px;margin:0 auto 9px;border-radius:14px;
-          display:grid;place-items:center;background:#fef2f2;color:#dc2626;
-        }
-        .lb-confirm h3{margin:0;color:#0f172a;font-size:16px;font-weight:950}
-        .lb-confirm p{margin:6px auto 0;max-width:320px;color:#64748b;font-size:10px;line-height:1.5}
-        .lb-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}
-        .lb-confirm-actions button{
-          height:38px;border:0;border-radius:10px;font-size:10px;font-weight:900;cursor:pointer;
-          display:flex;align-items:center;justify-content:center;gap:6px;
-        }
-        .lb-confirm-cancel{background:#f1f5f9;color:#475569}
-        .lb-confirm-delete{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 8px 20px rgba(220,38,38,.18)}
-        .lb-confirm-actions button:disabled{opacity:.55;cursor:wait}
+        .lb-btn-light{color:#fff;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2)}
+        .lb-btn-add{color:#4338ca;background:#fff;box-shadow:0 10px 25px rgba(0,0,0,.13)}
         .lb-btn:disabled,.lb-action:disabled,.lb-submit:disabled{opacity:.55;cursor:wait;transform:none}
-        .lb-action.is-busy{color:#4f46e5;background:#eef2ff}
-
-        
-        .lb-schedule,
-        .lb-loan-metrics{
-          display:flex;
-          flex-wrap:wrap;
-          gap:6px 10px;
-          margin-top:5px;
-          color:#64748b;
-          font-size:8px;
-          line-height:1.3;
+        .lb-monthbar{position:relative;z-index:1;margin-top:15px;padding-top:14px;border-top:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;gap:7px}
+        .lb-month{min-width:190px;height:40px;padding:0 14px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.12);font-size:13px;font-weight:850;white-space:nowrap}
+        .lb-nav{width:40px;height:40px;border:0;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+        .lb-nav:hover{background:rgba(255,255,255,.2)}
+        .lb-today{height:40px;border:0;border-radius:11px;padding:0 13px;background:#fff;color:#4338ca;font-size:12px;font-weight:850;cursor:pointer}
+        .lb-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+        .lb-stat{min-width:0;padding:17px;border:1px solid #d9dee7;border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 10px 30px rgba(15,23,42,.055);transition:.18s ease}
+        .lb-stat:hover{transform:translateY(-2px);box-shadow:0 17px 38px rgba(15,23,42,.09)}
+        .lb-stat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .lb-stat-label{color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.055em;font-weight:900;line-height:1.3}
+        .lb-stat-value{margin-top:7px;font-size:23px;line-height:1.15;font-weight:950;letter-spacing:-.035em;overflow-wrap:anywhere;word-break:break-word}
+        .lb-stat-sub{margin-top:4px;color:#64748b;font-size:10px;font-weight:650;line-height:1.3}
+        .lb-stat-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:0 0 40px}
+        .indigo{background:#eef2ff;color:#4f46e5}.green{background:#ecfdf5;color:#059669}.blue{background:#eff6ff;color:#2563eb}.orange{background:#fff7ed;color:#ea580c}
+        .lb-tabs-card,.lb-filter-card,.lb-list-card{border:1px solid #d9dee7;border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 10px 30px rgba(15,23,42,.05)}
+        .lb-tabs-card{padding:6px;margin-bottom:12px}.lb-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+        .lb-tab{min-height:49px;border:0;border-radius:13px;background:transparent;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:900}
+        .lb-tab.active{color:#fff;background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 9px 22px rgba(79,70,229,.24)}
+        .lb-filter-card{padding:13px;margin-bottom:12px}.lb-filters{display:grid;grid-template-columns:minmax(0,1fr) 180px 180px;gap:8px}
+        .lb-search,.lb-select{min-width:0;height:42px;border:1px solid #d9dee7;border-radius:11px;background:#f8fafc;color:#334155;outline:none;font-size:12px;font-weight:650}
+        .lb-search{display:flex;align-items:center;gap:8px;padding:0 12px}.lb-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;font-size:12px}.lb-select{padding:0 10px}
+        .lb-list-card{padding:14px}.lb-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}.lb-list-head h2{margin:0;font-size:16px;font-weight:950;letter-spacing:-.02em}.lb-list-head span{color:#64748b;font-size:10px;font-weight:750}
+        .lb-list{display:grid;gap:12px}
+        .lb-item{min-width:0;display:grid;grid-template-columns:48px minmax(0,1fr) minmax(125px,auto) auto;align-items:center;gap:14px;padding:16px;border:1.5px solid #111827;border-radius:16px;background:#fff;box-shadow:0 5px 16px rgba(15,23,42,.07);transition:.18s ease}
+        .lb-item:hover{transform:translateY(-2px);border-color:#111827;box-shadow:0 13px 30px rgba(15,23,42,.11)}
+        .lb-avatar{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;flex:0 0 48px}.lb-avatar.borrow{background:#eef2ff;color:#4f46e5}.lb-avatar.loan{background:#ecfeff;color:#0891b2}
+        .lb-main{min-width:0}.lb-name{font-size:15px;line-height:1.3;font-weight:950;color:#0b1220;overflow-wrap:anywhere;word-break:break-word}
+        .lb-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;margin-top:5px;color:#475569;font-size:10px;font-weight:700;line-height:1.4}
+        .lb-note{margin-top:7px;color:#111827;font-size:10.5px;font-weight:650;line-height:1.5;overflow-wrap:anywhere;word-break:break-word}
+        .lb-schedule,.lb-loan-metrics{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:6px;color:#334155;font-size:10px;font-weight:700;line-height:1.45}
+        .lb-schedule strong,.lb-loan-metrics strong{color:#059669;font-weight:950}.lb-schedule .returned{color:#059669}.lb-schedule .overdue,.lb-loan-metrics .overdue{color:#dc2626}.lb-loan-metrics span b{color:#0f172a}
+        .lb-status{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:99px;font-size:9px;font-weight:950;white-space:nowrap}.status-active{background:#eff6ff;color:#2563eb}.status-completed{background:#ecfdf5;color:#059669}.status-overdue{background:#fef2f2;color:#dc2626}
+        .lb-money{min-width:125px;text-align:right;align-self:center;padding:10px 11px;border:1.5px solid #111827;border-radius:11px;background:#f8fafc}.lb-money strong{display:block;font-size:17px;line-height:1.2;font-weight:950;color:#000;overflow-wrap:anywhere;word-break:break-word}.lb-money span{display:block;margin-top:4px;color:#334155;font-size:10px;font-weight:750;overflow-wrap:anywhere;word-break:break-word}.lb-money small{display:block;margin-top:3px;color:#64748b;font-size:9px;font-weight:700;overflow-wrap:anywhere}
+        .lb-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}.lb-action{width:35px;height:35px;border:1px solid #e2e8f0;border-radius:9px;background:#f1f5f9;color:#475569;display:grid;place-items:center;cursor:pointer;transition:.16s ease}.lb-action:hover{background:#eef2ff;color:#4f46e5}.lb-action.pay:hover{background:#ecfdf5;color:#059669}.lb-action.delete:hover{background:#fef2f2;color:#dc2626}.lb-action.return{background:#ecfdf5;color:#059669}.lb-action.return:hover{background:#d1fae5;color:#047857}.lb-action.is-busy{color:#4f46e5;background:#eef2ff}
+        .lb-empty{padding:60px 20px;text-align:center;border:1px dashed #94a3b8;border-radius:16px;background:linear-gradient(180deg,#fff,#f8fafc);color:#64748b}.lb-empty-icon{width:50px;height:50px;margin:0 auto 10px;border-radius:15px;background:#eef2ff;color:#6366f1;display:grid;place-items:center}.lb-empty strong{display:block;color:#334155;font-size:14px;font-weight:900}.lb-empty span{display:block;margin-top:5px;font-size:10px;line-height:1.45}
+        .lb-backdrop{position:fixed;inset:0;z-index:1000;padding:16px;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.64);backdrop-filter:blur(8px);overflow:auto}
+        .lb-modal{width:min(570px,100%);max-height:min(90vh,780px);overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 90px rgba(15,23,42,.3);animation:lbIn .18s ease}.lb-modal-head{position:sticky;top:0;z-index:2;padding:16px 18px;border-bottom:1px solid #d9dee7;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px}.lb-modal-head h3{margin:0;font-size:17px;line-height:1.25;font-weight:950;overflow-wrap:anywhere}.lb-close{width:34px;height:34px;border:0;border-radius:9px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer;flex:0 0 34px}.lb-modal-body{padding:18px;overflow-wrap:anywhere}
+        .lb-form{display:grid;gap:12px}.lb-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.lb-field{display:grid;gap:6px;min-width:0}.lb-field.full{grid-column:1/-1}.lb-field label{color:#334155;font-size:10px;text-transform:uppercase;letter-spacing:.045em;font-weight:950;line-height:1.3}.lb-field input,.lb-field textarea,.lb-field select{width:100%;min-width:0;max-width:100%;border:1px solid #1f2937;border-radius:11px;background:#f8fafc;padding:10px 11px;color:#0f172a;font-size:13px;font-weight:650;outline:none}.lb-field input,.lb-field select{height:43px}.lb-field textarea{min-height:86px;resize:vertical;line-height:1.45}.lb-field input:focus,.lb-field textarea:focus,.lb-field select:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(99,102,241,.10);background:#fff}.lb-submit{width:100%;min-height:44px;border:0;border-radius:11px;color:#fff;background:linear-gradient(135deg,#4f46e5,#7c3aed);font-weight:900;font-size:12px;cursor:pointer;box-shadow:0 9px 22px rgba(79,70,229,.22);display:flex;align-items:center;justify-content:center;gap:7px}.lb-submit.green-btn{background:linear-gradient(135deg,#059669,#10b981)}
+        .lb-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lb-detail{min-width:0;padding:14px;border-radius:12px;background:#fff;border:1.5px solid #111827;box-shadow:0 3px 10px rgba(15,23,42,.05)}.lb-detail small{display:block;color:#475569;font-size:9px;text-transform:uppercase;letter-spacing:.035em;font-weight:950;line-height:1.3}.lb-detail strong{display:block;margin-top:5px;color:#000;font-size:14px;line-height:1.45;font-weight:900;overflow-wrap:anywhere;word-break:break-word}.lb-detail:last-child{grid-column:1/-1}
+        .lb-toast-wrap{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:none}.lb-toast{pointer-events:auto;width:min(390px,calc(100vw - 28px));display:flex;gap:10px;align-items:flex-start;padding:14px;border-radius:15px;background:rgba(255,255,255,.98);box-shadow:0 25px 75px rgba(15,23,42,.24);border:1px solid #d9dee7;animation:lbIn .18s ease}.lb-toast.success{border-left:4px solid #059669}.lb-toast.error{border-left:4px solid #dc2626}.lb-toast-body{flex:1;min-width:0}.lb-toast-body b{display:block;font-size:13px;font-weight:900}.lb-toast-body span{display:block;margin-top:4px;color:#475569;font-size:11px;line-height:1.45;overflow-wrap:anywhere}.lb-toast-close{width:28px;height:28px;border:0;border-radius:8px;background:#f1f5f9;display:grid;place-items:center;cursor:pointer;flex:0 0 28px}
+        .lb-confirm{width:min(410px,calc(100vw - 28px));padding:20px;border-radius:19px;background:#fff;box-shadow:0 30px 90px rgba(15,23,42,.32);text-align:center;animation:lbIn .18s ease}.lb-confirm-icon{width:48px;height:48px;margin:0 auto 10px;border-radius:14px;display:grid;place-items:center;background:#fef2f2;color:#dc2626}.lb-confirm h3{margin:0;color:#0f172a;font-size:17px;font-weight:950}.lb-confirm p{margin:7px auto 0;max-width:330px;color:#64748b;font-size:11px;line-height:1.55;overflow-wrap:anywhere}.lb-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}.lb-confirm-actions button{height:40px;border:0;border-radius:10px;font-size:11px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}.lb-confirm-cancel{background:#f1f5f9;color:#475569}.lb-confirm-delete{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 8px 20px rgba(220,38,38,.18)}.lb-confirm-actions button:disabled{opacity:.55;cursor:wait}
+        .lb-spin{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes lbIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+        @media(max-width:950px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}.lb-item{grid-template-columns:46px minmax(0,1fr) minmax(115px,auto) auto}}
+        @media(max-width:680px){
+          .lb-page{padding:10px 9px calc(48px + env(safe-area-inset-bottom))}.lb-header{position:relative;top:auto;padding:14px;border-radius:17px;margin-bottom:10px}.lb-header-row{gap:10px}.lb-brand{gap:9px}.lb-brand-icon{width:40px;height:40px;flex-basis:40px;border-radius:11px}.lb-brand h1{font-size:19px}.lb-brand p{font-size:10px;margin-top:3px}.lb-header-actions{gap:5px}.lb-header-actions .label{display:none}.lb-btn{width:38px;height:38px;min-height:38px;padding:0;border-radius:9px}.lb-monthbar{margin-top:10px;padding-top:10px;gap:5px}.lb-month{min-width:0;flex:1;height:36px;padding:0 7px;font-size:10px}.lb-nav{width:36px;height:36px}.lb-today{height:36px;padding:0 9px;font-size:10px}
+          .lb-stats{gap:7px;margin-bottom:9px}.lb-stat{padding:11px;border-radius:13px}.lb-stat-label{font-size:8px}.lb-stat-value{font-size:17px}.lb-stat-sub{font-size:8px}.lb-stat-icon{width:31px;height:31px;flex-basis:31px;border-radius:9px}
+          .lb-tabs-card,.lb-filter-card,.lb-list-card{border-radius:14px}.lb-tabs-card{padding:4px;margin-bottom:8px}.lb-tab{min-height:43px;border-radius:10px;font-size:11px}.lb-filter-card{padding:8px;margin-bottom:8px}.lb-filters{grid-template-columns:1fr;gap:6px}.lb-search{grid-column:auto}.lb-search,.lb-select{height:39px;font-size:11px}.lb-search input{font-size:11px}.lb-list-card{padding:9px}.lb-list-head{margin-bottom:8px}.lb-list-head h2{font-size:13px}.lb-list-head span{font-size:8px}.lb-list{gap:10px}
+          .lb-item{grid-template-columns:40px minmax(0,1fr);gap:10px;padding:12px;min-height:195px;height:auto;border:1.5px solid #111827;border-radius:14px;align-items:start}.lb-avatar{width:40px;height:40px;flex-basis:40px;border-radius:10px}.lb-main{grid-column:2;grid-row:1;min-width:0}.lb-name{font-size:13.5px;line-height:1.35}.lb-meta{font-size:9px;gap:5px 8px;margin-top:5px}.lb-status{font-size:7.5px;padding:3px 6px}.lb-note{font-size:9.5px;line-height:1.5;margin-top:6px}.lb-schedule,.lb-loan-metrics{font-size:9px;gap:4px 8px;margin-top:5px}.lb-money{grid-column:1/-1;grid-row:2;text-align:left;min-width:0;padding:10px 11px;border:1.5px solid #111827;border-radius:10px;background:#f8fafc}.lb-money strong{font-size:16px}.lb-money span{font-size:9px;margin-top:3px}.lb-money small{font-size:8.5px}.lb-actions{grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;width:100%}.lb-action{width:100%;height:35px;border-radius:8px}
+          .lb-empty{padding:42px 14px}.lb-backdrop{padding:9px}.lb-modal{width:100%;max-width:560px;max-height:calc(100dvh - 18px);border-radius:17px}.lb-modal-head{padding:12px 13px}.lb-modal-head h3{font-size:14px}.lb-close{width:30px;height:30px;flex-basis:30px}.lb-modal-body{padding:13px}.lb-form{gap:10px}.lb-form-grid{grid-template-columns:1fr;gap:9px}.lb-field.full{grid-column:auto}.lb-field label{font-size:8.5px}.lb-field input,.lb-field textarea,.lb-field select{font-size:12px;border-radius:9px}.lb-field input,.lb-field select{height:40px}.lb-submit{min-height:41px;font-size:10.5px}.lb-detail-grid{grid-template-columns:1fr 1fr;gap:8px}.lb-detail{padding:11px;border:1.5px solid #111827}.lb-detail small{font-size:7.5px}.lb-detail strong{font-size:12px;line-height:1.45}.lb-toast-wrap{padding:10px}.lb-toast{width:min(370px,calc(100vw - 20px));padding:12px}.lb-confirm{width:calc(100vw - 22px);padding:17px}.lb-confirm h3{font-size:14px}.lb-confirm p{font-size:9.5px}
         }
-
-        .lb-schedule strong,
-        .lb-loan-metrics strong{
-          color:#2563eb;
-          font-weight:900;
-        }
-
-        .lb-schedule .returned{
-          color:#059669;
-        }
-
-        .lb-schedule .overdue,
-        .lb-loan-metrics .overdue{
-          color:#dc2626;
-        }
-
-        .lb-loan-metrics span b{
-          color:#0f172a;
-        }
-
-        .lb-money small{
-          display:block;
-          margin-top:3px;
-          color:#94a3b8;
-          font-size:8px;
-        }
-
-        .lb-action.return{
-          background:#ecfdf5;
-          color:#059669;
-        }
-
-        .lb-action.return:hover{
-          background:#d1fae5;
-          color:#047857;
-        }
-
-        @media(max-width:900px){.lb-stats{grid-template-columns:1fr 1fr}.lb-filters{grid-template-columns:1fr 1fr}.lb-search{grid-column:1/-1}}
-        @media(max-width:620px){
-          .lb-page{
-            width:100%;
-            padding:8px 8px calc(42px + env(safe-area-inset-bottom));
-            overflow-x:hidden;
-          }
-
-          .lb-header{
-            position:relative;
-            top:auto;
-            padding:12px;
-            border-radius:16px;
-            margin-bottom:9px;
-          }
-
-          .lb-header-row{
-            align-items:center;
-            gap:9px;
-          }
-
-          .lb-brand{gap:9px}
-
-          .lb-brand h1{
-            font-size:19px;
-            line-height:1.15;
-          }
-
-          .lb-brand p{
-            font-size:9px;
-            line-height:1.35;
-          }
-
-          .lb-brand-icon{
-            width:38px;
-            height:38px;
-            flex-basis:38px;
-            border-radius:11px;
-          }
-
-          .lb-brand-icon svg{
-            width:19px;
-            height:19px;
-          }
-
-          .lb-header-actions{gap:5px}
-          .lb-header-actions .label{display:none}
-
-          .lb-btn{
-            width:36px;
-            height:36px;
-            padding:0;
-            border-radius:9px;
-          }
-
-          .lb-btn svg{
-            width:15px;
-            height:15px;
-          }
-
-          .lb-monthbar{
-            margin-top:9px;
-            padding-top:9px;
-            justify-content:stretch;
-            gap:5px;
-          }
-
-          .lb-month{
-            flex:1;
-            min-width:0;
-            height:34px;
-            padding:0 8px;
-            border-radius:9px;
-            font-size:10px;
-            overflow:hidden;
-            white-space:nowrap;
-            text-overflow:ellipsis;
-          }
-
-          .lb-nav{
-            width:34px;
-            height:34px;
-            border-radius:9px;
-          }
-
-          .lb-today{
-            height:34px;
-            padding:0 9px;
-            border-radius:9px;
-            font-size:10px;
-          }
-
-          .lb-stats{
-            gap:6px;
-            margin-bottom:8px;
-          }
-
-          .lb-stat{
-            padding:10px;
-            border-radius:12px;
-          }
-
-          .lb-stat-label{
-            font-size:7.5px;
-            line-height:1.25;
-          }
-
-          .lb-stat-value{
-            font-size:15px;
-            margin-top:5px;
-            line-height:1.15;
-          }
-
-          .lb-stat-sub{
-            font-size:7.5px;
-            line-height:1.25;
-          }
-
-          .lb-stat-icon{
-            width:29px;
-            height:29px;
-            border-radius:8px;
-          }
-
-          .lb-stat-icon svg{
-            width:14px;
-            height:14px;
-          }
-
-          .lb-tabs-card,
-          .lb-filter-card,
-          .lb-list-card{
-            border-radius:13px;
-          }
-
-          .lb-tabs-card{
-            padding:4px;
-            margin-bottom:8px;
-          }
-
-          .lb-tab{
-            height:42px;
-            border-radius:10px;
-            font-size:11px;
-            gap:6px;
-          }
-
-          .lb-tab svg{
-            width:16px;
-            height:16px;
-          }
-
-          .lb-filter-card{
-            padding:8px;
-            margin-bottom:8px;
-          }
-
-          .lb-filters{
-            grid-template-columns:1fr;
-            gap:6px;
-          }
-
-          .lb-search,
-          .lb-select{
-            height:38px;
-            border-radius:9px;
-            font-size:10px;
-          }
-
-          .lb-search{
-            padding:0 9px;
-          }
-
-          .lb-search input{
-            font-size:10px;
-          }
-
-          .lb-select{
-            padding:0 8px;
-          }
-
-          .lb-list-card{
-            padding:8px;
-          }
-
-          .lb-list-head{
-            margin-bottom:7px;
-          }
-
-          .lb-list-head h2{
-            font-size:12px;
-          }
-
-          .lb-list-head span{
-            font-size:8px;
-          }
-
-          .lb-list{
-            gap:6px;
-          }
-
-          .lb-item{
-            grid-template-columns:34px minmax(0,1fr) auto;
-            gap:8px;
-            padding:9px;
-            border-radius:11px;
-            align-items:start;
-          }
-
-          .lb-avatar{
-            width:34px;
-            height:34px;
-            border-radius:9px;
-          }
-
-          .lb-avatar svg{
-            width:15px;
-            height:15px;
-          }
-
-          .lb-name{
-            font-size:10.5px;
-            line-height:1.3;
-          }
-
-          .lb-meta{
-            gap:5px;
-            margin-top:4px;
-            font-size:7.5px;
-            line-height:1.25;
-          }
-
-          .lb-status{
-            padding:3px 6px;
-            font-size:6.5px;
-            gap:3px;
-          }
-
-          .lb-note{
-            margin-top:4px;
-            font-size:7.5px;
-            white-space:normal;
-            overflow:visible;
-            line-height:1.4;
-          }
-
-          .lb-money{
-            grid-column:2;
-            grid-row:2;
-            min-width:0;
-            text-align:left;
-            margin-top:3px;
-          }
-
-          .lb-money strong{
-            font-size:11.5px;
-            line-height:1.15;
-          }
-
-          .lb-money span{
-            font-size:7px;
-            line-height:1.25;
-          }
-
-          .lb-money small{
-            font-size:6.5px;
-            line-height:1.25;
-          }
-
-          .lb-schedule,
-          .lb-loan-metrics{
-            gap:4px 7px;
-            margin-top:4px;
-            font-size:7px;
-            line-height:1.35;
-          }
-
-          .lb-action.return{
-            background:#ecfdf5;
-          }
-
-          .lb-actions{
-            grid-column:3;
-            grid-row:1 / span 2;
-            flex-direction:column;
-            gap:4px;
-          }
-
-          .lb-action{
-            width:30px;
-            height:30px;
-            border-radius:8px;
-          }
-
-          .lb-action svg{
-            width:13px;
-            height:13px;
-          }
-
-          .lb-empty{
-            padding:38px 14px;
-            border-radius:12px;
-          }
-
-          .lb-empty-icon{
-            width:43px;
-            height:43px;
-            border-radius:12px;
-          }
-
-          .lb-empty strong{
-            font-size:12px;
-          }
-
-          .lb-empty span{
-            font-size:8px;
-            line-height:1.4;
-          }
-
-          .lb-form-grid{
-            grid-template-columns:1fr;
-          }
-
-          .lb-field.full{
-            grid-column:auto;
-          }
-
-          .lb-modal{
-            width:calc(100vw - 16px);
-            max-height:calc(100dvh - 18px);
-            border-radius:17px;
-          }
-
-          .lb-modal-head{
-            padding:12px 13px;
-          }
-
-          .lb-modal-head h3{
-            font-size:14px;
-          }
-
-          .lb-close{
-            width:30px;
-            height:30px;
-            border-radius:8px;
-          }
-
-          .lb-modal-body{
-            padding:13px;
-          }
-
-          .lb-form{
-            gap:9px;
-          }
-
-          .lb-field{
-            gap:5px;
-          }
-
-          .lb-field label{
-            font-size:8px;
-          }
-
-          .lb-field input,
-          .lb-field textarea,
-          .lb-field select{
-            font-size:11px;
-            border-radius:9px;
-          }
-
-          .lb-field input,
-          .lb-field select{
-            height:39px;
-          }
-
-          .lb-field textarea{
-            min-height:78px;
-          }
-
-          .lb-submit{
-            height:40px;
-            border-radius:9px;
-            font-size:10px;
-          }
-
-          /* Professional details card: readable and no clipped text */
-          .lb-detail-grid{
-            grid-template-columns:1fr 1fr;
-            gap:7px;
-          }
-
-          .lb-detail{
-            min-width:0;
-            padding:10px;
-            border-radius:10px;
-            background:linear-gradient(180deg,#f8fafc,#f1f5f9);
-          }
-
-          .lb-detail small{
-            font-size:7px;
-            line-height:1.25;
-            letter-spacing:.03em;
-          }
-
-          .lb-detail strong{
-            font-size:11px;
-            line-height:1.35;
-            overflow-wrap:anywhere;
-            word-break:break-word;
-          }
-
-          .lb-detail:last-child{
-            grid-column:1/-1;
-          }
-
-          .lb-toast-wrap{
-            padding:10px;
-          }
-
-          .lb-toast{
-            width:min(360px,calc(100vw - 20px));
-            padding:12px;
-            border-radius:12px;
-          }
-
-          .lb-toast-body b{
-            font-size:11px;
-          }
-
-          .lb-toast-body span{
-            font-size:9px;
-            line-height:1.45;
-          }
-
-          .lb-confirm{
-            width:calc(100vw - 22px);
-            padding:16px;
-            border-radius:16px;
-          }
-
-          .lb-confirm-icon{
-            width:42px;
-            height:42px;
-            border-radius:12px;
-          }
-
-          .lb-confirm h3{
-            font-size:14px;
-          }
-
-          .lb-confirm p{
-            font-size:9px;
-            line-height:1.5;
-          }
-
-          .lb-confirm-actions{
-            gap:6px;
-            margin-top:12px;
-          }
-
-          .lb-confirm-actions button{
-            height:36px;
-            font-size:9px;
-            border-radius:9px;
-          }
-        }
-
-        @media(max-width:420px){
-          .lb-detail-grid{
-            grid-template-columns:1fr;
-          }
-
-          .lb-detail:last-child{
-            grid-column:auto;
-          }
-
-          .lb-stat-value{
-            font-size:14px;
-          }
-
-          .lb-money strong{
-            font-size:11px;
-          }
-        }
-        @media(max-width:380px){
-          .lb-stats{grid-template-columns:1fr 1fr}
-          .lb-brand p{display:none}
-          .lb-month{font-size:8px}
-          .lb-stat-value{font-size:12px}
-          .lb-item{grid-template-columns:27px minmax(0,1fr) auto}
-        }
+        @media(max-width:420px){.lb-brand p{display:none}.lb-stat-value{font-size:15px}.lb-month{font-size:9px}.lb-detail-grid{grid-template-columns:1fr}.lb-detail:last-child{grid-column:auto}}
+        @media(max-width:360px){.lb-page{padding-left:7px;padding-right:7px}.lb-stat-value{font-size:13px}.lb-item{padding:10px}.lb-actions{grid-template-columns:repeat(5,1fr)}}
       `}</style>
 
       <main className="lb-page">
@@ -1587,7 +955,7 @@ export default function LoanBorrow() {
                       <input value={form.person_name} onChange={(e) => setForm({ ...form, person_name: e.target.value })} placeholder="Enter person name" />
                     </Field>
                     <Field label="Amount">
-                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.borrow_amount} onChange={(e) => setForm({ ...form, borrow_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.borrow_amount} onChange={(e) => setForm({ ...form, borrow_amount: editableNumber(e.target.value) })} placeholder="0" />
                     </Field>
                     <Field label="Take Date">
                       <input type="date" value={form.take_date} onChange={(e) => setForm({ ...form, take_date: e.target.value })} />
@@ -1612,10 +980,10 @@ export default function LoanBorrow() {
                       <input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="Enter bank name" />
                     </Field>
                     <Field label="Loan Amount">
-                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.total_loan_amount} onChange={(e) => setForm({ ...form, total_loan_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.total_loan_amount} onChange={(e) => setForm({ ...form, total_loan_amount: editableNumber(e.target.value) })} placeholder="0" />
                     </Field>
                     <Field label="EMI Amount">
-                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.emi_amount} onChange={(e) => setForm({ ...form, emi_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.emi_amount} onChange={(e) => setForm({ ...form, emi_amount: editableNumber(e.target.value) })} placeholder="0" />
                     </Field>
                     <Field label="Number of EMIs">
                       <input type="number" min="0" step="1" inputMode="numeric" value={form.total_emis} onChange={(e) => setForm({ ...form, total_emis: editableNumber(e.target.value) })} placeholder="0" />
@@ -1637,7 +1005,7 @@ export default function LoanBorrow() {
                 <div className="lb-form">
                   <div className="lb-form-grid">
                     <Field label={modal === "borrow-payment" ? "Repayment Amount" : "EMI Amount"}>
-                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.payment_amount} onChange={(e) => setForm({ ...form, payment_amount: editableNumber(e.target.value) })} placeholder="0.00" />
+                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.payment_amount} onChange={(e) => setForm({ ...form, payment_amount: editableNumber(e.target.value) })} placeholder="0" />
                     </Field>
                     <Field label="Payment Date">
                       <input type="date" value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />

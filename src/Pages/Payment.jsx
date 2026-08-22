@@ -102,8 +102,8 @@ const shiftMonth = (month, delta) => {
 
 const money = (value) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   })}`;
 
 const displayDate = (value) => {
@@ -300,7 +300,7 @@ function PaymentForm({ initial, loading, onCancel, onSubmit }) {
               step="0.01"
               value={form.amount}
               onChange={(e) => set("amount", e.target.value)}
-              placeholder="0.00"
+              placeholder="0"
               required
             />
           </div>
@@ -1610,6 +1610,461 @@ export default function Payment() {
           .ps-backdrop { padding:10px; }
           .ps-form-actions .ps-btn { flex:1; }
         }
+
+        /* ===== Professional card / badge / responsive upgrade ===== */
+
+        .ps-page {
+          overflow-x: hidden;
+        }
+
+        /* Every mobile record is a separate, clearly visible card. */
+        .ps-mobile-card {
+          position: relative;
+          margin: 0 10px 12px;
+          padding: 15px;
+          border: 1.5px solid #111827;
+          border-radius: 15px;
+          background: #ffffff;
+          box-shadow: 0 7px 20px rgba(15,23,42,.08);
+          min-width: 0;
+          height: auto;
+          overflow: visible;
+        }
+
+        .ps-mobile-card:last-child {
+          margin-bottom: 12px;
+        }
+
+        .ps-mobile-card:hover {
+          background: #ffffff;
+          border-color: #111827;
+          box-shadow: 0 12px 28px rgba(15,23,42,.11);
+          transform: translateY(-1px);
+        }
+
+        .ps-mobile-top {
+          min-width: 0;
+          align-items: flex-start;
+        }
+
+        .ps-mobile-top .ps-person {
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+
+        .ps-mobile-top .ps-person-info strong {
+          color: #000000;
+          font-size: 14px;
+          font-weight: 950;
+          line-height: 1.35;
+        }
+
+        .ps-mobile-top .ps-person-info span {
+          color: #111827;
+          font-size: 10px;
+          font-weight: 700;
+          line-height: 1.45;
+        }
+
+        .ps-mobile-meta {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 9px;
+          margin-top: 13px;
+        }
+
+        .ps-mobile-meta > div {
+          min-width: 0;
+          padding: 10px;
+          border: 1px solid #111827;
+          border-radius: 10px;
+          background: #ffffff;
+        }
+
+        .ps-mobile-meta span {
+          display: block;
+          color: #111827;
+          font-size: 9px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: .25px;
+          margin-bottom: 5px;
+          line-height: 1.3;
+        }
+
+        .ps-mobile-meta strong {
+          display: block;
+          color: #000000;
+          font-size: 12px;
+          font-weight: 950;
+          line-height: 1.45;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        /* Amount gets stronger visual priority. */
+        .ps-mobile-meta > div:first-child {
+          background: #f8fafc;
+          border-width: 1.5px;
+        }
+
+        .ps-mobile-meta > div:first-child strong {
+          font-size: 17px;
+          font-weight: 950;
+          color: #000000;
+        }
+
+        /* All badges: bold + black text, while retaining colored professional backgrounds. */
+        .ps-status,
+        .ps-category {
+          color: #000000 !important;
+          font-weight: 950 !important;
+          text-shadow: none;
+          border-width: 1px;
+          box-shadow: none;
+        }
+
+        .ps-status::before {
+          background: #000000 !important;
+          box-shadow: 0 0 0 3px rgba(255,255,255,.72) !important;
+        }
+
+        .ps-status-pending,
+        .ps-status-received,
+        .ps-status-overdue,
+        .ps-status-lost,
+        .ps-category-work,
+        .ps-category-business,
+        .ps-category-other {
+          color: #000000 !important;
+        }
+
+        .ps-status-pending { background: #ffe680; border-color: #111827; }
+        .ps-status-received { background: #9ff0c5; border-color: #111827; }
+        .ps-status-overdue { background: #ff9eaa; border-color: #111827; }
+        .ps-status-lost { background: #d1d5db; border-color: #111827; }
+        .ps-category-work { background: #c7d2fe; border-color: #111827; }
+        .ps-category-business { background: #bae6fd; border-color: #111827; }
+        .ps-category-other { background: #e5e7eb; border-color: #111827; }
+
+        /* Desktop table also gets strong black readable badges/text. */
+        .ps-table .ps-person-info strong,
+        .ps-table .ps-amount,
+        .ps-table .ps-date {
+          color: #000000;
+          font-weight: 850;
+        }
+
+        .ps-table .ps-person-info span,
+        .ps-table .ps-date small {
+          color: #111827;
+          font-weight: 650;
+        }
+
+        /* Keep every modal exactly centered in the current viewport. */
+        .ps-backdrop {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw;
+          height: 100dvh;
+          z-index: 1000 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 16px !important;
+          overflow: auto;
+        }
+
+        .ps-modal,
+        .ps-confirm {
+          margin: auto;
+          flex: 0 1 auto;
+        }
+
+        .ps-modal {
+          width: min(780px, 100%);
+          max-height: min(90dvh, 820px);
+          border: 1.5px solid #111827;
+          border-radius: 18px;
+          box-shadow: 0 30px 90px rgba(15,23,42,.30);
+        }
+
+        .ps-modal-head {
+          border-bottom: 1px solid #111827;
+        }
+
+        .ps-modal-title strong {
+          color: #000000;
+          font-weight: 950;
+          font-size: 16px;
+        }
+
+        .ps-modal-title span {
+          color: #111827;
+          font-weight: 650;
+        }
+
+        /* Detail boxes in View Details are larger and clearly separated. */
+        .ps-details {
+          padding: 18px;
+        }
+
+        .ps-detail-grid {
+          gap: 10px;
+        }
+
+        .ps-detail {
+          padding: 13px;
+          border: 1.5px solid #111827;
+          border-radius: 11px;
+          background: #ffffff;
+        }
+
+        .ps-detail span {
+          color: #111827;
+          font-size: 9px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: .25px;
+        }
+
+        .ps-detail strong {
+          color: #000000;
+          font-size: 13px;
+          font-weight: 900;
+          line-height: 1.5;
+        }
+
+        /* Add/Edit form: larger readable labels and inputs. */
+        .ps-form {
+          padding: 19px;
+        }
+
+        .ps-field > span {
+          color: #000000;
+          font-size: 11px;
+          font-weight: 950;
+        }
+
+        .ps-field input,
+        .ps-field select,
+        .ps-field textarea,
+        .ps-money-input {
+          border-color: #111827;
+        }
+
+        .ps-field input,
+        .ps-field select {
+          height: 43px;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .ps-field textarea {
+          font-size: 13px;
+          font-weight: 650;
+        }
+
+        .ps-money-input {
+          height: 43px;
+          border-width: 1.5px;
+        }
+
+        .ps-money-input b {
+          color: #000000;
+          font-weight: 950;
+        }
+
+        .ps-money-input input {
+          border: 0 !important;
+        }
+
+        /* Toast / alert is also centered, never stuck near the header. */
+        .ps-toast-wrap {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          transform: none !important;
+          top: 0 !important;
+          left: 0 !important;
+          z-index: 2000 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          padding: 16px !important;
+          pointer-events: none;
+        }
+
+        .ps-toast {
+          pointer-events: auto;
+          width: min(430px, calc(100vw - 28px));
+          border: 1.5px solid #111827;
+          box-shadow: 0 25px 80px rgba(15,23,42,.25);
+        }
+
+        .ps-toast-body strong,
+        .ps-toast-body span {
+          color: #000000;
+        }
+
+        /* Delete confirmation is centered with the same viewport logic. */
+        .ps-confirm {
+          width: min(430px, calc(100vw - 28px));
+          border: 1.5px solid #111827;
+        }
+
+        .ps-confirm h3 {
+          color: #000000;
+          font-weight: 950;
+        }
+
+        .ps-confirm p {
+          color: #111827;
+          font-weight: 600;
+        }
+
+        /* Menu stays inside the visible viewport as much as possible. */
+        .ps-menu {
+          border: 1.5px solid #111827;
+          z-index: 1100;
+        }
+
+        /* Mobile: larger text, auto-height cards, no clipping/overlap. */
+        @media (max-width: 680px) {
+          .ps-container {
+            width: calc(100% - 12px);
+          }
+
+          .ps-mobile-list {
+            padding: 12px 0 1px;
+          }
+
+          .ps-mobile-card {
+            margin: 0 6px 12px;
+            padding: 13px;
+            min-height: 0;
+            height: auto !important;
+            border: 1.5px solid #111827;
+            border-radius: 14px;
+          }
+
+          .ps-mobile-top .ps-person-info strong {
+            font-size: 13px;
+          }
+
+          .ps-mobile-top .ps-person-info span {
+            font-size: 9px;
+          }
+
+          .ps-mobile-meta {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+          }
+
+          .ps-mobile-meta > div {
+            padding: 9px;
+            border: 1px solid #111827;
+          }
+
+          .ps-mobile-meta span {
+            font-size: 8px;
+          }
+
+          .ps-mobile-meta strong {
+            font-size: 11px;
+          }
+
+          .ps-mobile-meta > div:first-child strong {
+            font-size: 16px;
+          }
+
+          .ps-status,
+          .ps-category {
+            font-size: 9px !important;
+            min-height: 27px;
+            padding: 5px 8px;
+          }
+
+          .ps-backdrop {
+            padding: 10px !important;
+          }
+
+          .ps-modal {
+            width: 100%;
+            max-width: 620px;
+            max-height: calc(100dvh - 20px);
+            border-radius: 15px;
+          }
+
+          .ps-modal-head {
+            padding: 13px;
+          }
+
+          .ps-form {
+            padding: 14px;
+          }
+
+          .ps-details {
+            padding: 14px;
+          }
+
+          .ps-detail-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+
+          .ps-detail-full {
+            grid-column: auto;
+          }
+
+          .ps-detail {
+            padding: 11px;
+          }
+
+          .ps-detail strong {
+            font-size: 12px;
+          }
+
+          .ps-toast-wrap {
+            padding: 10px !important;
+          }
+
+          .ps-toast {
+            width: min(390px, calc(100vw - 20px));
+          }
+        }
+
+        @media (max-width: 450px) {
+          .ps-mobile-card {
+            margin-left: 4px;
+            margin-right: 4px;
+            padding: 12px;
+          }
+
+          .ps-mobile-meta {
+            grid-template-columns: 1fr;
+          }
+
+          .ps-mobile-meta > div:first-child strong {
+            font-size: 17px;
+          }
+
+          .ps-modal {
+            max-height: calc(100dvh - 16px);
+          }
+
+          .ps-form-actions {
+            flex-direction: column;
+          }
+
+          .ps-form-actions .ps-btn {
+            width: 100%;
+            flex: none;
+          }
+        }
+
       `}</style>
 
       <header className="ps-header">

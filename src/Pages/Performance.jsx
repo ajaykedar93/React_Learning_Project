@@ -496,7 +496,7 @@ export default function Performance() {
                   </div>
                 </Panel>
 
-                <Panel icon={<Zap />} title="Performance Widgets" subtitle="Live attention items" tone="blue">
+                <Panel icon={<Zap />} title="Performance Widgets" subtitle="Current account data" tone="blue">
                   <WidgetGroup title="Top Expenses" items={widgets.top_expenses} empty="No top expense data">
                     {(item, i) => <WidgetRow key={`${item.category_name}-${i}`} icon={item.icon || "📊"} title={item.category_name} value={money(item.total_amount)} />}
                   </WidgetGroup>
@@ -1432,6 +1432,478 @@ button{font:inherit}
   .pd-month-detail-card>strong{font-size:13px}
   .pd-month-detail-card>small{font-size:7px}
 }
+
+/* ===== FINAL MOBILE / CHART / CARD POLISH ===== */
+
+/* All important dashboard text stays readable and bold on small screens. */
+.pd-page,
+.pd-page button,
+.pd-page input,
+.pd-page select {
+  -webkit-font-smoothing: antialiased;
+}
+
+.pd-kpi strong,
+.pd-kpi small,
+.pd-kpi span,
+.pd-savings h2,
+.pd-savings strong,
+.pd-month-detail-card > span,
+.pd-month-detail-card > strong,
+.pd-month-detail-card > small,
+.pd-pie-head h3,
+.pd-pie-head p,
+.pd-legend-row strong,
+.pd-legend-row span,
+.pd-legend-row b,
+.pd-progress-main span,
+.pd-progress-main b,
+.pd-progress-main small,
+.pd-info span,
+.pd-info b,
+.pd-week span,
+.pd-week strong,
+.pd-week small,
+.pd-week em,
+.pd-debt-main strong,
+.pd-debt-main span,
+.pd-debt-main small,
+.pd-debt-amount b,
+.pd-debt-amount span,
+.pd-payment small,
+.pd-payment-count strong,
+.pd-payment-count span,
+.pd-payment-amount,
+.pd-quick small,
+.pd-quick strong,
+.pd-widget-group h4,
+.pd-widget-row strong,
+.pd-widget-row small,
+.pd-widget-row > b {
+  font-weight: 800;
+}
+
+/* Pie charts are intentionally large and never collapse into tiny circles. */
+.pd-pie-body {
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.pd-pie {
+  width: 178px;
+  height: 178px;
+}
+
+.pd-pie-center {
+  width: 108px;
+  height: 108px;
+}
+
+.pd-pie-center strong {
+  font-size: 16px;
+  font-weight: 950;
+  color: #111827;
+  max-width: 92px;
+}
+
+.pd-pie-center span {
+  font-size: 10px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.pd-legend {
+  gap: 10px;
+}
+
+.pd-legend-row {
+  min-height: 30px;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.pd-legend-row i {
+  width: 10px;
+  height: 10px;
+}
+
+.pd-legend-row strong {
+  font-size: 12px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.pd-legend-row span {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.pd-legend-row b {
+  font-size: 12px;
+  font-weight: 950;
+  color: #111827;
+  white-space: nowrap;
+}
+
+/* Every widget row is an independent card with visible separation. */
+.pd-widget-list {
+  display: grid;
+  gap: 10px;
+}
+
+.pd-widget-row {
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .055);
+}
+
+.pd-widget-row:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, .09);
+}
+
+.pd-widget-row strong {
+  font-size: 11px;
+  font-weight: 950;
+  color: #111827;
+}
+
+.pd-widget-row small {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 750;
+  color: #64748b;
+}
+
+.pd-widget-row > b {
+  font-size: 12px;
+  font-weight: 950;
+  color: #111827;
+}
+
+@media (max-width: 800px) {
+  .pd-pie-body {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .pd-pie {
+    width: 178px;
+    height: 178px;
+  }
+
+  .pd-pie-center {
+    width: 108px;
+    height: 108px;
+  }
+
+  .pd-pie-center strong {
+    font-size: 16px;
+  }
+
+  .pd-legend-row strong {
+    font-size: 12px;
+  }
+
+  .pd-legend-row b {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 650px) {
+  /* Bigger mobile text throughout the page. */
+  .pd-kpi {
+    padding: 10px;
+    min-height: 88px;
+  }
+
+  .pd-kpi small {
+    font-size: 9px;
+    font-weight: 900;
+  }
+
+  .pd-kpi strong {
+    font-size: 17px;
+    font-weight: 950;
+  }
+
+  .pd-kpi span {
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .pd-month-detail-card {
+    padding: 10px;
+    min-height: 78px;
+  }
+
+  .pd-month-detail-card > span {
+    font-size: 8px;
+    font-weight: 900;
+  }
+
+  .pd-month-detail-card > strong {
+    font-size: 14px;
+    font-weight: 950;
+  }
+
+  .pd-month-detail-card > small {
+    font-size: 8px;
+    font-weight: 750;
+  }
+
+  .pd-panel {
+    padding: 11px;
+  }
+
+  .pd-panel-head h3,
+  .pd-pie-head h3 {
+    font-size: 14px;
+    font-weight: 950;
+  }
+
+  .pd-panel-head p,
+  .pd-pie-head p {
+    font-size: 9px;
+    font-weight: 750;
+  }
+
+  /* Large pie chart on mobile, with large center value. */
+  .pd-pie-body {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    min-height: 198px;
+  }
+
+  .pd-pie {
+    width: 180px;
+    height: 180px;
+  }
+
+  .pd-pie-center {
+    width: 110px;
+    height: 110px;
+  }
+
+  .pd-pie-center strong {
+    font-size: 17px;
+    font-weight: 950;
+  }
+
+  .pd-pie-center span {
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .pd-legend {
+    gap: 9px;
+  }
+
+  .pd-legend-row {
+    min-height: 32px;
+  }
+
+  .pd-legend-row strong {
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .pd-legend-row span {
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .pd-legend-row b {
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .pd-progress-main span,
+  .pd-progress-main b {
+    font-size: 10px;
+    font-weight: 900;
+  }
+
+  .pd-progress-main small {
+    font-size: 8px;
+    font-weight: 800;
+  }
+
+  .pd-info span {
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .pd-info b {
+    font-size: 10px;
+    font-weight: 950;
+  }
+
+  .pd-week {
+    padding: 11px;
+  }
+
+  .pd-week span {
+    font-size: 9px;
+    font-weight: 900;
+  }
+
+  .pd-week strong {
+    font-size: 15px;
+    font-weight: 950;
+  }
+
+  .pd-week small {
+    font-size: 8px;
+    font-weight: 750;
+  }
+
+  .pd-debt-main strong {
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .pd-debt-main span,
+  .pd-debt-main small {
+    font-size: 8px;
+    font-weight: 800;
+  }
+
+  .pd-debt-amount b {
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .pd-debt-amount span {
+    font-size: 8px;
+    font-weight: 750;
+  }
+
+  .pd-payment {
+    min-height: 112px;
+    padding: 12px;
+  }
+
+  .pd-payment small {
+    font-size: 10px;
+    font-weight: 950;
+  }
+
+  .pd-payment-count strong {
+    font-size: 22px;
+    font-weight: 950;
+  }
+
+  .pd-payment-count span {
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .pd-payment-amount {
+    font-size: 24px;
+    font-weight: 950;
+  }
+
+  .pd-quick {
+    padding: 11px;
+  }
+
+  .pd-quick small {
+    font-size: 8px;
+    font-weight: 850;
+  }
+
+  .pd-quick strong {
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  /* Separate widget cards; never merge/touch each other. */
+  .pd-widget-list {
+    gap: 10px;
+  }
+
+  .pd-widget-row {
+    min-height: 62px;
+    padding: 11px 12px;
+    border: 1.5px solid #111827;
+    border-radius: 13px;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, .07);
+  }
+
+  .pd-widget-row strong {
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  .pd-widget-row small {
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .pd-widget-row > b {
+    font-size: 13px;
+    font-weight: 950;
+  }
+
+  .pd-widget-group h4 {
+    margin: 10px 0 7px;
+    font-size: 10px;
+    font-weight: 950;
+    color: #111827;
+  }
+
+  /* Avoid horizontal overflow caused by the intentionally large charts. */
+  .pd-pie-card {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 430px) {
+  .pd-pie-body {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .pd-pie {
+    width: 190px;
+    height: 190px;
+  }
+
+  .pd-pie-center {
+    width: 114px;
+    height: 114px;
+  }
+
+  .pd-pie-center strong {
+    font-size: 18px;
+  }
+
+  .pd-legend {
+    width: 100%;
+  }
+
+  .pd-legend-row {
+    width: 100%;
+  }
+
+  .pd-legend-row strong {
+    font-size: 12px;
+  }
+
+  .pd-legend-row b {
+    font-size: 12px;
+  }
+}
+
 `;
 
 export { PERFORMANCE_URL, WIDGETS_URL };
