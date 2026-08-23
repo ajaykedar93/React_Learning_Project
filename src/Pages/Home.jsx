@@ -12,7 +12,7 @@ import LoanBorrow from "./LoanBorrow";
 import Payment from "./Payment";
 import Performance from "./Performance";
 import ExportDetails from "./ExportDetails";
-import AccessMob from "./Access_mob";
+import RemoteDevice from "./RemoteDevice";
 
 const TABS = [
   { id: "profile", label: "Profile", icon: "👤", component: ProfileCard },
@@ -23,7 +23,7 @@ const TABS = [
   { id: "performance", label: "Performance", icon: "📈", component: Performance },
   { id: "export", label: "Export", icon: "📤", component: ExportDetails },
   { id: "trading", label: "Trading", icon: "📊", component: Trading },
-  { id: "access", label: "Access", icon: "🔑", component: AccessMob },
+  { id: "remote", label: "Remote Device", icon: "📡", component: RemoteDevice },
   
 ];
 
