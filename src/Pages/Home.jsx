@@ -5,14 +5,16 @@ import { useAuth } from "../contexts/AuthContext";
 import ProfileCard from "./ProfileCard";
 import Navbar from "./Navbar";
 import Overview from "./Overview";
-import Trading from "./Trading";
 import Footer from "./Footer";
 import Expense from "./Expense";
 import LoanBorrow from "./LoanBorrow";
 import Payment from "./Payment";
 import Performance from "./Performance";
 import ExportDetails from "./ExportDetails";
-import RemoteDevice from "./RemoteDevice";
+import TradingMain from "./Trading_Main";
+import TradingCapital from "./Trading_capital";
+import TradingDipwith from "./Trading_dip_with";
+
 
 const TABS = [
   { id: "profile", label: "Profile", icon: "👤", component: ProfileCard },
@@ -22,9 +24,9 @@ const TABS = [
   { id: "payment", label: "Payments", icon: "💎", component: Payment },
   { id: "performance", label: "Performance", icon: "📈", component: Performance },
   { id: "export", label: "Export", icon: "📤", component: ExportDetails },
-  { id: "trading", label: "Trading", icon: "📊", component: Trading },
-  { id: "remote", label: "Remote Device", icon: "📡", component: RemoteDevice },
-  
+  { id: "trading-main", label: "Trading Main", icon: "💹", component: TradingMain },
+  { id: "trading-capital", label: "Trading Capital", icon: "💵", component: TradingCapital },
+  { id: "trading-dipwith", label: "Trading Dip With", icon: "📉", component: TradingDipwith },  
 ];
 
 const NAVBAR_HEIGHT_DESKTOP = 88;
