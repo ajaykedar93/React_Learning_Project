@@ -449,7 +449,7 @@ const Home = () => {
           right: 0;
           bottom: 0;
           z-index: 2500;
-          pointer-events: none;
+          pointer-events: auto;
         }
 
         .home-refresh-indicator {

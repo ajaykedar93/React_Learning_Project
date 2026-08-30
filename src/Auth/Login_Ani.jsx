@@ -319,18 +319,44 @@ export default function Login_Ani() {
         }
       }
 
-      const data = await apiPost("/api/personal-users/login", {
+      // Remove any old/expired token before creating a new session.
+      localStorage.removeItem("token");
+      localStorage.removeItem("auth_token");
+
+      const data = await apiPost(LOGIN_API.replace(API_BASE, ""), {
         email: loginEmail,
         password: loginPassword,
       });
 
       if (!aliveRef.current) return;
 
-      const token = data?.token || data?.accessToken || data?.jwt || "";
-      if (token) localStorage.setItem("token", token);
+      // Accept the token from the common response locations.
+      const newToken =
+        data?.token ||
+        data?.accessToken ||
+        data?.jwt ||
+        data?.data?.token ||
+        data?.data?.accessToken ||
+        data?.data?.jwt ||
+        "";
+
+      if (!newToken) {
+        throw new Error(
+          "Login successful, but authentication token was not returned by the server."
+        );
+      }
+
+      // Keep both token keys synchronized with AuthContext.
+      localStorage.setItem("token", newToken);
+      localStorage.setItem("auth_token", newToken);
 
       if (data.success && data.data) {
-        login(data.data);
+        // Pass the fresh token explicitly to AuthContext.
+        const loginUser = { ...data.data };
+        delete loginUser.token;
+        delete loginUser.accessToken;
+        delete loginUser.jwt;
+        login(loginUser, newToken);
 
         // Keep trusted details only when Trust Device is enabled.
         if (trustDevice || trustedMode) {

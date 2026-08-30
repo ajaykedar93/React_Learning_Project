@@ -515,9 +515,9 @@ const Footer = () => {
               
               aria-label="WhatsApp"
               title="WhatsApp: 9370470095"
-             onClick={() => {
-              window.location.href = "https://wa.me/919370470095";
-            }}>
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <FaWhatsapp className="social-logo" aria-hidden="true" />
             </a>
           </div>
