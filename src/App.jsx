@@ -5,6 +5,7 @@ import Login from "./Auth/Login_Ani";
 import Register from "./Auth/register";
 import Forgot from "./Auth/forgot";
 import Portfolio from "./Pages/Portfolio";
+import Calculate from "./Pages/Calculate";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // ✅ Protected Route Component
@@ -80,6 +81,8 @@ export default function App() {
             path="/portfolio"
             element={<Portfolio />}
           />
+
+          <Route path="/calculate" element={<Calculate />} />
 
           {/* Login */}
           <Route
