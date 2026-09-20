@@ -1,85 +1,934 @@
 import React, { useEffect, useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const HISTORY_KEY = "ajay_kedar_calculator_history";
+const HISTORY_KEY = "ajay_kedar_calculator_history_v9";
+
+/* =========================================================
+   NUMBER HELPERS
+========================================================= */
+
+const normalizeDecimal = (value) => {
+  let str = String(value ?? "").trim();
+
+  if (!str) return "0";
+
+  let negative = false;
+
+  if (str.startsWith("-")) {
+    negative = true;
+    str = str.slice(1);
+  }
+
+  if (!str.includes(".")) {
+    str = `${str}.0`;
+  }
+
+  let [integer, decimal] = str.split(".");
+
+  integer = integer.replace(/^0+(?=\d)/, "");
+  decimal = (decimal || "").replace(/0+$/, "");
+
+  if (!integer) integer = "0";
+
+  const result = decimal
+    ? `${integer}.${decimal}`
+    : integer;
+
+  if (result === "0") return "0";
+
+  return negative ? `-${result}` : result;
+};
 
 const formatNumber = (value) => {
-  if (!Number.isFinite(value)) return "0";
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "0";
+  }
 
-  return Number(value.toFixed(10)).toLocaleString("en-IN", {
-    maximumFractionDigits: 10,
-  });
+  const normalized = normalizeDecimal(value);
+
+  const negative = normalized.startsWith("-");
+
+  const clean = negative
+    ? normalized.slice(1)
+    : normalized;
+
+  const [integer, decimal] = clean.split(".");
+
+  const formattedInteger = integer.replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    ","
+  );
+
+  return `${negative ? "-" : ""}${formattedInteger}${
+    decimal ? `.${decimal}` : ""
+  }`;
 };
 
-const cleanForCalculation = (expression) => {
-  return expression
-    .replace(/\s*\([^()]*\)/g, "")
-    .replace(/,/g, "")
-    .replace(/\s+/g, "");
+/* =========================================================
+   BIG NUMBER DECIMAL MATH
+========================================================= */
+
+const parseDecimal = (value) => {
+  const normalized = normalizeDecimal(value);
+
+  const negative = normalized.startsWith("-");
+
+  const clean = negative
+    ? normalized.slice(1)
+    : normalized;
+
+  const [integer, decimal = ""] =
+    clean.split(".");
+
+  return {
+    negative,
+    integer: BigInt(integer || "0"),
+    decimal,
+  };
 };
 
-const calculateExpression = (expression) => {
+const makeDecimal = (
+  negative,
+  integer,
+  decimal
+) => {
+  const cleanDecimal =
+    String(decimal).replace(/0+$/, "");
+
+  let result = cleanDecimal
+    ? `${integer.toString()}.${cleanDecimal}`
+    : integer.toString();
+
+  if (result === "0") return "0";
+
+  return negative
+    ? `-${result}`
+    : result;
+};
+
+const addDecimal = (a, b) => {
+  const A = parseDecimal(a);
+  const B = parseDecimal(b);
+
+  const scale = Math.max(
+    A.decimal.length,
+    B.decimal.length
+  );
+
+  const aInt =
+    BigInt(
+      `${A.integer}${A.decimal}`
+    ) *
+    10n **
+      BigInt(
+        scale - A.decimal.length
+      );
+
+  const bInt =
+    BigInt(
+      `${B.integer}${B.decimal}`
+    ) *
+    10n **
+      BigInt(
+        scale - B.decimal.length
+      );
+
+  const result =
+    (A.negative ? -aInt : aInt) +
+    (B.negative ? -bInt : bInt);
+
+  const negative = result < 0n;
+
+  const absolute = negative
+    ? -result
+    : result;
+
+  const divisor =
+    10n ** BigInt(scale);
+
+  const integer =
+    absolute / divisor;
+
+  const decimal =
+    (absolute % divisor)
+      .toString()
+      .padStart(scale, "0");
+
+  return makeDecimal(
+    negative,
+    integer,
+    decimal
+  );
+};
+
+const subtractDecimal = (a, b) =>
+  addDecimal(a, `-${normalizeDecimal(b)}`);
+
+const multiplyDecimal = (a, b) => {
+  const A = parseDecimal(a);
+  const B = parseDecimal(b);
+
+  const aInt = BigInt(
+    `${A.integer}${A.decimal}`
+  );
+
+  const bInt = BigInt(
+    `${B.integer}${B.decimal}`
+  );
+
+  const result = aInt * bInt;
+
+  const scale =
+    A.decimal.length +
+    B.decimal.length;
+
+  const negative =
+    A.negative !== B.negative;
+
+  if (scale === 0) {
+    return makeDecimal(
+      negative,
+      result,
+      ""
+    );
+  }
+
+  const divisor =
+    10n ** BigInt(scale);
+
+  const integer =
+    result / divisor;
+
+  const decimal =
+    (result % divisor)
+      .toString()
+      .padStart(scale, "0");
+
+  return makeDecimal(
+    negative,
+    integer,
+    decimal
+  );
+};
+
+const divideDecimal = (a, b) => {
+  const A = parseDecimal(a);
+  const B = parseDecimal(b);
+
+  const denominator = BigInt(
+    `${B.integer}${B.decimal}`
+  );
+
+  if (denominator === 0n) {
+    throw new Error("DIV_ZERO");
+  }
+
+  const numerator = BigInt(
+    `${A.integer}${A.decimal}`
+  );
+
+  const precision = 20;
+
+  let scaledNumerator = numerator;
+  let scaledDenominator =
+    denominator;
+
+  const scaleDifference =
+    B.decimal.length -
+    A.decimal.length;
+
+  if (scaleDifference > 0) {
+    scaledNumerator *=
+      10n **
+        BigInt(scaleDifference);
+  }
+
+  if (scaleDifference < 0) {
+    scaledDenominator *=
+      10n **
+        BigInt(-scaleDifference);
+  }
+
+  const multiplier =
+    10n ** BigInt(precision);
+
+  const result =
+    (scaledNumerator *
+      multiplier) /
+    scaledDenominator;
+
+  const negative =
+    A.negative !== B.negative;
+
+  const integer =
+    result / multiplier;
+
+  const decimal =
+    (result % multiplier)
+      .toString()
+      .padStart(precision, "0");
+
+  return makeDecimal(
+    negative,
+    integer,
+    decimal
+  );
+};
+
+const percentDecimal = (a, b) =>
+  divideDecimal(
+    multiplyDecimal(a, b),
+    "100"
+  );
+
+/* =========================================================
+   DESCRIPTION
+========================================================= */
+
+const removeDescriptions = (
+  expression
+) =>
+  expression.replace(
+    /\s*\([^()]*\)/g,
+    ""
+  );
+
+/* =========================================================
+   TOKENIZER
+========================================================= */
+
+const tokenize = (expression) => {
+  const clean =
+    removeDescriptions(expression)
+      .replace(/,/g, "")
+      .replace(/\s+/g, "")
+      .trim();
+
+  if (!clean) return [];
+
+  const tokens = [];
+
+  let number = "";
+
+  const pushNumber = () => {
+    if (number !== "") {
+      tokens.push({
+        type: "number",
+        value: number,
+      });
+
+      number = "";
+    }
+  };
+
+  for (
+    let i = 0;
+    i < clean.length;
+    i++
+  ) {
+    const char = clean[i];
+
+    if (
+      /[0-9.]/.test(char)
+    ) {
+      number += char;
+      continue;
+    }
+
+    if (
+      "+-*/%()".includes(char)
+    ) {
+      pushNumber();
+
+      tokens.push({
+        type: "operator",
+        value: char,
+      });
+
+      continue;
+    }
+
+    return null;
+  }
+
+  pushNumber();
+
+  return tokens;
+};
+
+/* =========================================================
+   BIG CALCULATOR
+========================================================= */
+
+const calculateExpression = (
+  expression
+) => {
   try {
-    const clean = cleanForCalculation(expression);
+    const originalTokens =
+      tokenize(expression);
 
-    if (!clean) return null;
-
-    // Only calculator characters are allowed.
-    if (!/^[0-9+\-*/().%]+$/.test(clean)) {
+    if (
+      !originalTokens ||
+      !originalTokens.length
+    ) {
       return null;
     }
 
-    // Convert percentage.
-    const converted = clean.replace(
-      /(\d+(?:\.\d+)?)%/g,
-      "($1/100)"
+    /*
+      Special percentage:
+
+      5000 % 10 = 500
+      48509 % 20 = 9701.8
+    */
+
+    if (
+      originalTokens.length === 3 &&
+      originalTokens[0].type ===
+        "number" &&
+      originalTokens[1].value === "%" &&
+      originalTokens[2].type ===
+        "number"
+    ) {
+      return percentDecimal(
+        originalTokens[0].value,
+        originalTokens[2].value
+      );
+    }
+
+    const tokens =
+      originalTokens.map(
+        (token) => ({ ...token })
+      );
+
+    /*
+      Normal standalone percentage:
+      10% = 0.1
+    */
+
+    const converted = [];
+
+    for (
+      let i = 0;
+      i < tokens.length;
+      i++
+    ) {
+      const current = tokens[i];
+
+      if (
+        current.type === "number" &&
+        tokens[i + 1]?.value === "%"
+      ) {
+        converted.push({
+          type: "number",
+          value: divideDecimal(
+            current.value,
+            "100"
+          ),
+        });
+
+        i++;
+      } else {
+        converted.push(current);
+      }
+    }
+
+    let index = 0;
+
+    const parsePrimary = () => {
+      const token = converted[index];
+
+      if (!token) {
+        throw new Error(
+          "INVALID"
+        );
+      }
+
+      if (
+        token.value === "+"
+      ) {
+        index++;
+
+        return parsePrimary();
+      }
+
+      if (
+        token.value === "-"
+      ) {
+        index++;
+
+        return multiplyDecimal(
+          "-1",
+          parsePrimary()
+        );
+      }
+
+      if (
+        token.value === "("
+      ) {
+        index++;
+
+        const value =
+          parseAddSubtract();
+
+        if (
+          converted[index]?.value !==
+          ")"
+        ) {
+          throw new Error(
+            "BRACKET"
+          );
+        }
+
+        index++;
+
+        return value;
+      }
+
+      if (
+        token.type === "number"
+      ) {
+        if (
+          !/^\d+(?:\.\d+)?$/.test(
+            token.value
+          )
+        ) {
+          throw new Error(
+            "NUMBER"
+          );
+        }
+
+        index++;
+
+        return normalizeDecimal(
+          token.value
+        );
+      }
+
+      throw new Error(
+        "INVALID"
+      );
+    };
+
+    const parseMultiplyDivide =
+      () => {
+        let left =
+          parsePrimary();
+
+        while (
+          index <
+          converted.length
+        ) {
+          const op =
+            converted[index]
+              ?.value;
+
+          if (
+            op !== "*" &&
+            op !== "/"
+          ) {
+            break;
+          }
+
+          index++;
+
+          const right =
+            parsePrimary();
+
+          if (op === "*") {
+            left =
+              multiplyDecimal(
+                left,
+                right
+              );
+          } else {
+            left =
+              divideDecimal(
+                left,
+                right
+              );
+          }
+        }
+
+        return left;
+      };
+
+    const parseAddSubtract =
+      () => {
+        let left =
+          parseMultiplyDivide();
+
+        while (
+          index <
+          converted.length
+        ) {
+          const op =
+            converted[index]
+              ?.value;
+
+          if (
+            op !== "+" &&
+            op !== "-"
+          ) {
+            break;
+          }
+
+          index++;
+
+          const right =
+            parseMultiplyDivide();
+
+          if (op === "+") {
+            left =
+              addDecimal(
+                left,
+                right
+              );
+          } else {
+            left =
+              subtractDecimal(
+                left,
+                right
+              );
+          }
+        }
+
+        return left;
+      };
+
+    const result =
+      parseAddSubtract();
+
+    if (
+      index !==
+      converted.length
+    ) {
+      throw new Error(
+        "INVALID"
+      );
+    }
+
+    return normalizeDecimal(
+      result
     );
-
-    const value = Function(
-      `"use strict"; return (${converted})`
-    )();
-
-    if (!Number.isFinite(value)) return null;
-
-    return value;
   } catch {
     return null;
   }
 };
 
-const getLastAmount = (expression) => {
-  const match = expression.match(
-    /(\d+(?:\.\d+)?)\s*(?:\(([^()]*)\))?$/
-  );
+/* =========================================================
+   NUMBER TO WORDS
+========================================================= */
 
-  if (!match) return null;
+const numberToWords = (
+  value,
+  currency = "INR"
+) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "";
+  }
+
+  const normalized =
+    normalizeDecimal(value);
+
+  const negative =
+    normalized.startsWith("-");
+
+  const clean = negative
+    ? normalized.slice(1)
+    : normalized;
+
+  const [
+    integerPart,
+    decimalPart,
+  ] = clean.split(".");
+
+  let number;
+
+  try {
+    number = BigInt(
+      integerPart || "0"
+    );
+  } catch {
+    return "";
+  }
+
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+  ];
+
+  const teens = [
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
+
+  const under100 = (n) => {
+    if (n < 10)
+      return ones[n];
+
+    if (n < 20)
+      return teens[n - 10];
+
+    return (
+      tens[Math.floor(n / 10)] +
+      (n % 10
+        ? ` ${ones[n % 10]}`
+        : "")
+    );
+  };
+
+  const under1000 = (n) => {
+    if (n < 100)
+      return under100(n);
+
+    return (
+      `${ones[Math.floor(n / 100)]} Hundred` +
+      (n % 100
+        ? ` ${under100(
+            n % 100
+          )}`
+        : "")
+    );
+  };
+
+  if (number === 0n) {
+    return currency === "INR"
+      ? "Zero Rupees"
+      : "Zero Dollars";
+  }
+
+  const groups = [
+    {
+      value: 1000000000000000n,
+      name: "Quadrillion",
+    },
+    {
+      value: 1000000000000n,
+      name: "Trillion",
+    },
+    {
+      value: 1000000000n,
+      name: "Billion",
+    },
+    {
+      value: 10000000n,
+      name: "Crore",
+    },
+    {
+      value: 100000n,
+      name: "Lakh",
+    },
+    {
+      value: 1000n,
+      name: "Thousand",
+    },
+  ];
+
+  const parts = [];
+
+  let remaining = number;
+
+  for (const group of groups) {
+    if (
+      remaining >= group.value
+    ) {
+      const count =
+        remaining / group.value;
+
+      remaining =
+        remaining % group.value;
+
+      let countText;
+
+      if (count <= 999n) {
+        countText =
+          under1000(
+            Number(count)
+          );
+      } else {
+        countText =
+          count.toString();
+      }
+
+      parts.push(
+        `${countText} ${group.name}`
+      );
+    }
+  }
+
+  if (remaining > 0n) {
+    parts.push(
+      under1000(
+        Number(remaining)
+      )
+    );
+  }
+
+  let result =
+    parts.join(" ");
+
+  if (decimalPart) {
+    result +=
+      " Point " +
+      decimalPart
+        .split("")
+        .map(
+          (digit) =>
+            ones[
+              Number(digit)
+            ]
+        )
+        .join(" ");
+  }
+
+  if (negative) {
+    result =
+      `Minus ${result}`;
+  }
+
+  return currency === "INR"
+    ? `${result} Rupees`
+    : `${result} Dollars`;
+};
+
+/* =========================================================
+   LAST AMOUNT
+========================================================= */
+
+const getLastAmount = (
+  expression
+) => {
+  const match =
+    expression.match(
+      /(\d+(?:\.\d+)?)(?:\s*\(([^()]*)\))?$/
+    );
+
+  if (!match)
+    return null;
 
   return {
     number: match[1],
-    description: match[2] || "",
+    description:
+      match[2] || "",
     start: match.index,
   };
 };
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function Calculate() {
-  const [expression, setExpression] = useState("");
+  const [
+    calculatorMode,
+    setCalculatorMode,
+  ] = useState(true);
 
-  const [description, setDescription] = useState("");
-  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [
+    expression,
+    setExpression,
+  ] = useState("");
 
-  const [total, setTotal] = useState(null);
-  const [showTotal, setShowTotal] = useState(false);
+  const [
+    description,
+    setDescription,
+  ] = useState("");
 
-  const [history, setHistory] = useState([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [
+    descriptionOpen,
+    setDescriptionOpen,
+  ] = useState(false);
 
-  const [currencyOpen, setCurrencyOpen] = useState(false);
-  const [usdAmount, setUsdAmount] = useState("");
-  const [usdRate, setUsdRate] = useState(null);
-  const [currencyLoading, setCurrencyLoading] = useState(false);
-  const [currencyError, setCurrencyError] = useState("");
+  const [
+    total,
+    setTotal,
+  ] = useState(null);
 
-  const descriptionRef = useRef(null);
+  const [
+    showTotal,
+    setShowTotal,
+  ] = useState(false);
+
+  const [
+    history,
+    setHistory,
+  ] = useState([]);
+
+  const [
+    historyOpen,
+    setHistoryOpen,
+  ] = useState(false);
+
+  const [
+    currencyDirection,
+    setCurrencyDirection,
+  ] = useState("USD_INR");
+
+  const [
+    currencyAmount,
+    setCurrencyAmount,
+  ] = useState("");
+
+  const [
+    usdRate,
+    setUsdRate,
+  ] = useState(null);
+
+  const [
+    currencyLoading,
+    setCurrencyLoading,
+  ] = useState(false);
+
+  const [
+    currencyError,
+    setCurrencyError,
+  ] = useState("");
+
+  const inputRef =
+    useRef(null);
+
+  const descriptionRef =
+    useRef(null);
+
+  const currencyInputRef =
+    useRef(null);
 
   /* =========================================================
      LOAD HISTORY
@@ -87,13 +936,21 @@ export default function Calculate() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(HISTORY_KEY);
+      const saved =
+        localStorage.getItem(
+          HISTORY_KEY
+        );
 
       if (saved) {
-        const parsed = JSON.parse(saved);
+        const parsed =
+          JSON.parse(saved);
 
-        if (Array.isArray(parsed)) {
-          setHistory(parsed.slice(0, 10));
+        if (
+          Array.isArray(parsed)
+        ) {
+          setHistory(
+            parsed.slice(0, 10)
+          );
         }
       }
     } catch {
@@ -101,8 +958,15 @@ export default function Calculate() {
     }
   }, []);
 
-  const updateHistory = (items) => {
-    const limited = items.slice(0, 10);
+  /* =========================================================
+     HISTORY SAVE
+  ========================================================= */
+
+  const saveHistory = (
+    items
+  ) => {
+    const limited =
+      items.slice(0, 10);
 
     setHistory(limited);
 
@@ -111,8 +975,47 @@ export default function Calculate() {
         HISTORY_KEY,
         JSON.stringify(limited)
       );
-    } catch {
-      // Ignore localStorage errors.
+    } catch {}
+  };
+
+  /* =========================================================
+     AUTO SCROLL INPUT
+  ========================================================= */
+
+  useEffect(() => {
+    if (
+      !calculatorMode ||
+      !inputRef.current
+    ) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      inputRef.current.scrollLeft =
+        inputRef.current.scrollWidth;
+    });
+  }, [
+    expression,
+    calculatorMode,
+  ]);
+
+  /* =========================================================
+     BLUR KEYBOARD WHEN KEYPAD USED
+  ========================================================= */
+
+  const preventKeyboard = () => {
+    if (
+      document.activeElement ===
+      inputRef.current
+    ) {
+      inputRef.current.blur();
+    }
+
+    if (
+      document.activeElement ===
+      descriptionRef.current
+    ) {
+      descriptionRef.current.blur();
     }
   };
 
@@ -121,16 +1024,20 @@ export default function Calculate() {
   ========================================================= */
 
   const openDescription = () => {
-    if (!expression.trim()) return;
+    if (!expression.trim())
+      return;
+
+    const last =
+      getLastAmount(
+        expression
+      );
+
+    setDescription(
+      last?.description || ""
+    );
 
     setDescriptionOpen(true);
     setShowTotal(false);
-
-    const last = getLastAmount(expression);
-
-    // Only load description if this exact amount already has one.
-    // New amounts remain completely blank.
-    setDescription(last?.description || "");
 
     setTimeout(() => {
       descriptionRef.current?.focus();
@@ -142,71 +1049,103 @@ export default function Calculate() {
     setDescription("");
   };
 
-  const handleDescriptionChange = (value) => {
-    const safeText = value
-      .replace(/[()]/g, "")
-      .trimStart();
+  const handleDescriptionChange = (
+    value
+  ) => {
+    const cleanText =
+      value
+        .replace(/[()]/g, "")
+        .trimStart();
 
-    setDescription(safeText);
+    setDescription(
+      cleanText
+    );
+
     setShowTotal(false);
 
-    const last = getLastAmount(expression);
+    const last =
+      getLastAmount(
+        expression
+      );
 
     if (!last) return;
 
-    const before = expression.substring(0, last.start);
+    const before =
+      expression.slice(
+        0,
+        last.start
+      );
 
-    const replacement = safeText
-      ? `${last.number} (${safeText})`
-      : last.number;
+    const replacement =
+      cleanText
+        ? `${last.number} (${cleanText})`
+        : last.number;
 
-    setExpression(before + replacement);
+    setExpression(
+      before + replacement
+    );
   };
 
   /* =========================================================
-     MAIN INPUT
+     INPUT
   ========================================================= */
 
-  const handleExpressionChange = (value) => {
+  const handleExpressionChange = (
+    value
+  ) => {
     setExpression(value);
     setShowTotal(false);
     setTotal(null);
 
     if (descriptionOpen) {
-      const last = getLastAmount(value);
+      const last =
+        getLastAmount(value);
 
-      // If user typed a new amount after an operator,
-      // the description must be fresh.
-      setDescription(last?.description || "");
+      setDescription(
+        last?.description || ""
+      );
     }
   };
 
   /* =========================================================
-     NUMBER
+     ADD NUMBER
   ========================================================= */
 
-  const addNumber = (value) => {
+  const addNumber = (
+    number
+  ) => {
+    preventKeyboard();
+
     setShowTotal(false);
     setTotal(null);
 
-    setExpression((previous) => {
-      const next = previous + value;
-
-      // If there is an operator before the new number,
-      // this is a new amount, so clear old description.
-      if (descriptionOpen) {
-        const trimmed = previous.trim();
+    setExpression(
+      (previous) => {
+        const next =
+          previous + number;
 
         if (
-          /[+\-*/%]\s*$/.test(trimmed) ||
-          trimmed === ""
+          descriptionOpen
         ) {
-          setDescription("");
-        }
-      }
+          const trimmed =
+            previous.trim();
 
-      return next;
-    });
+          if (
+            !trimmed ||
+            /[+\-*/]\s*$/.test(
+              trimmed
+            )
+          ) {
+            setDescription("");
+            setDescriptionOpen(
+              false
+            );
+          }
+        }
+
+        return next;
+      }
+    );
   };
 
   /* =========================================================
@@ -214,49 +1153,77 @@ export default function Calculate() {
   ========================================================= */
 
   const addDecimal = () => {
+    preventKeyboard();
+
     setShowTotal(false);
     setTotal(null);
 
-    setExpression((previous) => {
-      const parts = previous.split(/[\s+\-*/]/);
-      const lastPart = parts[parts.length - 1];
+    setExpression(
+      (previous) => {
+        const parts =
+          previous.split(
+            /[+\-*/%\s]/
+          );
 
-      if (lastPart.includes(".")) {
-        return previous;
+        const last =
+          parts[
+            parts.length - 1
+          ];
+
+        if (
+          last.includes(".")
+        ) {
+          return previous;
+        }
+
+        if (!last) {
+          return `${previous}0.`;
+        }
+
+        return `${previous}.`;
       }
-
-      if (!lastPart) {
-        return previous + "0.";
-      }
-
-      return previous + ".";
-    });
+    );
   };
 
   /* =========================================================
      OPERATOR
   ========================================================= */
 
-  const addOperator = (operator) => {
+  const addOperator = (
+    operator
+  ) => {
+    preventKeyboard();
+
     setShowTotal(false);
     setTotal(null);
 
-    setExpression((previous) => {
-      let value = previous.trim();
+    setExpression(
+      (previous) => {
+        let value =
+          previous.trim();
 
-      if (!value) return value;
+        if (!value)
+          return value;
 
-      // Don't allow two operators together.
-      if (/[+\-*/]\s*$/.test(value)) {
-        value = value.slice(0, -1).trim();
+        if (
+          /[+\-*/]\s*$/.test(
+            value
+          )
+        ) {
+          value =
+            value
+              .slice(0, -1)
+              .trim();
+        }
+
+        setDescription("");
+        setDescriptionOpen(
+          false
+        );
+
+        return `${value} ${operator} `;
       }
-
-      // Description is now completed for the previous amount.
-      // Clear description for the NEXT amount.
-      setDescription("");
-
-      return `${value} ${operator} `;
-    });
+    );
   };
 
   /* =========================================================
@@ -264,18 +1231,28 @@ export default function Calculate() {
   ========================================================= */
 
   const addPercent = () => {
+    preventKeyboard();
+
     setShowTotal(false);
     setTotal(null);
 
-    setExpression((previous) => {
-      if (!previous.trim()) return previous;
+    setExpression(
+      (previous) => {
+        const value =
+          previous.trim();
 
-      if (/%\s*$/.test(previous)) {
-        return previous;
+        if (!value)
+          return previous;
+
+        if (
+          value.endsWith("%")
+        ) {
+          return previous;
+        }
+
+        return `${value}%`;
       }
-
-      return `${previous}%`;
-    });
+    );
   };
 
   /* =========================================================
@@ -283,19 +1260,36 @@ export default function Calculate() {
   ========================================================= */
 
   const backspace = () => {
+    preventKeyboard();
+
     setShowTotal(false);
     setTotal(null);
 
-    setExpression((previous) => {
-      const value = previous.slice(0, -1);
+    setExpression(
+      (previous) => {
+        const next =
+          previous.slice(
+            0,
+            -1
+          );
 
-      if (descriptionOpen) {
-        const last = getLastAmount(value);
-        setDescription(last?.description || "");
+        if (
+          descriptionOpen
+        ) {
+          const last =
+            getLastAmount(
+              next
+            );
+
+          setDescription(
+            last?.description ||
+              ""
+          );
+        }
+
+        return next;
       }
-
-      return value;
-    });
+    );
   };
 
   /* =========================================================
@@ -303,6 +1297,8 @@ export default function Calculate() {
   ========================================================= */
 
   const clearAll = () => {
+    preventKeyboard();
+
     setExpression("");
     setDescription("");
     setDescriptionOpen(false);
@@ -315,30 +1311,36 @@ export default function Calculate() {
   ========================================================= */
 
   const calculateTotal = () => {
-    if (!expression.trim()) return;
+    preventKeyboard();
 
-    const value = calculateExpression(expression);
+    if (!expression.trim())
+      return;
+
+    const value =
+      calculateExpression(
+        expression
+      );
+
+    setShowTotal(true);
 
     if (value === null) {
       setTotal(null);
-      setShowTotal(true);
       return;
     }
 
-    const formatted = formatNumber(value);
+    const formatted =
+      formatNumber(value);
 
     setTotal(formatted);
-    setShowTotal(true);
 
-    // Store ONLY final total.
-    const newItem = {
-      id: Date.now(),
-      total: formatted,
-    };
+    saveHistory([
+      {
+        id: Date.now(),
+        total: formatted,
+      },
+      ...history,
+    ]);
 
-    updateHistory([newItem, ...history]);
-
-    // Keep current expression but close description field.
     setDescriptionOpen(false);
     setDescription("");
   };
@@ -347,20 +1349,23 @@ export default function Calculate() {
      HISTORY
   ========================================================= */
 
-  const deleteHistory = (id) => {
-    const updated = history.filter(
-      (item) => item.id !== id
+  const deleteHistoryItem = (
+    id
+  ) => {
+    saveHistory(
+      history.filter(
+        (item) =>
+          item.id !== id
+      )
     );
-
-    updateHistory(updated);
   };
 
-  const deleteAllHistory = () => {
-    updateHistory([]);
+  const clearHistory = () => {
+    saveHistory([]);
   };
 
   /* =========================================================
-     CURRENCY
+     USD RATE
   ========================================================= */
 
   const loadUsdRate = async () => {
@@ -368,110 +1373,100 @@ export default function Calculate() {
     setCurrencyError("");
 
     try {
-      const response = await fetch(
-        "https://open.er-api.com/v6/latest/USD"
-      );
+      const response =
+        await fetch(
+          "https://open.er-api.com/v6/latest/USD"
+        );
 
       if (!response.ok) {
-        throw new Error("Unable to load rate");
+        throw new Error();
       }
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!data?.rates?.INR) {
-        throw new Error("INR rate unavailable");
+      if (
+        !data?.rates?.INR
+      ) {
+        throw new Error();
       }
 
-      setUsdRate(data.rates.INR);
+      setUsdRate(
+        Number(
+          data.rates.INR
+        )
+      );
     } catch {
       setCurrencyError(
-        "Unable to load rate. Please try again."
+        "Unable to load current rate. Try again."
       );
     } finally {
       setCurrencyLoading(false);
     }
   };
 
-  const toggleCurrency = () => {
-    const next = !currencyOpen;
+  /* =========================================================
+     CURRENCY MODE
+  ========================================================= */
 
-    setCurrencyOpen(next);
+  const openCurrency = () => {
+    preventKeyboard();
 
-    if (next && usdRate === null) {
+    setCalculatorMode(false);
+    setHistoryOpen(false);
+    setDescriptionOpen(false);
+    setDescription("");
+    setShowTotal(false);
+    setTotal(null);
+    setCurrencyAmount("");
+
+    if (
+      usdRate === null
+    ) {
       loadUsdRate();
     }
+
+    setTimeout(() => {
+      currencyInputRef.current?.focus();
+    }, 150);
   };
 
-  const inrValue =
-    usdAmount && usdRate
-      ? Number(usdAmount) * usdRate
+  const closeCurrency = () => {
+    setCalculatorMode(true);
+    setCurrencyAmount("");
+  };
+
+  const switchCurrency = () => {
+    setCurrencyDirection(
+      (previous) =>
+        previous === "USD_INR"
+          ? "INR_USD"
+          : "USD_INR"
+    );
+
+    setCurrencyAmount("");
+
+    setTimeout(() => {
+      currencyInputRef.current?.focus();
+    }, 100);
+  };
+
+  const currencyValue =
+    currencyAmount &&
+    usdRate &&
+    Number(currencyAmount) > 0
+      ? currencyDirection ===
+        "USD_INR"
+        ? Number(
+            currencyAmount
+          ) * usdRate
+        : Number(
+            currencyAmount
+          ) / usdRate
       : null;
 
   /* =========================================================
-     KEYBOARD
-  ========================================================= */
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      const target = event.target;
-
-      // Don't control typing inside description field.
-      if (
-        target &&
-        target.classList.contains("description-input")
-      ) {
-        return;
-      }
-
-      const key = event.key;
-
-      if (/^\d$/.test(key)) {
-        addNumber(key);
-        return;
-      }
-
-      if (key === ".") {
-        addDecimal();
-        return;
-      }
-
-      if (["+", "-", "*", "/"].includes(key)) {
-        addOperator(key);
-        return;
-      }
-
-      if (key === "%") {
-        addPercent();
-        return;
-      }
-
-      if (key === "Backspace") {
-        backspace();
-        return;
-      }
-
-      if (key === "Escape") {
-        clearAll();
-        return;
-      }
-
-      if (key === "Enter") {
-        calculateTotal();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-    };
-  });
-
-  /* =========================================================
-     BUTTON
+     KEY BUTTON
   ========================================================= */
 
   const KeyButton = ({
@@ -479,307 +1474,461 @@ export default function Calculate() {
     onClick,
     type = "number",
     wide = false,
-  }) => {
-    return (
-      <button
-        type="button"
-        className={`calc-key calc-key-${type} ${
-          wide ? "calc-key-wide" : ""
-        }`}
-        onClick={onClick}
-      >
-        {children}
-      </button>
-    );
-  };
+  }) => (
+    <button
+      type="button"
+      className={`calc-key calc-key-${type} ${
+        wide
+          ? "calc-key-wide"
+          : ""
+      }`}
+      onPointerDown={
+        preventKeyboard
+      }
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
     <>
       <style>{`
-        :root {
-          --calc-bg: #f4f1ff;
-          --calc-card: #ffffff;
-          --calc-text: #17152b;
-          --calc-muted: #77728f;
-
-          --purple: #7c3aed;
-          --purple-dark: #5b21b6;
-          --violet: #8b5cf6;
-          --pink: #ec4899;
-          --blue: #2563eb;
-          --cyan: #06b6d4;
-          --green: #10b981;
-          --orange: #f97316;
-          --red: #ef4444;
-          --yellow: #f59e0b;
-        }
 
         * {
           box-sizing: border-box;
         }
 
-        body {
+        html,
+        body,
+        #root {
+          width: 100%;
+          min-height: 100%;
           margin: 0;
+          padding: 0;
+        }
+
+        html {
+          overflow-x: hidden;
+        }
+
+        body {
+          overflow-x: hidden;
           background:
             radial-gradient(
-              circle at top left,
-              rgba(139, 92, 246, 0.15),
-              transparent 35%
+              circle at 10% 3%,
+              rgba(124,58,237,.16),
+              transparent 31%
             ),
             radial-gradient(
-              circle at bottom right,
-              rgba(236, 72, 153, 0.12),
-              transparent 35%
+              circle at 92% 95%,
+              rgba(236,72,153,.13),
+              transparent 31%
             ),
-            var(--calc-bg);
-          color: var(--calc-text);
+            #f6f3ff;
+
+          color: #17152b;
+
           font-family:
             Inter,
             -apple-system,
             BlinkMacSystemFont,
             "Segoe UI",
+            Roboto,
+            Arial,
             sans-serif;
+
+          -webkit-text-size-adjust: 100%;
         }
 
+        button,
+        input {
+          font-family: inherit;
+        }
+
+        button {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+
+        input {
+          -webkit-appearance: none;
+        }
+
+        /* =====================================
+           PAGE
+        ===================================== */
+
         .calculator-page {
-          min-height: 100vh;
-          padding: 22px 14px 40px;
+          width: 100%;
+          min-height: 100dvh;
+
+          padding-top:
+            max(16px, env(safe-area-inset-top));
+
+          padding-right:
+            max(9px, env(safe-area-inset-right));
+
+          padding-bottom:
+            max(26px, env(safe-area-inset-bottom));
+
+          padding-left:
+            max(9px, env(safe-area-inset-left));
+
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
+
+          overflow-x: hidden;
         }
 
         .calculator-wrapper {
           width: 100%;
-          max-width: 560px;
+          max-width: 600px;
           margin: 0 auto;
         }
 
-        /* TOP BAR */
+        /* =====================================
+           TOP
+        ===================================== */
 
         .top-bar {
+          width: 100%;
+
+          min-height: 58px;
+
           display: flex;
           align-items: center;
           justify-content: space-between;
+
           gap: 12px;
-          margin-bottom: 18px;
-          padding: 0 2px;
+
+          padding:
+            0 6px;
+
+          margin-bottom: 9px;
         }
 
         .brand {
           display: flex;
           align-items: center;
+
           gap: 8px;
+
+          color: #17152b;
+
           font-size: 16px;
-          font-weight: 800;
-          letter-spacing: -0.3px;
+          font-weight: 900;
+
+          white-space: nowrap;
         }
 
         .brand-code {
-          color: var(--purple);
-          font-weight: 900;
-          font-size: 17px;
+          color: #7c3aed;
+
+          font-size: 18px;
+          font-weight: 950;
         }
 
         .calculator-title {
-          font-size: 16px;
-          font-weight: 800;
-          color: #302a49;
+          color: #31294b;
+
+          font-size: 15px;
+          font-weight: 900;
+
+          white-space: nowrap;
         }
 
-        /* CARD */
+        /* =====================================
+           CARD
+        ===================================== */
 
         .calculator-card {
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid rgba(124, 58, 237, 0.10);
-          border-radius: 28px;
-          padding: 18px;
+          width: 100%;
+
+          padding: 16px;
+
+          border:
+            1px solid
+            rgba(124,58,237,.10);
+
+          border-radius: 25px;
+
+          background:
+            rgba(255,255,255,.98);
+
           box-shadow:
-            0 22px 60px rgba(68, 45, 130, 0.12),
-            0 4px 14px rgba(68, 45, 130, 0.06);
-          backdrop-filter: blur(18px);
+            0 22px 55px
+              rgba(72,47,140,.12),
+            0 4px 16px
+              rgba(72,47,140,.05);
+
+          overflow: visible;
         }
 
-        /* INPUT */
-
-        .main-input-wrap {
-          position: relative;
-        }
+        /* =====================================
+           INPUT
+        ===================================== */
 
         .main-input {
+          display: block;
+
           width: 100%;
-          height: 62px;
-          border: 1.5px solid #e6e1f2;
+          height: 64px;
+
+          padding:
+            0 16px;
+
+          border:
+            1.5px solid #ded8ed;
+
           border-radius: 17px;
+
           outline: none;
-          background: #fbfaff;
-          color: var(--calc-text);
-          padding: 0 16px;
+
+          background: #fcfbff;
+
+          color: #17152b;
+
           font-size: 19px;
-          font-weight: 700;
-          transition: 0.25s ease;
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+          font-weight: 750;
+
+          white-space: nowrap;
+
+          overflow-x: auto;
+          overflow-y: hidden;
+
+          scrollbar-width: none;
+
+          transition:
+            border-color .18s ease,
+            box-shadow .18s ease;
+        }
+
+        .main-input::-webkit-scrollbar {
+          display: none;
         }
 
         .main-input::placeholder {
-          color: #aaa4bd;
+          color: #aaa4bb;
           font-weight: 500;
         }
 
         .main-input:focus {
-          background: #ffffff;
-          border-color: var(--violet);
+          background: white;
+
+          border-color: #8b5cf6;
+
           box-shadow:
-            0 0 0 4px rgba(124, 58, 237, 0.10),
-            0 8px 25px rgba(124, 58, 237, 0.08);
+            0 0 0 4px
+              rgba(124,58,237,.09);
         }
 
-        /* DESCRIPTION */
+        /* =====================================
+           DESCRIPTION
+        ===================================== */
 
         .description-area {
           margin-top: 9px;
-          animation: slideDown 0.2s ease;
         }
 
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-5px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .description-input-wrap {
+        .description-wrap {
           position: relative;
-        }
-
-        .description-prefix,
-        .description-suffix {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          color: var(--purple);
-          font-size: 17px;
-          font-weight: 800;
-          z-index: 2;
-          pointer-events: none;
-        }
-
-        .description-prefix {
-          left: 13px;
-        }
-
-        .description-suffix {
-          right: 13px;
+          width: 100%;
         }
 
         .description-input {
           width: 100%;
           height: 44px;
-          border-radius: 13px;
-          border: 1.5px solid #ddd5f4;
-          background: #faf8ff;
-          padding: 0 32px;
+
+          padding:
+            0 31px;
+
+          border:
+            1.5px solid #ddd5f2;
+
+          border-radius: 12px;
+
           outline: none;
+
+          background: #faf8ff;
+
           color: #3d315d;
-          font-size: 15px;
-          font-weight: 600;
-          transition: 0.2s ease;
+
+          font-size: 14px;
+          font-weight: 650;
         }
 
         .description-input:focus {
-          border-color: var(--pink);
-          box-shadow:
-            0 0 0 3px rgba(236, 72, 153, 0.10);
           background: white;
+
+          border-color: #ec4899;
+
+          box-shadow:
+            0 0 0 3px
+              rgba(236,72,153,.10);
+        }
+
+        .description-bracket {
+          position: absolute;
+
+          top: 50%;
+
+          transform:
+            translateY(-50%);
+
+          z-index: 2;
+
+          color: #7c3aed;
+
+          font-size: 17px;
+          font-weight: 900;
+
+          pointer-events: none;
+        }
+
+        .description-left {
+          left: 12px;
+        }
+
+        .description-right {
+          right: 12px;
         }
 
         .description-hint {
-          margin-top: 5px;
-          padding-left: 4px;
-          color: #9991aa;
-          font-size: 11px;
+          margin:
+            5px 3px 0;
+
+          color: #9b94aa;
+
+          font-size: 9px;
         }
 
-        /* RESULT */
+        /* =====================================
+           RESULT
+        ===================================== */
 
         .result-box {
-          margin-top: 12px;
-          padding: 14px 16px;
-          border-radius: 16px;
+          width: 100%;
+
+          margin-top: 11px;
+
+          padding:
+            13px 15px;
+
+          border-radius: 15px;
+
           background:
             linear-gradient(
               135deg,
-              #f1ecff,
-              #fff1f8
+              #f0eaff,
+              #fff0f8
             );
-          border: 1px solid rgba(124, 58, 237, 0.12);
+
+          border:
+            1px solid
+            rgba(124,58,237,.10);
+
+          overflow: hidden;
         }
 
         .result-label {
-          color: var(--calc-muted);
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 1px;
+          color: #837a98;
+
+          font-size: 9px;
+          font-weight: 900;
+
+          letter-spacing: 1.2px;
           text-transform: uppercase;
         }
 
         .result-value {
           margin-top: 2px;
-          color: var(--purple-dark);
-          font-size: 28px;
-          font-weight: 900;
+
+          color: #5b21b6;
+
+          font-size:
+            clamp(23px, 7vw, 32px);
+
+          line-height: 1.2;
+
+          font-weight: 950;
+
+          overflow-wrap: anywhere;
           word-break: break-word;
         }
 
-        .error-result {
-          color: var(--red);
-          font-size: 14px;
-          font-weight: 700;
+        .result-error {
+          color: #dc2626;
+
+          font-size: 13px;
+          font-weight: 800;
         }
 
-        /* TOOL BUTTONS */
+        /* =====================================
+           TOOLS
+        ===================================== */
 
         .tool-row {
+          width: 100%;
+
           display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 8px;
-          margin-top: 12px;
+
+          grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+
+          gap: 7px;
+
+          margin-top: 11px;
         }
 
         .tool-btn {
-          min-height: 42px;
-          border: 0;
-          border-radius: 13px;
-          font-weight: 800;
-          font-size: 12px;
-          transition: 0.2s ease;
-          cursor: pointer;
-        }
+          width: 100%;
+          min-width: 0;
 
-        .tool-btn:hover {
-          transform: translateY(-2px);
+          height: 45px;
+
+          border: 0;
+
+          border-radius: 12px;
+
+          font-size:
+            clamp(9px, 2.6vw, 11px);
+
+          font-weight: 900;
+
+          cursor: pointer;
+
+          white-space: nowrap;
+
+          transition:
+            transform .12s ease,
+            filter .12s ease;
         }
 
         .tool-btn:active {
-          transform: scale(0.96);
+          transform: scale(.94);
+          filter: brightness(.94);
         }
 
         .description-btn {
           color: #6d28d9;
-          background: #f0eaff;
+          background: #efe9ff;
         }
 
         .description-btn.active {
           color: white;
+
           background:
             linear-gradient(
               135deg,
-              var(--purple),
-              var(--pink)
+              #7c3aed,
+              #ec4899
             );
-          box-shadow:
-            0 8px 20px rgba(124, 58, 237, 0.22);
         }
 
         .history-btn {
@@ -789,157 +1938,104 @@ export default function Calculate() {
 
         .currency-btn {
           color: #047857;
-          background: #e5fbf3;
+          background: #e5faf2;
         }
 
-        /* KEYPAD */
-
-        .keypad {
-          margin-top: 15px;
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 9px;
-        }
-
-        .calc-key {
-          height: 58px;
-          border: 0;
-          border-radius: 16px;
-          font-size: 18px;
-          font-weight: 800;
-          cursor: pointer;
-          transition:
-            transform 0.13s ease,
-            box-shadow 0.2s ease,
-            background 0.2s ease;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        .calc-key:hover {
-          transform: translateY(-2px);
-        }
-
-        .calc-key:active {
-          transform: scale(0.94);
-        }
-
-        .calc-key-number {
-          background: #f4f1fa;
-          color: #28223e;
-          box-shadow:
-            0 4px 10px rgba(70, 50, 110, 0.06);
-        }
-
-        .calc-key-number:hover {
-          background: #ebe5f8;
-          box-shadow:
-            0 8px 18px rgba(70, 50, 110, 0.10);
-        }
-
-        .calc-key-operator {
-          color: white;
-          background:
-            linear-gradient(
-              135deg,
-              #7c3aed,
-              #9333ea
-            );
-          box-shadow:
-            0 7px 16px rgba(124, 58, 237, 0.22);
-        }
-
-        .calc-key-operator:hover {
-          background:
-            linear-gradient(
-              135deg,
-              #6d28d9,
-              #7e22ce
-            );
-        }
-
-        .calc-key-action {
-          color: #be123c;
-          background: #fff0f4;
-        }
-
-        .calc-key-percent {
-          color: #0369a1;
-          background: #e8f7ff;
-        }
-
-        .calc-key-total {
-          color: white;
-          background:
-            linear-gradient(
-              135deg,
-              #ec4899,
-              #7c3aed
-            );
-          box-shadow:
-            0 9px 22px rgba(236, 72, 153, 0.23);
-        }
-
-        .calc-key-total:hover {
-          background:
-            linear-gradient(
-              135deg,
-              #db2777,
-              #6d28d9
-            );
-        }
-
-        .calc-key-wide {
-          grid-column: span 2;
-        }
-
-        /* HISTORY */
+        /* =====================================
+           HISTORY
+        ===================================== */
 
         .history-panel {
-          margin-top: 15px;
-          border-radius: 18px;
-          background: #faf9ff;
-          border: 1px solid #ebe5f7;
+          width: 100%;
+
+          margin-top: 10px;
+
+          border:
+            1px solid #e5def0;
+
+          border-radius: 16px;
+
+          background: #fbfaff;
+
           overflow: hidden;
-          animation: slideDown 0.2s ease;
+
+          animation:
+            historyOpen .18s ease;
+        }
+
+        @keyframes historyOpen {
+          from {
+            opacity: 0;
+            transform: translateY(-5px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         .history-header {
+          min-height: 46px;
+
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          padding: 13px 14px;
-          border-bottom: 1px solid #eee9f6;
+          justify-content: space-between;
+
+          gap: 10px;
+
+          padding:
+            0 13px;
+
+          border-bottom:
+            1px solid #eee9f6;
         }
 
         .history-title {
+          color: #2e2742;
+
           font-size: 14px;
           font-weight: 900;
         }
 
         .clear-history {
           border: 0;
+
           background: transparent;
-          color: var(--red);
-          font-size: 12px;
-          font-weight: 800;
+
+          color: #ef4444;
+
+          font-size: 10px;
+          font-weight: 850;
+
           cursor: pointer;
         }
 
         .history-empty {
-          padding: 22px 15px;
+          padding:
+            19px 13px;
+
+          color: #9b94aa;
+
+          font-size: 11px;
+
           text-align: center;
-          color: #9a94aa;
-          font-size: 13px;
         }
 
         .history-item {
+          min-height: 47px;
+
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          padding: 12px 14px;
-          border-bottom: 1px solid #eee9f6;
+
+          gap: 10px;
+
+          padding:
+            6px 11px;
+
+          border-bottom:
+            1px solid #eee9f6;
         }
 
         .history-item:last-child {
@@ -947,112 +2043,541 @@ export default function Calculate() {
         }
 
         .history-total {
+          min-width: 0;
+
           color: #31265a;
-          font-size: 17px;
+
+          font-size: 15px;
           font-weight: 900;
+
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
 
         .delete-history {
+          flex: 0 0 auto;
+
           width: 32px;
           height: 32px;
+
           border: 0;
-          border-radius: 10px;
+
+          border-radius: 9px;
+
           background: #fff0f2;
-          color: var(--red);
+
+          color: #ef4444;
+
+          font-size: 19px;
+          font-weight: 800;
+
+          cursor: pointer;
+        }
+
+        .delete-history:active {
+          transform: scale(.90);
+        }
+
+        /* =====================================
+           KEYPAD
+        ===================================== */
+
+        .keypad {
+          width: 100%;
+
+          display: grid;
+
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 8px;
+
+          margin-top: 13px;
+        }
+
+        .calc-key {
+          width: 100%;
+          min-width: 0;
+
+          height:
+            clamp(54px, 13.5vw, 64px);
+
+          border: 0;
+
+          border-radius: 15px;
+
+          font-size:
+            clamp(16px, 4.8vw, 19px);
+
           font-weight: 900;
-          transition: 0.2s ease;
+
+          cursor: pointer;
+
+          user-select: none;
+
+          transition:
+            transform .10s ease,
+            filter .10s ease,
+            box-shadow .12s ease;
         }
 
-        .delete-history:hover {
-          background: #ffe0e5;
-          transform: scale(1.05);
+        .calc-key:active {
+          transform: scale(.92);
+
+          filter: brightness(.92);
         }
 
-        /* CURRENCY */
+        .calc-key-number {
+          color: #29233d;
 
-        .currency-panel {
-          margin-top: 15px;
-          padding: 15px;
-          border-radius: 18px;
+          background: #f3f0f8;
+
+          box-shadow:
+            0 3px 9px
+              rgba(70,50,110,.05);
+        }
+
+        .calc-key-action {
+          color: #be123c;
+
+          background: #fff0f4;
+        }
+
+        .calc-key-percent {
+          color: #0369a1;
+
+          background: #e7f7ff;
+        }
+
+        .calc-key-operator {
+          color: white;
+
           background:
             linear-gradient(
               135deg,
-              #ecfdf7,
-              #effaff
+              #7c3aed,
+              #9333ea
             );
-          border: 1px solid #d7f3e9;
-          animation: slideDown 0.2s ease;
+
+          box-shadow:
+            0 6px 14px
+              rgba(124,58,237,.20);
         }
 
-        .currency-title {
-          font-size: 14px;
+        .calc-key-total {
+          color: white;
+
+          background:
+            linear-gradient(
+              135deg,
+              #ec4899,
+              #7c3aed
+            );
+
+          box-shadow:
+            0 8px 19px
+              rgba(236,72,153,.21);
+        }
+
+        .calc-key-wide {
+          grid-column:
+            span 2;
+        }
+
+        /* =====================================
+           CURRENCY
+        ===================================== */
+
+        .currency-mode {
+          width: 100%;
+        }
+
+        .currency-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          gap: 10px;
+
+          margin-bottom: 15px;
+        }
+
+        .currency-heading {
+          color: #075e4b;
+
+          font-size: 17px;
+          font-weight: 950;
+        }
+
+        .currency-close {
+          min-height: 39px;
+
+          padding:
+            0 11px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          background: #f0edf7;
+
+          color: #514969;
+
+          font-size: 10px;
+          font-weight: 850;
+
+          cursor: pointer;
+        }
+
+        .currency-close:active {
+          transform: scale(.94);
+        }
+
+        .currency-direction-card {
+          min-height: 58px;
+
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          gap: 10px;
+
+          margin-bottom: 13px;
+
+          padding:
+            9px 10px;
+
+          border:
+            1px solid #d9eee7;
+
+          border-radius: 13px;
+
+          background: #f3fcf8;
+        }
+
+        .currency-direction-text {
+          color: #287260;
+
+          font-size: 11px;
+          font-weight: 850;
+        }
+
+        .switch-currency {
+          flex: 0 0 auto;
+
+          width: 44px;
+          height: 39px;
+
+          border: 0;
+
+          border-radius: 10px;
+
+          color: white;
+
+          background:
+            linear-gradient(
+              135deg,
+              #10b981,
+              #06b6d4
+            );
+
+          font-size: 20px;
           font-weight: 900;
-          margin-bottom: 10px;
+        }
+
+        .switch-currency:active {
+          transform: scale(.90);
+        }
+
+        .currency-input-label {
+          display: block;
+
+          margin-bottom: 6px;
+
+          color: #547d70;
+
+          font-size: 10px;
+          font-weight: 850;
         }
 
         .currency-input {
-          height: 45px;
-          border-radius: 12px;
-          border: 1px solid #cfe8df;
           width: 100%;
-          padding: 0 12px;
+          height: 57px;
+
+          padding:
+            0 14px;
+
+          border:
+            1.5px solid #cfe7df;
+
+          border-radius: 15px;
+
           outline: none;
-          font-weight: 700;
+
           background: white;
+
+          color: #17352d;
+
+          font-size: 20px;
+          font-weight: 850;
         }
 
         .currency-input:focus {
-          border-color: var(--green);
+          border-color: #10b981;
+
           box-shadow:
-            0 0 0 3px rgba(16, 185, 129, 0.10);
+            0 0 0 4px
+              rgba(16,185,129,.10);
         }
 
         .currency-result {
-          margin-top: 11px;
-          padding: 12px;
-          border-radius: 12px;
+          margin-top: 14px;
+
+          padding:
+            15px;
+
+          border:
+            1px solid #d8eee7;
+
+          border-radius: 15px;
+
           background: white;
-          color: #047857;
-          font-weight: 900;
         }
 
-        .rate-text {
-          margin-top: 7px;
-          color: #658278;
-          font-size: 11px;
+        .currency-result-label {
+          color: #76958c;
+
+          font-size: 9px;
+          font-weight: 850;
+
+          text-transform: uppercase;
+          letter-spacing: .8px;
         }
 
-        .refresh-rate {
-          border: 0;
-          margin-top: 8px;
-          border-radius: 10px;
-          padding: 7px 11px;
-          background: #dff8ed;
+        .currency-number {
+          margin-top: 3px;
+
           color: #047857;
-          font-size: 11px;
-          font-weight: 800;
+
+          font-size:
+            clamp(24px, 7vw, 31px);
+
+          line-height: 1.2;
+
+          font-weight: 950;
+
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .currency-words {
+          margin-top: 5px;
+
+          color: #758e87;
+
+          font-size: 9px;
+
+          line-height: 1.4;
+
+          overflow-wrap: anywhere;
+        }
+
+        .currency-rate-box {
+          margin-top: 12px;
+
+          padding:
+            10px 12px;
+
+          border-radius: 11px;
+
+          background: #effaf6;
+
+          color: #547a70;
+
+          font-size: 9px;
+
+          line-height: 1.5;
+        }
+
+        .currency-rate-box strong {
+          color: #047857;
+        }
+
+        .currency-updated {
+          display: block;
+
+          color: #91a69f;
+
+          font-size: 8px;
+        }
+
+        .currency-loading,
+        .currency-error {
+          margin-top: 10px;
+
+          font-size: 10px;
+          font-weight: 750;
+        }
+
+        .currency-loading {
+          color: #568278;
         }
 
         .currency-error {
-          margin-top: 8px;
-          color: var(--red);
-          font-size: 12px;
-          font-weight: 700;
+          color: #dc2626;
         }
 
-        /* DESKTOP */
+        .refresh-rate {
+          margin-top: 7px;
 
-        @media (min-width: 768px) {
+          padding:
+            7px 10px;
+
+          border: 0;
+
+          border-radius: 8px;
+
+          background: #d9f7eb;
+
+          color: #047857;
+
+          font-size: 9px;
+          font-weight: 850;
+        }
+
+        /* =====================================
+           SMALL PHONE
+        ===================================== */
+
+        @media (max-width: 359px) {
+
           .calculator-page {
-            padding-top: 45px;
+            padding-left:
+              max(6px,
+              env(safe-area-inset-left));
+
+            padding-right:
+              max(6px,
+              env(safe-area-inset-right));
+
+            padding-top:
+              max(11px,
+              env(safe-area-inset-top));
+
+            padding-bottom:
+              max(24px,
+              env(safe-area-inset-bottom));
+          }
+
+          .top-bar {
+            min-height: 49px;
+
+            margin-bottom: 7px;
+          }
+
+          .brand {
+            font-size: 14px;
+          }
+
+          .calculator-title {
+            font-size: 13px;
+          }
+
+          .brand-code {
+            font-size: 15px;
           }
 
           .calculator-card {
-            padding: 22px;
+            padding: 11px;
+
+            border-radius: 21px;
+          }
+
+          .main-input {
+            height: 55px;
+
+            font-size: 16px;
+
+            border-radius: 14px;
+          }
+
+          .tool-row {
+            gap: 5px;
+          }
+
+          .tool-btn {
+            height: 40px;
+
+            font-size: 8px;
+          }
+
+          .keypad {
+            gap: 6px;
+          }
+
+          .calc-key {
+            height: 50px;
+
+            border-radius: 13px;
+
+            font-size: 15px;
+          }
+        }
+
+        /* =====================================
+           STANDARD MOBILE
+        ===================================== */
+
+        @media (min-width: 360px) and (max-width: 600px) {
+
+          .calculator-page {
+            padding-top:
+              max(14px,
+              env(safe-area-inset-top));
+
+            padding-bottom:
+              max(27px,
+              env(safe-area-inset-bottom));
+          }
+
+          .calculator-card {
+            padding: 15px;
+          }
+
+          .keypad {
+            gap: 8px;
+          }
+        }
+
+        /* =====================================
+           TABLET
+        ===================================== */
+
+        @media (min-width: 601px) {
+
+          .calculator-page {
+            padding-top:
+              max(30px,
+              env(safe-area-inset-top));
+
+            padding-bottom:
+              max(45px,
+              env(safe-area-inset-bottom));
+          }
+
+          .calculator-wrapper {
+            max-width: 590px;
+          }
+
+          .calculator-card {
+            padding: 21px;
+
+            border-radius: 27px;
           }
 
           .main-input {
             height: 68px;
+
             font-size: 21px;
           }
 
@@ -1061,202 +2586,244 @@ export default function Calculate() {
           }
         }
 
-        /* SMALL MOBILE */
+        /* =====================================
+           DESKTOP
+        ===================================== */
 
-        @media (max-width: 380px) {
+        @media (min-width: 1000px) {
+
           .calculator-page {
-            padding: 14px 9px 30px;
+            padding-top: 42px;
           }
 
-          .calculator-card {
-            padding: 13px;
-            border-radius: 23px;
+          .calculator-wrapper {
+            max-width: 610px;
+          }
+        }
+
+        /* =====================================
+           LANDSCAPE PHONE
+        ===================================== */
+
+        @media (
+          max-height: 520px
+        ) and (
+          orientation: landscape
+        ) {
+
+          .calculator-page {
+            padding-top: 8px;
+            padding-bottom: 12px;
           }
 
           .top-bar {
-            margin-bottom: 13px;
+            min-height: 40px;
+            margin-bottom: 5px;
           }
 
-          .brand,
-          .calculator-title {
-            font-size: 14px;
+          .calculator-card {
+            padding: 10px;
           }
 
           .main-input {
-            height: 57px;
-            font-size: 17px;
-          }
-
-          .tool-row {
-            gap: 6px;
+            height: 48px;
           }
 
           .tool-btn {
-            font-size: 10px;
-          }
-
-          .keypad {
-            gap: 7px;
+            height: 36px;
           }
 
           .calc-key {
-            height: 53px;
-            border-radius: 14px;
-            font-size: 16px;
+            height: 43px;
+          }
+
+          .keypad {
+            gap: 5px;
+            margin-top: 8px;
           }
         }
+
       `}</style>
 
       <div className="calculator-page">
+
         <div className="calculator-wrapper">
 
-          {/* TOP ROW */}
+          {/* TOP BAR */}
+
           <div className="top-bar">
+
             <div className="brand">
+
               <span className="brand-code">
                 &lt;/&gt;
               </span>
 
-              <span>Ajay Kedar</span>
+              <span>
+                Ajay Kedar
+              </span>
+
             </div>
 
             <div className="calculator-title">
               Calculator
             </div>
+
           </div>
 
-          {/* MAIN CARD */}
           <div className="calculator-card">
 
-            {/* MAIN INPUT */}
-            <div className="main-input-wrap">
-              <input
-                type="text"
-                className="main-input"
-                placeholder="Enter amount"
-                value={expression}
-                onChange={(e) =>
-                  handleExpressionChange(e.target.value)
-                }
-                autoComplete="off"
-                spellCheck="false"
-              />
-            </div>
+            {/* =================================================
+                CURRENCY MODE
+            ================================================= */}
 
-            {/* DESCRIPTION INPUT */}
-            {descriptionOpen && (
-              <div className="description-area">
-                <div className="description-input-wrap">
-                  <span className="description-prefix">
-                    (
-                  </span>
+            {!calculatorMode ? (
 
-                  <input
-                    ref={descriptionRef}
-                    type="text"
-                    className="description-input"
-                    value={description}
-                    onChange={(e) =>
-                      handleDescriptionChange(
-                        e.target.value
-                      )
+              <div className="currency-mode">
+
+                <div className="currency-header">
+
+                  <div className="currency-heading">
+                    Currency Converter
+                  </div>
+
+                  <button
+                    type="button"
+                    className="currency-close"
+                    onClick={
+                      closeCurrency
                     }
-                    placeholder="Enter description"
-                    autoComplete="off"
-                    spellCheck="false"
-                  />
+                  >
+                    Calculator
+                  </button>
 
-                  <span className="description-suffix">
-                    )
-                  </span>
                 </div>
 
-                <div className="description-hint">
-                  Description is added to the current amount.
-                </div>
-              </div>
-            )}
+                <div className="currency-direction-card">
 
-            {/* RESULT */}
-            {showTotal && (
-              <div className="result-box">
-                <div className="result-label">
-                  Total
-                </div>
+                  <div className="currency-direction-text">
 
-                {total !== null ? (
-                  <div className="result-value">
-                    {total}
+                    {currencyDirection ===
+                    "USD_INR"
+                      ? "US Dollar → Indian Rupee"
+                      : "Indian Rupee → US Dollar"}
+
                   </div>
-                ) : (
-                  <div className="error-result">
-                    Invalid expression
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* TOOLS */}
-            <div className="tool-row">
+                  <button
+                    type="button"
+                    className="switch-currency"
+                    onClick={
+                      switchCurrency
+                    }
+                  >
+                    ⇄
+                  </button>
 
-              <button
-                type="button"
-                className={`tool-btn description-btn ${
-                  descriptionOpen ? "active" : ""
-                }`}
-                onClick={() => {
-                  if (descriptionOpen) {
-                    closeDescription();
-                  } else {
-                    openDescription();
-                  }
-                }}
-              >
-                {descriptionOpen
-                  ? "Close Description"
-                  : "Description"}
-              </button>
-
-              <button
-                type="button"
-                className="tool-btn history-btn"
-                onClick={() =>
-                  setHistoryOpen(!historyOpen)
-                }
-              >
-                History
-              </button>
-
-              <button
-                type="button"
-                className="tool-btn currency-btn"
-                onClick={toggleCurrency}
-              >
-                USD → INR
-              </button>
-            </div>
-
-            {/* CURRENCY */}
-            {currencyOpen && (
-              <div className="currency-panel">
-                <div className="currency-title">
-                  USD → INR Converter
                 </div>
+
+                <label className="currency-input-label">
+
+                  {currencyDirection ===
+                  "USD_INR"
+                    ? "USD Amount"
+                    : "INR Amount"}
+
+                </label>
 
                 <input
-                  type="number"
-                  className="currency-input"
-                  placeholder="Enter USD amount"
-                  value={usdAmount}
-                  onChange={(e) =>
-                    setUsdAmount(e.target.value)
+                  ref={
+                    currencyInputRef
                   }
+                  type="number"
                   inputMode="decimal"
+                  className="currency-input"
+                  placeholder={
+                    currencyDirection ===
+                    "USD_INR"
+                      ? "Enter USD amount"
+                      : "Enter INR amount"
+                  }
+                  value={
+                    currencyAmount
+                  }
+                  onChange={(e) =>
+                    setCurrencyAmount(
+                      e.target.value
+                    )
+                  }
                 />
 
                 {currencyLoading && (
-                  <div className="rate-text">
-                    Loading exchange rate...
+                  <div className="currency-loading">
+                    Loading current USD rate...
+                  </div>
+                )}
+
+                {currencyValue !==
+                  null && (
+                  <div className="currency-result">
+
+                    <div className="currency-result-label">
+                      Converted Amount
+                    </div>
+
+                    <div className="currency-number">
+
+                      {currencyDirection ===
+                      "USD_INR"
+                        ? `₹ ${Number(
+                            currencyValue
+                          ).toLocaleString(
+                            "en-IN",
+                            {
+                              maximumFractionDigits: 2,
+                            }
+                          )}`
+                        : `$ ${Number(
+                            currencyValue
+                          ).toLocaleString(
+                            "en-US",
+                            {
+                              maximumFractionDigits: 2,
+                            }
+                          )}`}
+
+                    </div>
+
+                    <div className="currency-words">
+
+                      {numberToWords(
+                        currencyValue.toFixed(
+                          2
+                        ),
+                        currencyDirection ===
+                        "USD_INR"
+                          ? "INR"
+                          : "USD"
+                      )}
+
+                    </div>
+
+                  </div>
+                )}
+
+                {usdRate && (
+                  <div className="currency-rate-box">
+
+                    Current USD rate:{" "}
+
+                    <strong>
+                      1 USD = ₹
+                      {usdRate.toFixed(
+                        2
+                      )}
+                    </strong>
+
+                    <span className="currency-updated">
+                      Current reference exchange rate
+                    </span>
+
                   </div>
                 )}
 
@@ -1269,184 +2836,436 @@ export default function Calculate() {
                     <button
                       type="button"
                       className="refresh-rate"
-                      onClick={loadUsdRate}
+                      onClick={
+                        loadUsdRate
+                      }
                     >
-                      Retry Rate
+                      Refresh Rate
                     </button>
                   </>
                 )}
 
-                {inrValue !== null && (
-                  <div className="currency-result">
-                    ₹ {formatNumber(inrValue)}
-                  </div>
-                )}
-
-                {usdRate && (
-                  <div className="rate-text">
-                    1 USD = ₹{" "}
-                    {formatNumber(usdRate)}
-                  </div>
-                )}
               </div>
-            )}
 
-            {/* HISTORY */}
-            {historyOpen && (
-              <div className="history-panel">
-                <div className="history-header">
-                  <div className="history-title">
-                    Calculation History
+            ) : (
+
+              /* =================================================
+                 CALCULATOR MODE
+              ================================================= */
+
+              <>
+
+                {/* MAIN INPUT */}
+
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="main-input"
+                  placeholder="Enter amount"
+                  value={
+                    expression
+                  }
+                  onChange={(e) =>
+                    handleExpressionChange(
+                      e.target.value
+                    )
+                  }
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+
+                {/* DESCRIPTION */}
+
+                {descriptionOpen && (
+                  <div className="description-area">
+
+                    <div className="description-wrap">
+
+                      <span
+                        className="
+                          description-bracket
+                          description-left
+                        "
+                      >
+                        (
+                      </span>
+
+                      <input
+                        ref={
+                          descriptionRef
+                        }
+                        type="text"
+                        className="description-input"
+                        value={
+                          description
+                        }
+                        onChange={(e) =>
+                          handleDescriptionChange(
+                            e.target.value
+                          )
+                        }
+                        placeholder="Enter description"
+                        autoComplete="off"
+                        spellCheck="false"
+                      />
+
+                      <span
+                        className="
+                          description-bracket
+                          description-right
+                        "
+                      >
+                        )
+                      </span>
+
+                    </div>
+
+                    <div className="description-hint">
+                      Description for current amount
+                    </div>
+
                   </div>
+                )}
 
-                  {history.length > 0 && (
-                    <button
-                      type="button"
-                      className="clear-history"
-                      onClick={deleteAllHistory}
-                    >
-                      Clear All
-                    </button>
-                  )}
-                </div>
+                {/* TOTAL */}
 
-                {history.length === 0 ? (
-                  <div className="history-empty">
-                    No calculation history yet.
-                  </div>
-                ) : (
-                  history.map((item) => (
-                    <div
-                      className="history-item"
-                      key={item.id}
-                    >
-                      <div className="history-total">
-                        {item.total}
+                {showTotal && (
+                  <div className="result-box">
+
+                    <div className="result-label">
+                      Total
+                    </div>
+
+                    {total !==
+                    null ? (
+
+                      <div className="result-value">
+                        {total}
                       </div>
 
-                      <button
-                        type="button"
-                        className="delete-history"
-                        onClick={() =>
-                          deleteHistory(item.id)
-                        }
-                        aria-label="Delete history"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))
+                    ) : (
+
+                      <div className="result-error">
+                        Invalid expression
+                      </div>
+
+                    )}
+
+                  </div>
                 )}
-              </div>
+
+                {/* TOOLS */}
+
+                <div className="tool-row">
+
+                  <button
+                    type="button"
+                    className={`tool-btn description-btn ${
+                      descriptionOpen
+                        ? "active"
+                        : ""
+                    }`}
+                    onPointerDown={
+                      preventKeyboard
+                    }
+                    onClick={() => {
+
+                      if (
+                        descriptionOpen
+                      ) {
+                        closeDescription();
+                      } else {
+                        openDescription();
+                      }
+
+                    }}
+                  >
+                    {descriptionOpen
+                      ? "Close Description"
+                      : "Description"}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="tool-btn history-btn"
+                    onPointerDown={
+                      preventKeyboard
+                    }
+                    onClick={() =>
+                      setHistoryOpen(
+                        (previous) =>
+                          !previous
+                      )
+                    }
+                  >
+                    History
+                  </button>
+
+                  <button
+                    type="button"
+                    className="tool-btn currency-btn"
+                    onPointerDown={
+                      preventKeyboard
+                    }
+                    onClick={
+                      openCurrency
+                    }
+                  >
+                    USD ⇄ INR
+                  </button>
+
+                </div>
+
+                {/* HISTORY */}
+
+                {historyOpen && (
+                  <div className="history-panel">
+
+                    <div className="history-header">
+
+                      <div className="history-title">
+                        Calculation History
+                      </div>
+
+                      {history.length >
+                        0 && (
+                        <button
+                          type="button"
+                          className="clear-history"
+                          onPointerDown={
+                            preventKeyboard
+                          }
+                          onClick={
+                            clearHistory
+                          }
+                        >
+                          Clear All
+                        </button>
+                      )}
+
+                    </div>
+
+                    {history.length ===
+                    0 ? (
+
+                      <div className="history-empty">
+                        No calculation history
+                      </div>
+
+                    ) : (
+
+                      history.map(
+                        (item) => (
+
+                          <div
+                            className="history-item"
+                            key={item.id}
+                          >
+
+                            <div className="history-total">
+                              {item.total}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="delete-history"
+                              onPointerDown={
+                                preventKeyboard
+                              }
+                              onClick={() =>
+                                deleteHistoryItem(
+                                  item.id
+                                )
+                              }
+                            >
+                              ×
+                            </button>
+
+                          </div>
+
+                        )
+                      )
+
+                    )}
+
+                  </div>
+                )}
+
+                {/* KEYPAD */}
+
+                <div className="keypad">
+
+                  <KeyButton
+                    type="action"
+                    onClick={
+                      clearAll
+                    }
+                  >
+                    AC
+                  </KeyButton>
+
+                  <KeyButton
+                    type="action"
+                    onClick={
+                      backspace
+                    }
+                  >
+                    ⌫
+                  </KeyButton>
+
+                  <KeyButton
+                    type="percent"
+                    onClick={
+                      addPercent
+                    }
+                  >
+                    %
+                  </KeyButton>
+
+                  <KeyButton
+                    type="operator"
+                    onClick={() =>
+                      addOperator("/")
+                    }
+                  >
+                    ÷
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("7")
+                    }
+                  >
+                    7
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("8")
+                    }
+                  >
+                    8
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("9")
+                    }
+                  >
+                    9
+                  </KeyButton>
+
+                  <KeyButton
+                    type="operator"
+                    onClick={() =>
+                      addOperator("*")
+                    }
+                  >
+                    ×
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("4")
+                    }
+                  >
+                    4
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("5")
+                    }
+                  >
+                    5
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("6")
+                    }
+                  >
+                    6
+                  </KeyButton>
+
+                  <KeyButton
+                    type="operator"
+                    onClick={() =>
+                      addOperator("-")
+                    }
+                  >
+                    −
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("1")
+                    }
+                  >
+                    1
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("2")
+                    }
+                  >
+                    2
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("3")
+                    }
+                  >
+                    3
+                  </KeyButton>
+
+                  <KeyButton
+                    type="operator"
+                    onClick={() =>
+                      addOperator("+")
+                    }
+                  >
+                    +
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={() =>
+                      addNumber("0")
+                    }
+                  >
+                    0
+                  </KeyButton>
+
+                  <KeyButton
+                    onClick={
+                      addDecimal
+                    }
+                  >
+                    .
+                  </KeyButton>
+
+                  <KeyButton
+                    type="total"
+                    wide
+                    onClick={
+                      calculateTotal
+                    }
+                  >
+                    TOTAL
+                  </KeyButton>
+
+                </div>
+
+              </>
+
             )}
 
-            {/* KEYPAD */}
-            <div className="keypad">
-
-              <KeyButton
-                type="action"
-                onClick={clearAll}
-              >
-                AC
-              </KeyButton>
-
-              <KeyButton
-                type="action"
-                onClick={backspace}
-              >
-                ⌫
-              </KeyButton>
-
-              <KeyButton
-                type="percent"
-                onClick={addPercent}
-              >
-                %
-              </KeyButton>
-
-              <KeyButton
-                type="operator"
-                onClick={() => addOperator("/")}
-              >
-                ÷
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("7")}>
-                7
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("8")}>
-                8
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("9")}>
-                9
-              </KeyButton>
-
-              <KeyButton
-                type="operator"
-                onClick={() => addOperator("*")}
-              >
-                ×
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("4")}>
-                4
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("5")}>
-                5
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("6")}>
-                6
-              </KeyButton>
-
-              <KeyButton
-                type="operator"
-                onClick={() => addOperator("-")}
-              >
-                −
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("1")}>
-                1
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("2")}>
-                2
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("3")}>
-                3
-              </KeyButton>
-
-              <KeyButton
-                type="operator"
-                onClick={() => addOperator("+")}
-              >
-                +
-              </KeyButton>
-
-              <KeyButton onClick={() => addNumber("0")}>
-                0
-              </KeyButton>
-
-              <KeyButton onClick={addDecimal}>
-                .
-              </KeyButton>
-
-              <KeyButton
-                type="total"
-                wide
-                onClick={calculateTotal}
-              >
-                TOTAL
-              </KeyButton>
-
-            </div>
           </div>
+
         </div>
+
       </div>
     </>
   );
