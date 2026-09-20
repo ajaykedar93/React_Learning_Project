@@ -1846,6 +1846,17 @@ export default function Calculate() {
           text-transform: uppercase;
         }
 
+
+        .result-words {
+  margin-top: 5px;
+  color: #16a34a;
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
         .result-value {
           margin-top: 2px;
 
@@ -2930,30 +2941,27 @@ export default function Calculate() {
                 {/* TOTAL */}
 
                 {showTotal && (
-                  <div className="result-box">
+  <div className="result-box">
+    {total !== null ? (
+      <>
+        <div className="result-value">
+          {total}
+        </div>
 
-                    <div className="result-label">
-                      Total
-                    </div>
-
-                    {total !==
-                    null ? (
-
-                      <div className="result-value">
-                        {total}
-                      </div>
-
-                    ) : (
-
-                      <div className="result-error">
-                        Invalid expression
-                      </div>
-
-                    )}
-
-                  </div>
-                )}
-
+        <div className="result-words">
+          {numberToWords(
+            total.replace(/,/g, ""),
+            "INR"
+          )}
+        </div>
+      </>
+    ) : (
+      <div className="result-error">
+        Invalid expression
+      </div>
+    )}
+  </div>
+)}
                 {/* TOOLS */}
 
                 <div className="tool-row">
