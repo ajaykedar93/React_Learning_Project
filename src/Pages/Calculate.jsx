@@ -1738,17 +1738,25 @@ export default function Calculate() {
         }
 
         .brand {
-          display: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ef4444;
+          font-size: 12px;
+          font-weight: 900;
+          gap: 6px;
+          white-space: nowrap;
         }
 
         .calculator-title {
-          color: #31294b;
+          color: #111111;
 
-          font-size: 15px;
+          font-size: clamp(26px, 5vw, 36px);
           font-weight: 900;
+          font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
 
           white-space: nowrap;
-          letter-spacing: 0.02em; /* Added letter-spacing */
+          letter-spacing: 0.02em;
         }
 
         /* =====================================
@@ -1786,7 +1794,7 @@ export default function Calculate() {
           display: block;
 
           width: 100%;
-          height: 86px;
+          height: 102px;
 
           padding:
             0 16px;
@@ -1802,7 +1810,7 @@ export default function Calculate() {
 
           color: #17152b;
 
-          font-size: 19px;
+          font-size: 30px;
           font-weight: 750;
 
           white-space: nowrap;
@@ -1998,14 +2006,14 @@ export default function Calculate() {
           width: 100%;
           min-width: 0;
 
-          height: 45px;
+          height: 48px;
 
           border: 0;
 
           border-radius: 12px;
 
           font-size:
-            clamp(9px, 2.6vw, 11px);
+            clamp(10px, 2.7vw, 12px);
 
           font-weight: 900;
 
@@ -3092,6 +3100,8 @@ export default function Calculate() {
 
           .top-bar {
             flex: 0 0 auto;
+            min-height: 52px;
+            margin-bottom: 6px;
           }
 
           .calculator-card {
@@ -3107,8 +3117,8 @@ export default function Calculate() {
           .main-input,
           .currency-input-display {
             flex: 0 0 auto;
-            height: 100px;
-            font-size: 27px;
+            height: 110px;
+            font-size: 30px;
           }
 
           .tool-row,
@@ -3121,6 +3131,12 @@ export default function Calculate() {
 
           .tool-row {
             margin-top: 0;
+            gap: 7px;
+          }
+
+          .tool-btn {
+            height: 52px;
+            font-size: 12px;
           }
 
           .keypad {
@@ -3134,7 +3150,8 @@ export default function Calculate() {
           .keypad .calc-key {
             height: 100%;
             min-height: 0;
-            border-radius: 14px;
+            border-radius: 16px;
+            font-size: 20px;
           }
 
           .history-panel {
