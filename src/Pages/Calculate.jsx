@@ -1719,44 +1719,30 @@ export default function Calculate() {
         .brand {
           display: flex;
           align-items: center;
+          justify-content: center;
+          gap: 6px;
 
-          gap: 8px;
-
-          color: #17152b;
-
-          font-size: 16px;
-          font-weight: 900;
-
+          color: #111827;
+          font-size: clamp(12px, 2vw, 16px);
+          font-weight: 800;
           white-space: nowrap;
         }
 
         .brand-code {
-          color: #7c3aed;
-
-          font-size: 18px;
-          font-weight: 950;
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          justify-content: center;
           color: #ef4444;
-          font-size: 12px;
+          font-size: clamp(15px, 2.4vw, 20px);
           font-weight: 900;
-          gap: 6px;
-          white-space: nowrap;
         }
 
         .calculator-title {
-          color: #111111;
+          color: #111827;
 
-          font-size: clamp(26px, 5vw, 36px);
-          font-weight: 900;
-          font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+          font-size: clamp(30px, 4vw, 40px);
+          font-weight: 800;
+          font-family: "Segoe UI", "Inter", "Helvetica Neue", sans-serif;
 
           white-space: nowrap;
-          letter-spacing: 0.02em;
+          letter-spacing: -0.03em;
         }
 
         /* =====================================
@@ -1794,7 +1780,7 @@ export default function Calculate() {
           display: block;
 
           width: 100%;
-          height: 102px;
+          height: 118px;
 
           padding:
             0 16px;
@@ -1810,7 +1796,7 @@ export default function Calculate() {
 
           color: #17152b;
 
-          font-size: 30px;
+          font-size: 34px;
           font-weight: 750;
 
           white-space: nowrap;
@@ -3135,8 +3121,16 @@ export default function Calculate() {
           }
 
           .tool-btn {
-            height: 52px;
-            font-size: 12px;
+            height: 48px;
+            font-size: 11px;
+          }
+
+          .brand {
+            font-size: 13px;
+          }
+
+          .calculator-title {
+            font-size: clamp(24px, 6vw, 32px);
           }
 
           .keypad {
