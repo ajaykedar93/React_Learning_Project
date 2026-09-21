@@ -1786,7 +1786,7 @@ export default function Calculate() {
           display: block;
 
           width: 100%;
-          height: 64px;
+          height: 86px;
 
           padding:
             0 16px;
@@ -2208,7 +2208,7 @@ export default function Calculate() {
           min-width: 0;
 
           height:
-            clamp(50px, 12vw, 60px);
+            clamp(54px, 12vw, 62px);
 
           border: 0;
 
@@ -2987,7 +2987,7 @@ export default function Calculate() {
           display: flex;
           align-items: center;
           width: 100%;
-          height: 55px;
+          height: 72px;
           border: 1.5px solid #ded8ed;
           border-radius: 13px;
           background: #fcfbff;
@@ -2997,9 +2997,9 @@ export default function Calculate() {
         .currency-symbol {
           flex: 0 0 auto;
           color: #2563eb;
-          font-size: 20px;
+          font-size: 24px;
           font-weight: 900;
-          margin-right: 5px;
+          margin-right: 6px;
         }
 
         .currency-input-readonly {
@@ -3018,13 +3018,14 @@ export default function Calculate() {
           margin-top: 10px;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 6px;
+          gap: 7px;
           width: 100%;
         }
 
         .currency-keypad .calc-key {
-          height: 50px;
-          min-height: 50px;
+          height: 56px;
+          min-height: 56px;
+          font-size: 17px;
         }
 
         .currency-number {
@@ -3106,8 +3107,8 @@ export default function Calculate() {
           .main-input,
           .currency-input-display {
             flex: 0 0 auto;
-            height: 92px;
-            font-size: 25px;
+            height: 100px;
+            font-size: 27px;
           }
 
           .tool-row,
@@ -3150,7 +3151,17 @@ export default function Calculate() {
           }
 
           .currency-keypad {
-            flex: 0 0 auto;
+            flex: 1 1 auto;
+            display: grid;
+            grid-template-rows: repeat(5, minmax(0, 1fr));
+            gap: 7px;
+            margin-top: 10px;
+          }
+
+          .currency-keypad .calc-key {
+            height: 100%;
+            min-height: 0;
+            font-size: 18px;
           }
         }
 
@@ -3265,6 +3276,7 @@ export default function Calculate() {
           height: 100%;
           min-height: 0;
           border-radius: 14px;
+          font-size: 18px;
         }
 
         .history-panel {
