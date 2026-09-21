@@ -1706,7 +1706,7 @@ export default function Calculate() {
 
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: center;
 
           gap: 12px;
 
@@ -1737,6 +1737,10 @@ export default function Calculate() {
           font-weight: 950;
         }
 
+        .brand {
+          display: none;
+        }
+
         .calculator-title {
           color: #31294b;
 
@@ -1744,6 +1748,7 @@ export default function Calculate() {
           font-weight: 900;
 
           white-space: nowrap;
+          letter-spacing: 0.02em; /* Added letter-spacing */
         }
 
         /* =====================================
@@ -1753,13 +1758,13 @@ export default function Calculate() {
         .calculator-card {
           width: 100%;
 
-          padding: 16px;
+          padding: 12px 10px 8px;
 
           border:
             1px solid
             rgba(124,58,237,.10);
 
-          border-radius: 25px;
+          border-radius: 22px;
 
           background:
             rgba(255,255,255,.98);
@@ -2193,7 +2198,7 @@ export default function Calculate() {
           grid-template-columns:
             repeat(4, minmax(0, 1fr));
 
-          gap: 8px;
+          gap: 7px;
 
           margin-top: 13px;
         }
@@ -2203,7 +2208,7 @@ export default function Calculate() {
           min-width: 0;
 
           height:
-            clamp(54px, 13.5vw, 64px);
+            clamp(50px, 12vw, 60px);
 
           border: 0;
 
@@ -3324,13 +3329,6 @@ export default function Calculate() {
 
             <div className="calculator-title">
               Calculator
-            </div>
-
-            <div className="brand">
-              <span className="brand-code">
-                &lt;/&gt;
-              </span>
-              <span>Ajay Kedar</span>
             </div>
 
           </div>
