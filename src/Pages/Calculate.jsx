@@ -1786,7 +1786,7 @@ export default function Calculate() {
           display: block;
 
           width: 100%;
-          height: 64px;
+          height: 78px;
 
           padding:
             0 16px;
@@ -1998,7 +1998,7 @@ export default function Calculate() {
           width: 100%;
           min-width: 0;
 
-          height: 45px;
+          height: 38px;
 
           border: 0;
 
@@ -2208,7 +2208,7 @@ export default function Calculate() {
           min-width: 0;
 
           height:
-            clamp(50px, 12vw, 60px);
+            clamp(52px, 11vw, 58px);
 
           border: 0;
 
@@ -2987,7 +2987,7 @@ export default function Calculate() {
           display: flex;
           align-items: center;
           width: 100%;
-          height: 55px;
+          height: 60px;
           border: 1.5px solid #ded8ed;
           border-radius: 13px;
           background: #fcfbff;
@@ -3117,14 +3117,18 @@ export default function Calculate() {
           .keypad {
             flex: 1 1 auto;
             min-height: 0;
-            grid-template-rows: repeat(5, minmax(0, 1fr));
+            grid-template-rows: repeat(5, minmax(58px, 1fr));
             gap: 7px;
             margin-top: 9px;
           }
 
           .keypad .calc-key {
             height: auto;
-            min-height: 0;
+            min-height: 58px;
+          }
+
+          .main-input {
+            height: 82px;
           }
 
           .history-panel {
@@ -3226,7 +3230,7 @@ export default function Calculate() {
 
         .main-input {
           flex: 0 0 auto;
-          height: 58px;
+          height: 82px;
           border-radius: 12px;
         }
 
@@ -3244,7 +3248,7 @@ export default function Calculate() {
           width: 100%;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          grid-template-rows: repeat(5, minmax(0, 1fr));
+          grid-template-rows: repeat(5, minmax(58px, 1fr));
           gap: 6px;
           margin-top: 8px;
           margin-bottom: 0;
@@ -3253,7 +3257,7 @@ export default function Calculate() {
         .keypad .calc-key {
           width: 100%;
           height: auto;
-          min-height: 0;
+          min-height: 58px;
           border-radius: 16px;
         }
 
