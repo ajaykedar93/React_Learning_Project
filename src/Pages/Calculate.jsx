@@ -2815,6 +2815,7 @@ export default function Calculate() {
           min-height: 42px;
           margin-bottom: 5px;
           padding: 0 3px;
+          position: relative;
         }
 
         .calculator-title {
@@ -2825,6 +2826,11 @@ export default function Calculate() {
         }
 
         .brand {
+          display: flex;
+          position: absolute;
+          top: 50%;
+          right: 3px;
+          transform: translateY(-50%);
           order: 2;
           color: #ef4444;
           font-size: 11px;
@@ -3166,14 +3172,15 @@ export default function Calculate() {
           min-height: 100dvh;
           max-height: 100dvh;
           margin: 0;
-          padding-top: max(6px, env(safe-area-inset-top));
-          padding-right: max(7px, env(safe-area-inset-right));
-          padding-bottom: max(6px, env(safe-area-inset-bottom));
-          padding-left: max(7px, env(safe-area-inset-left));
+          padding-top: max(2px, env(safe-area-inset-top));
+          padding-right: max(3px, env(safe-area-inset-right));
+          padding-bottom: max(3px, env(safe-area-inset-bottom));
+          padding-left: max(3px, env(safe-area-inset-left));
           display: flex;
           align-items: stretch;
           justify-content: center;
           overflow: hidden;
+          background: #f7f7fb;
         }
 
         .calculator-wrapper {
@@ -3188,9 +3195,9 @@ export default function Calculate() {
 
         .top-bar {
           flex: 0 0 auto;
-          min-height: 46px;
-          margin-bottom: 4px;
-          padding: 0 3px;
+          min-height: 38px;
+          margin-bottom: 2px;
+          padding: 0 8px;
         }
 
         .calculator-card {
@@ -3199,8 +3206,11 @@ export default function Calculate() {
           width: 100%;
           display: flex;
           flex-direction: column;
-          padding: 10px;
-          border-radius: 18px;
+          padding: 8px 7px 5px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
           overflow: hidden;
         }
 
@@ -3216,7 +3226,8 @@ export default function Calculate() {
 
         .main-input {
           flex: 0 0 auto;
-          height: 55px;
+          height: 58px;
+          border-radius: 12px;
         }
 
         .tool-row {
@@ -3234,8 +3245,8 @@ export default function Calculate() {
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
           grid-template-rows: repeat(5, minmax(0, 1fr));
-          gap: 7px;
-          margin-top: 9px;
+          gap: 6px;
+          margin-top: 8px;
           margin-bottom: 0;
         }
 
@@ -3243,6 +3254,7 @@ export default function Calculate() {
           width: 100%;
           height: auto;
           min-height: 0;
+          border-radius: 16px;
         }
 
         .history-panel {
@@ -3329,6 +3341,13 @@ export default function Calculate() {
 
             <div className="calculator-title">
               Calculator
+            </div>
+
+            <div className="brand">
+              <span className="brand-code">
+                &lt;/&gt;
+              </span>
+              <span>Ajay Kedar</span>
             </div>
 
           </div>
