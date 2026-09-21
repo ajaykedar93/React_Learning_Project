@@ -1786,7 +1786,7 @@ export default function Calculate() {
           display: block;
 
           width: 100%;
-          height: 84px;
+          height: 64px;
 
           padding:
             0 16px;
@@ -1998,7 +1998,7 @@ export default function Calculate() {
           width: 100%;
           min-width: 0;
 
-          height: 38px;
+          height: 45px;
 
           border: 0;
 
@@ -2208,7 +2208,7 @@ export default function Calculate() {
           min-width: 0;
 
           height:
-            clamp(52px, 11vw, 58px);
+            clamp(50px, 12vw, 60px);
 
           border: 0;
 
@@ -2353,7 +2353,7 @@ export default function Calculate() {
         }
 
         .currency-direction-card {
-          min-height: 68px;
+          min-height: 58px;
 
           display: flex;
           align-items: center;
@@ -2364,7 +2364,7 @@ export default function Calculate() {
           margin-bottom: 13px;
 
           padding:
-            12px 14px;
+            9px 10px;
 
           border:
             1px solid #d9eee7;
@@ -2377,15 +2377,15 @@ export default function Calculate() {
         .currency-direction-text {
           color: #287260;
 
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 850;
         }
 
         .switch-currency {
           flex: 0 0 auto;
 
-          width: 52px;
-          height: 44px;
+          width: 44px;
+          height: 39px;
 
           border: 0;
 
@@ -2411,17 +2411,17 @@ export default function Calculate() {
         .currency-input-label {
           display: block;
 
-          margin-bottom: 8px;
+          margin-bottom: 6px;
 
           color: #547d70;
 
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 850;
         }
 
         .currency-input {
           width: 100%;
-          height: 64px;
+          height: 57px;
 
           padding:
             0 14px;
@@ -2437,7 +2437,7 @@ export default function Calculate() {
 
           color: #17352d;
 
-          font-size: 24px;
+          font-size: 20px;
           font-weight: 850;
         }
 
@@ -2453,7 +2453,7 @@ export default function Calculate() {
           margin-top: 14px;
 
           padding:
-            16px;
+            15px;
 
           border:
             1px solid #d8eee7;
@@ -2466,7 +2466,7 @@ export default function Calculate() {
         .currency-result-label {
           color: #76958c;
 
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 850;
 
           text-transform: uppercase;
@@ -2474,12 +2474,12 @@ export default function Calculate() {
         }
 
         .currency-number {
-          margin-top: 4px;
+          margin-top: 3px;
 
           color: #047857;
 
           font-size:
-            clamp(26px, 8vw, 36px);
+            clamp(24px, 7vw, 31px);
 
           line-height: 1.2;
 
@@ -2490,11 +2490,11 @@ export default function Calculate() {
         }
 
         .currency-words {
-          margin-top: 6px;
+          margin-top: 5px;
 
           color: #758e87;
 
-          font-size: 10px;
+          font-size: 9px;
 
           line-height: 1.4;
 
@@ -2505,7 +2505,7 @@ export default function Calculate() {
           margin-top: 12px;
 
           padding:
-            12px 13px;
+            10px 12px;
 
           border-radius: 11px;
 
@@ -2513,7 +2513,7 @@ export default function Calculate() {
 
           color: #547a70;
 
-          font-size: 10px;
+          font-size: 9px;
 
           line-height: 1.5;
         }
@@ -2547,20 +2547,20 @@ export default function Calculate() {
         }
 
         .refresh-rate {
-          margin-top: 8px;
+          margin-top: 7px;
 
           padding:
-            9px 12px;
+            7px 10px;
 
           border: 0;
 
-          border-radius: 9px;
+          border-radius: 8px;
 
           background: #d9f7eb;
 
           color: #047857;
 
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 850;
         }
 
@@ -2987,7 +2987,7 @@ export default function Calculate() {
           display: flex;
           align-items: center;
           width: 100%;
-          height: 68px;
+          height: 55px;
           border: 1.5px solid #ded8ed;
           border-radius: 13px;
           background: #fcfbff;
@@ -2997,9 +2997,9 @@ export default function Calculate() {
         .currency-symbol {
           flex: 0 0 auto;
           color: #2563eb;
-          font-size: 22px;
+          font-size: 20px;
           font-weight: 900;
-          margin-right: 6px;
+          margin-right: 5px;
         }
 
         .currency-input-readonly {
@@ -3015,17 +3015,16 @@ export default function Calculate() {
         }
 
         .currency-keypad {
-          margin-top: 12px;
+          margin-top: 10px;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 7px;
+          gap: 6px;
           width: 100%;
         }
 
         .currency-keypad .calc-key {
-          height: 56px;
-          min-height: 56px;
-          font-size: 17px;
+          height: 50px;
+          min-height: 50px;
         }
 
         .currency-number {
@@ -3076,38 +3075,11 @@ export default function Calculate() {
             min-height: 100dvh;
             box-sizing: border-box;
             overflow-x: hidden;
-            overflow-y: auto;
+            overflow-y: hidden;
             display: flex;
             align-items: stretch;
             padding-top: max(6px, env(safe-area-inset-top));
             padding-bottom: max(8px, env(safe-area-inset-bottom));
-          }
-
-          @media (min-height: 760px) {
-            .calculator-card {
-              padding-top: 12px;
-            }
-
-            .main-input {
-              height: 96px;
-              font-size: 24px;
-            }
-
-            .tool-row {
-              margin-top: 10px;
-            }
-
-            .keypad {
-              flex: 0 0 52%;
-              max-height: 52%;
-              min-height: 52%;
-              grid-template-rows: repeat(5, minmax(0, 1fr));
-            }
-
-            .keypad .calc-key {
-              min-height: 0;
-              height: 100%;
-            }
           }
 
           .calculator-wrapper {
@@ -3126,12 +3098,16 @@ export default function Calculate() {
             min-height: 0;
             display: flex;
             flex-direction: column;
-            overflow: visible;
+            overflow: hidden;
+            gap: 8px;
+            padding: 10px 8px 8px;
           }
 
           .main-input,
           .currency-input-display {
             flex: 0 0 auto;
+            height: 92px;
+            font-size: 25px;
           }
 
           .tool-row,
@@ -3142,21 +3118,22 @@ export default function Calculate() {
             flex: 0 0 auto;
           }
 
+          .tool-row {
+            margin-top: 0;
+          }
+
           .keypad {
-            flex: 1 1 auto;
+            flex: 1 1 0;
             min-height: 0;
-            grid-template-rows: repeat(5, minmax(58px, 1fr));
+            grid-template-rows: repeat(5, minmax(0, 1fr));
             gap: 7px;
-            margin-top: 9px;
+            margin-top: 0;
           }
 
           .keypad .calc-key {
-            height: auto;
-            min-height: 58px;
-          }
-
-          .main-input {
-            height: 82px;
+            height: 100%;
+            min-height: 0;
+            border-radius: 14px;
           }
 
           .history-panel {
@@ -3258,8 +3235,9 @@ export default function Calculate() {
 
         .main-input {
           flex: 0 0 auto;
-          height: 82px;
+          height: 92px;
           border-radius: 12px;
+          font-size: 25px;
         }
 
         .tool-row {
@@ -3276,17 +3254,17 @@ export default function Calculate() {
           width: 100%;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          grid-template-rows: repeat(5, minmax(58px, 1fr));
-          gap: 6px;
-          margin-top: 8px;
+          grid-template-rows: repeat(5, minmax(0, 1fr));
+          gap: 7px;
+          margin-top: 0;
           margin-bottom: 0;
         }
 
         .keypad .calc-key {
           width: 100%;
-          height: auto;
-          min-height: 58px;
-          border-radius: 16px;
+          height: 100%;
+          min-height: 0;
+          border-radius: 14px;
         }
 
         .history-panel {
