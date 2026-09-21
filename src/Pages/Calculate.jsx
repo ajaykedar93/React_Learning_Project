@@ -3140,6 +3140,178 @@ export default function Calculate() {
           }
         }
 
+        /* =====================================
+           ANDROID WEBVIEW — TRUE FULL MOBILE FIT
+        ===================================== */
+
+        html,
+        body,
+        #root {
+          width: 100%;
+          height: 100%;
+          min-height: 100%;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+        }
+
+        .calculator-page {
+          width: 100%;
+          height: 100dvh;
+          min-height: 100dvh;
+          max-height: 100dvh;
+          margin: 0;
+          padding-top: max(6px, env(safe-area-inset-top));
+          padding-right: max(7px, env(safe-area-inset-right));
+          padding-bottom: max(6px, env(safe-area-inset-bottom));
+          padding-left: max(7px, env(safe-area-inset-left));
+          display: flex;
+          align-items: stretch;
+          justify-content: center;
+          overflow: hidden;
+        }
+
+        .calculator-wrapper {
+          width: 100%;
+          max-width: 620px;
+          height: 100%;
+          min-height: 0;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .top-bar {
+          flex: 0 0 auto;
+          min-height: 46px;
+          margin-bottom: 4px;
+          padding: 0 3px;
+        }
+
+        .calculator-card {
+          flex: 1 1 auto;
+          min-height: 0;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          padding: 10px;
+          border-radius: 18px;
+          overflow: hidden;
+        }
+
+        .calculator-card > * {
+          flex-shrink: 0;
+        }
+
+        .calculator-card > .keypad,
+        .calculator-card > .history-panel,
+        .calculator-card > .currency-mode {
+          flex-shrink: 1;
+        }
+
+        .main-input {
+          flex: 0 0 auto;
+          height: 55px;
+        }
+
+        .tool-row {
+          flex: 0 0 auto;
+        }
+
+        .history-navigation {
+          flex: 0 0 auto;
+        }
+
+        .keypad {
+          flex: 1 1 auto;
+          min-height: 0;
+          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-rows: repeat(5, minmax(0, 1fr));
+          gap: 7px;
+          margin-top: 9px;
+          margin-bottom: 0;
+        }
+
+        .keypad .calc-key {
+          width: 100%;
+          height: auto;
+          min-height: 0;
+        }
+
+        .history-panel {
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow-y: auto;
+        }
+
+        .currency-mode {
+          flex: 1 1 auto;
+          min-height: 0;
+          height: 100%;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .currency-keypad {
+          flex: 0 0 auto;
+          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 6px;
+        }
+
+        .currency-keypad .calc-key {
+          height: 50px;
+          min-height: 50px;
+        }
+
+        @media (max-width: 359px) {
+          .calculator-card {
+            padding: 8px;
+          }
+
+          .top-bar {
+            min-height: 43px;
+          }
+
+          .keypad {
+            gap: 5px;
+          }
+        }
+
+        @media (max-height: 620px) and (orientation: portrait) {
+          .top-bar {
+            min-height: 40px;
+          }
+
+          .calculator-card {
+            padding: 7px;
+          }
+
+          .main-input {
+            height: 49px;
+          }
+
+          .tool-btn {
+            height: 36px;
+          }
+
+          .history-navigation {
+            margin-top: 6px;
+          }
+
+          .history-nav-btn {
+            height: 30px;
+          }
+
+          .keypad {
+            gap: 5px;
+            margin-top: 6px;
+          }
+        }
+
       `}</style>
 
       <div className="calculator-page">
