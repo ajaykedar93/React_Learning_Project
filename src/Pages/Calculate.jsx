@@ -1786,7 +1786,7 @@ export default function Calculate() {
           display: block;
 
           width: 100%;
-          height: 78px;
+          height: 84px;
 
           padding:
             0 16px;
@@ -2353,7 +2353,7 @@ export default function Calculate() {
         }
 
         .currency-direction-card {
-          min-height: 58px;
+          min-height: 68px;
 
           display: flex;
           align-items: center;
@@ -2364,7 +2364,7 @@ export default function Calculate() {
           margin-bottom: 13px;
 
           padding:
-            9px 10px;
+            12px 14px;
 
           border:
             1px solid #d9eee7;
@@ -2377,15 +2377,15 @@ export default function Calculate() {
         .currency-direction-text {
           color: #287260;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 850;
         }
 
         .switch-currency {
           flex: 0 0 auto;
 
-          width: 44px;
-          height: 39px;
+          width: 52px;
+          height: 44px;
 
           border: 0;
 
@@ -2411,17 +2411,17 @@ export default function Calculate() {
         .currency-input-label {
           display: block;
 
-          margin-bottom: 6px;
+          margin-bottom: 8px;
 
           color: #547d70;
 
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 850;
         }
 
         .currency-input {
           width: 100%;
-          height: 57px;
+          height: 64px;
 
           padding:
             0 14px;
@@ -2437,7 +2437,7 @@ export default function Calculate() {
 
           color: #17352d;
 
-          font-size: 20px;
+          font-size: 24px;
           font-weight: 850;
         }
 
@@ -2453,7 +2453,7 @@ export default function Calculate() {
           margin-top: 14px;
 
           padding:
-            15px;
+            16px;
 
           border:
             1px solid #d8eee7;
@@ -2466,7 +2466,7 @@ export default function Calculate() {
         .currency-result-label {
           color: #76958c;
 
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 850;
 
           text-transform: uppercase;
@@ -2474,12 +2474,12 @@ export default function Calculate() {
         }
 
         .currency-number {
-          margin-top: 3px;
+          margin-top: 4px;
 
           color: #047857;
 
           font-size:
-            clamp(24px, 7vw, 31px);
+            clamp(26px, 8vw, 36px);
 
           line-height: 1.2;
 
@@ -2490,11 +2490,11 @@ export default function Calculate() {
         }
 
         .currency-words {
-          margin-top: 5px;
+          margin-top: 6px;
 
           color: #758e87;
 
-          font-size: 9px;
+          font-size: 10px;
 
           line-height: 1.4;
 
@@ -2505,7 +2505,7 @@ export default function Calculate() {
           margin-top: 12px;
 
           padding:
-            10px 12px;
+            12px 13px;
 
           border-radius: 11px;
 
@@ -2513,7 +2513,7 @@ export default function Calculate() {
 
           color: #547a70;
 
-          font-size: 9px;
+          font-size: 10px;
 
           line-height: 1.5;
         }
@@ -2547,20 +2547,20 @@ export default function Calculate() {
         }
 
         .refresh-rate {
-          margin-top: 7px;
+          margin-top: 8px;
 
           padding:
-            7px 10px;
+            9px 12px;
 
           border: 0;
 
-          border-radius: 8px;
+          border-radius: 9px;
 
           background: #d9f7eb;
 
           color: #047857;
 
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 850;
         }
 
@@ -2987,7 +2987,7 @@ export default function Calculate() {
           display: flex;
           align-items: center;
           width: 100%;
-          height: 60px;
+          height: 68px;
           border: 1.5px solid #ded8ed;
           border-radius: 13px;
           background: #fcfbff;
@@ -2997,9 +2997,9 @@ export default function Calculate() {
         .currency-symbol {
           flex: 0 0 auto;
           color: #2563eb;
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 900;
-          margin-right: 5px;
+          margin-right: 6px;
         }
 
         .currency-input-readonly {
@@ -3015,16 +3015,17 @@ export default function Calculate() {
         }
 
         .currency-keypad {
-          margin-top: 10px;
+          margin-top: 12px;
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 6px;
+          gap: 7px;
           width: 100%;
         }
 
         .currency-keypad .calc-key {
-          height: 50px;
-          min-height: 50px;
+          height: 56px;
+          min-height: 56px;
+          font-size: 17px;
         }
 
         .currency-number {
@@ -3080,6 +3081,33 @@ export default function Calculate() {
             align-items: stretch;
             padding-top: max(6px, env(safe-area-inset-top));
             padding-bottom: max(8px, env(safe-area-inset-bottom));
+          }
+
+          @media (min-height: 760px) {
+            .calculator-card {
+              padding-top: 12px;
+            }
+
+            .main-input {
+              height: 96px;
+              font-size: 24px;
+            }
+
+            .tool-row {
+              margin-top: 10px;
+            }
+
+            .keypad {
+              flex: 0 0 52%;
+              max-height: 52%;
+              min-height: 52%;
+              grid-template-rows: repeat(5, minmax(0, 1fr));
+            }
+
+            .keypad .calc-key {
+              min-height: 0;
+              height: 100%;
+            }
           }
 
           .calculator-wrapper {
