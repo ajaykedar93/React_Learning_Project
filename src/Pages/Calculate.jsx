@@ -3381,6 +3381,7 @@ export default function Calculate() {
           align-items: center;
           justify-content: center;
           line-height: 1.05;
+          gap: 4px;
         }
 
         .calculator-title {
@@ -3391,11 +3392,13 @@ export default function Calculate() {
         }
 
         .built-by {
-          margin-top: 4px;
-          color: #6b7280;
-          font-size: 11px;
-          font-weight: 600;
+          margin-top: 0;
+          color: #4b5563;
+          font-size: clamp(11px, 2vw, 14px);
+          font-weight: 700;
+          letter-spacing: 0.02em;
           white-space: nowrap;
+          line-height: 1.2;
         }
 
         .menu-btn {
@@ -3548,6 +3551,52 @@ export default function Calculate() {
           .menu-btn { left: 2px; }
           .calculator-card { padding-left: 5px; padding-right: 5px; }
         }
+
+        /* FINAL HEADER ORDER — Calculator above, Build by Ajay Kedar below */
+        .top-bar .title-block {
+          position: relative !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 5px !important;
+          width: max-content !important;
+          text-align: center !important;
+          line-height: 1 !important;
+        }
+
+        .top-bar .calculator-title {
+          order: 1 !important;
+          position: static !important;
+          margin: 0 !important;
+          transform: none !important;
+          font-size: clamp(22px, 6vw, 30px) !important;
+          line-height: 1.05 !important;
+          white-space: nowrap !important;
+        }
+
+        .top-bar .built-by {
+          order: 2 !important;
+          position: static !important;
+          margin: 0 !important;
+          transform: none !important;
+          font-size: clamp(10px, 2vw, 13px) !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+        }
+
+        @media (max-width: 359px) {
+          .top-bar .title-block {
+            gap: 3px !important;
+          }
+          .top-bar .calculator-title {
+            font-size: 20px !important;
+          }
+          .top-bar .built-by {
+            font-size: 10px !important;
+          }
+        }
+
       `}</style>
 
       <div className="calculator-page">
@@ -3574,7 +3623,7 @@ export default function Calculate() {
                 Calculator
               </div>
               <div className="built-by">
-                Build by &lt;/&gt; Ajay Kedar
+                Build by Ajay Kedar
               </div>
             </div>
 
