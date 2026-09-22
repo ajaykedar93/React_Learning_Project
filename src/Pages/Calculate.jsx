@@ -2855,10 +2855,16 @@ export default function Calculate() {
           margin-top: 8px;
           padding: 10px 12px;
           border-radius: 13px;
+          overflow: visible;
         }
 
         .result-value {
           font-size: clamp(22px, 7vw, 31px);
+          width: 100%;
+          min-width: 0;
+          overflow: visible;
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
 
         .result-words,
@@ -2868,8 +2874,14 @@ export default function Calculate() {
           font-size: 10px;
           line-height: 1.4;
           font-weight: 750;
+          display: block;
+          width: 100%;
+          min-width: 0;
+          max-height: none;
+          overflow: visible;
           overflow-wrap: anywhere;
           word-break: break-word;
+          white-space: normal;
         }
 
         .tool-row {
@@ -2948,6 +2960,22 @@ export default function Calculate() {
           color: #ffffff;
           border-color: transparent;
           box-shadow: 0 6px 13px rgba(124,58,237,.20);
+        }
+
+        button {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .calc-key:active,
+        .tool-btn:active,
+        .history-nav-btn:active,
+        .clear-history:active {
+          background: #2563eb !important;
+          border-color: #1d4ed8 !important;
+          color: #ffffff !important;
+          box-shadow: 0 0 0 3px rgba(37,99,235,.24),
+                      0 3px 9px rgba(37,99,235,.28) !important;
+          transform: scale(.965);
         }
 
         .history-navigation {
@@ -3580,7 +3608,7 @@ export default function Calculate() {
           position: static !important;
           margin: 0 !important;
           transform: none !important;
-          font-size: clamp(10px, 2vw, 13px) !important;
+          font-size: clamp(12px, 2vw, 15px) !important;
           line-height: 1.15 !important;
           white-space: nowrap !important;
         }
@@ -3593,7 +3621,7 @@ export default function Calculate() {
             font-size: 20px !important;
           }
           .top-bar .built-by {
-            font-size: 10px !important;
+            font-size: 12px !important;
           }
         }
 
