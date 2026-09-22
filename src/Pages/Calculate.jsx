@@ -2018,7 +2018,7 @@ export default function Calculate() {
         }
 
         .description-btn {
-          color: #6d28d9;
+          color: #000000;
           background: #efe9ff;
         }
 
@@ -2034,12 +2034,12 @@ export default function Calculate() {
         }
 
         .history-btn {
-          color: #1d4ed8;
+          color: #000000;
           background: #eaf1ff;
         }
 
         .currency-btn {
-          color: #047857;
+          color: #000000;
           background: #e5faf2;
         }
 
@@ -2960,6 +2960,16 @@ export default function Calculate() {
           color: #15803d;
         }
 
+        .calc-key-percent,
+        .calc-key-operator,
+        .calc-key-plus {
+          font-size: 40px;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
         .calc-key-total {
           background: linear-gradient(135deg, #7c3aed, #ec4899);
           color: #ffffff;
@@ -2998,7 +3008,7 @@ export default function Calculate() {
           border: 1px solid #dbeafe;
           border-radius: 9px;
           background: #eff6ff;
-          color: #2563eb;
+          color: #000000;
           font-size: 10px;
           font-weight: 850;
         }
@@ -3632,6 +3642,32 @@ export default function Calculate() {
           .top-bar .built-by {
             font-size: 14px !important;
           }
+        }
+
+
+        /* =====================================
+           LARGER CALCULATOR SYMBOLS ONLY
+           Button size/layout remains unchanged
+        ===================================== */
+
+        .calc-key-operator {
+          font-size: clamp(25px, 6.5vw, 30px) !important;
+          line-height: 1 !important;
+        }
+
+        .calc-key-percent {
+          font-size: clamp(24px, 6vw, 29px) !important;
+          line-height: 1 !important;
+        }
+
+        .calc-key-action {
+          font-size: clamp(20px, 5.5vw, 25px) !important;
+          line-height: 1 !important;
+        }
+
+        /* Keep number buttons exactly at their existing size */
+        .calc-key-number {
+          font-size: clamp(16px, 4.8vw, 19px) !important;
         }
 
       `}</style>
