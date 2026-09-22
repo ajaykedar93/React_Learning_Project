@@ -3362,6 +3362,192 @@ export default function Calculate() {
           }
         }
 
+
+        /* =====================================
+           FINAL APP UI OVERRIDES
+        ===================================== */
+
+        .top-bar {
+          position: relative;
+          min-height: 52px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .title-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          line-height: 1.05;
+        }
+
+        .calculator-title {
+          font-size: clamp(22px, 6vw, 30px);
+          font-weight: 850;
+          color: #111827;
+          white-space: nowrap;
+        }
+
+        .built-by {
+          margin-top: 4px;
+          color: #6b7280;
+          font-size: 11px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .menu-btn {
+          position: absolute;
+          left: 6px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 34px;
+          height: 34px;
+          padding: 7px;
+          border: 0;
+          background: transparent;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 4px;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .menu-btn span {
+          display: block;
+          width: 19px;
+          height: 2px;
+          border-radius: 2px;
+          background: #374151;
+        }
+
+        /* Responsive glass-blue tap effect */
+        .calc-key-number:active,
+        .calc-key-number:focus-visible {
+          background: rgba(59, 130, 246, .20);
+          border-color: rgba(59, 130, 246, .70);
+          box-shadow: 0 0 0 2px rgba(96,165,250,.16),
+                      0 0 14px rgba(59,130,246,.30),
+                      inset 0 0 10px rgba(255,255,255,.38);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          transform: scale(.965);
+          outline: none;
+        }
+
+        .currency-keypad .calc-key-number:active,
+        .currency-keypad .calc-key-number:focus-visible {
+          background: rgba(59, 130, 246, .20);
+        }
+
+        /* Full mobile-height calculator */
+        @media (max-width: 600px) and (orientation: portrait) {
+          .calculator-page {
+            height: 100dvh;
+            min-height: 100dvh;
+            max-height: 100dvh;
+            overflow: hidden;
+          }
+
+          .calculator-wrapper {
+            height: 100%;
+            min-height: 0;
+          }
+
+          .calculator-card {
+            min-height: 0;
+            height: calc(100% - 54px);
+          }
+
+          .main-input {
+            height: clamp(88px, 15dvh, 125px);
+            flex: 0 0 auto;
+            font-size: clamp(24px, 7vw, 32px);
+          }
+
+          .tool-row {
+            flex: 0 0 auto;
+          }
+
+          .keypad {
+            flex: 1 1 0;
+            min-height: 0;
+            grid-template-rows: repeat(5, minmax(0, 1fr));
+            gap: clamp(5px, 1.8vw, 8px);
+          }
+
+          .keypad .calc-key {
+            height: 100%;
+            min-height: 0;
+            font-size: clamp(17px, 5vw, 22px);
+          }
+
+          /* Currency uses the complete available mobile height */
+          .currency-mode {
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .currency-header,
+          .currency-direction-card,
+          .currency-input-label,
+          .currency-input-display,
+          .currency-result,
+          .currency-rate-box,
+          .currency-loading,
+          .currency-error,
+          .refresh-rate {
+            flex: 0 0 auto;
+          }
+
+          .currency-input-display {
+            height: clamp(64px, 11dvh, 90px);
+          }
+
+          .currency-keypad {
+            flex: 1 1 0;
+            min-height: 0;
+            grid-template-rows: repeat(5, minmax(0, 1fr));
+            gap: clamp(5px, 1.8vw, 8px);
+          }
+
+          .currency-keypad .calc-key {
+            height: 100%;
+            min-height: 0;
+            font-size: clamp(16px, 4.8vw, 21px);
+          }
+
+          .currency-close {
+            min-width: 110px;
+            height: 42px;
+            font-size: 11px;
+            white-space: nowrap;
+          }
+
+          .switch-currency {
+            width: 56px;
+            height: 46px;
+            flex: 0 0 56px;
+          }
+        }
+
+        @media (max-height: 650px) and (orientation: portrait) {
+          .top-bar { min-height: 45px; }
+          .calculator-card { height: calc(100% - 47px); }
+          .main-input { height: clamp(68px, 13dvh, 92px); }
+          .tool-btn { height: 40px; }
+        }
+
+        @media (max-width: 359px) and (orientation: portrait) {
+          .built-by { font-size: 10px; }
+          .menu-btn { left: 2px; }
+          .calculator-card { padding-left: 5px; padding-right: 5px; }
+        }
       `}</style>
 
       <div className="calculator-page">
@@ -3372,15 +3558,24 @@ export default function Calculate() {
 
           <div className="top-bar">
 
-            <div className="calculator-title">
-              Calculator
-            </div>
+            <button
+              type="button"
+              className="menu-btn"
+              aria-label="Menu"
+              onClick={() => {}}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
 
-            <div className="brand">
-              <span className="brand-code">
-                &lt;/&gt;
-              </span>
-              <span>Ajay Kedar</span>
+            <div className="title-block">
+              <div className="calculator-title">
+                Calculator
+              </div>
+              <div className="built-by">
+                Build by &lt;/&gt; Ajay Kedar
+              </div>
             </div>
 
           </div>
@@ -3491,7 +3686,7 @@ export default function Calculate() {
                     ["0", () => currencyAddNumber("0"), "number"],
                     [".", currencyAddDecimal, "number"],
                     ["00", () => currencyAddNumber("00"), "number"],
-                    ["TOTAL", () => {}, "total"]
+                    ["=", () => {}, "total"]
                   ].map(([label, action, type], index) => (
                     <button
                       key={`${label}-${index}`}
