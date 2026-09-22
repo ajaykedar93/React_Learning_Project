@@ -2043,6 +2043,11 @@ export default function Calculate() {
           background: #e5faf2;
         }
 
+        .tool-row .currency-btn {
+          height: 50px;
+          font-size: clamp(11px, 2.9vw, 13px);
+        }
+
         /* =====================================
            HISTORY
         ===================================== */
@@ -2967,8 +2972,11 @@ export default function Calculate() {
         }
 
         .calc-key:active,
+        .calc-key:focus,
         .tool-btn:active,
+        .tool-btn:focus,
         .history-nav-btn:active,
+        .history-nav-btn:focus,
         .clear-history:active {
           background: #2563eb !important;
           border-color: #1d4ed8 !important;
@@ -3608,7 +3616,8 @@ export default function Calculate() {
           position: static !important;
           margin: 0 !important;
           transform: none !important;
-          font-size: clamp(12px, 2vw, 15px) !important;
+          color: #2563eb !important;
+          font-size: clamp(14px, 2.4vw, 18px) !important;
           line-height: 1.15 !important;
           white-space: nowrap !important;
         }
@@ -3621,7 +3630,7 @@ export default function Calculate() {
             font-size: 20px !important;
           }
           .top-bar .built-by {
-            font-size: 12px !important;
+            font-size: 14px !important;
           }
         }
 
