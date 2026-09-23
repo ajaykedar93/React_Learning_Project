@@ -3768,26 +3768,16 @@ export default function Calculate() {
                   </span>
                   <input
                     ref={currencyInputRef}
-                    type={currencyDirection === "USD_INR" ? "number" : "text"}
-                    inputMode={currencyDirection === "USD_INR" ? "decimal" : "none"}
-                    readOnly={currencyDirection !== "USD_INR"}
-                    className={`currency-input${currencyDirection !== "USD_INR" ? " currency-input-readonly" : ""}`}
+                    type="number"
+                    inputMode="decimal"
+                    className="currency-input"
                     placeholder={
                       currencyDirection === "USD_INR"
                         ? "Enter USD amount"
                         : "Enter INR amount"
                     }
                     value={currencyAmount}
-                    onChange={(event) => {
-                      if (currencyDirection === "USD_INR") {
-                        setCurrencyAmount(event.target.value);
-                      }
-                    }}
-                    onFocus={(event) => {
-                      if (currencyDirection !== "USD_INR") {
-                        event.target.blur();
-                      }
-                    }}
+                    onChange={(event) => setCurrencyAmount(event.target.value)}
                     aria-label={
                       currencyDirection === "USD_INR"
                         ? "USD amount"
@@ -3796,42 +3786,6 @@ export default function Calculate() {
                   />
                 </div>
 
-                {currencyDirection !== "USD_INR" && (
-                <div className="currency-keypad">
-                  {[
-                    ["AC", currencyClear, "action"],
-                    ["⌫", currencyBackspace, "action"],
-                    ["%", () => {}, "percent"],
-                    ["÷", () => {}, "operator"],
-                    ["1", () => currencyAddNumber("1"), "number"],
-                    ["2", () => currencyAddNumber("2"), "number"],
-                    ["3", () => currencyAddNumber("3"), "number"],
-                    ["×", () => {}, "operator"],
-                    ["4", () => currencyAddNumber("4"), "number"],
-                    ["5", () => currencyAddNumber("5"), "number"],
-                    ["6", () => currencyAddNumber("6"), "number"],
-                    ["−", () => {}, "operator"],
-                    ["7", () => currencyAddNumber("7"), "number"],
-                    ["8", () => currencyAddNumber("8"), "number"],
-                    ["9", () => currencyAddNumber("9"), "number"],
-                    ["+", () => {}, "operator"],
-                    ["0", () => currencyAddNumber("0"), "number"],
-                    [".", currencyAddDecimal, "number"],
-                    ["00", () => currencyAddNumber("00"), "number"],
-                    ["=", () => {}, "total"]
-                  ].map(([label, action, type], index) => (
-                    <button
-                      key={`${label}-${index}`}
-                      type="button"
-                      className={`calc-key calc-key-${type}`}
-                      onPointerDown={preventKeyboard}
-                      onClick={action}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                )}
                 {currencyLoading && (
                   <div className="currency-loading">
                     Loading current USD rate...
