@@ -3768,17 +3768,26 @@ export default function Calculate() {
                   </span>
                   <input
                     ref={currencyInputRef}
-                    type="text"
-                    inputMode="none"
-                    readOnly
-                    className="currency-input currency-input-readonly"
+                    type={currencyDirection === "USD_INR" ? "number" : "text"}
+                    inputMode={currencyDirection === "USD_INR" ? "decimal" : "none"}
+                    readOnly={currencyDirection !== "USD_INR"}
+                    className={`currency-input${currencyDirection !== "USD_INR" ? " currency-input-readonly" : ""}`}
                     placeholder={
                       currencyDirection === "USD_INR"
                         ? "Enter USD amount"
                         : "Enter INR amount"
                     }
                     value={currencyAmount}
-                    onFocus={(e) => e.target.blur()}
+                    onChange={(event) => {
+                      if (currencyDirection === "USD_INR") {
+                        setCurrencyAmount(event.target.value);
+                      }
+                    }}
+                    onFocus={(event) => {
+                      if (currencyDirection !== "USD_INR") {
+                        event.target.blur();
+                      }
+                    }}
                     aria-label={
                       currencyDirection === "USD_INR"
                         ? "USD amount"
@@ -3787,6 +3796,7 @@ export default function Calculate() {
                   />
                 </div>
 
+                {currencyDirection !== "USD_INR" && (
                 <div className="currency-keypad">
                   {[
                     ["AC", currencyClear, "action"],
@@ -3821,6 +3831,7 @@ export default function Calculate() {
                     </button>
                   ))}
                 </div>
+                )}
                 {currencyLoading && (
                   <div className="currency-loading">
                     Loading current USD rate...
