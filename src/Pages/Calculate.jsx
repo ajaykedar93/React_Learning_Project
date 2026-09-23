@@ -1460,32 +1460,6 @@ export default function Calculate() {
     setCurrencyEditing(false);
   };
 
-  const currencyAddNumber = (value) => {
-    preventKeyboard();
-    setCurrencyAmount((previous) => {
-      if (previous === "0") return value;
-      return previous + value;
-    });
-  };
-
-  const currencyAddDecimal = () => {
-    preventKeyboard();
-    setCurrencyAmount((previous) => {
-      if (!previous) return "0.";
-      return previous.includes(".") ? previous : `${previous}.`;
-    });
-  };
-
-  const currencyBackspace = () => {
-    preventKeyboard();
-    setCurrencyAmount((previous) => previous.slice(0, -1));
-  };
-
-  const currencyClear = () => {
-    preventKeyboard();
-    setCurrencyAmount("");
-  };
-
   const currencyValue =
     currencyAmount &&
     usdRate &&
